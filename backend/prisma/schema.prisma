@@ -1,0 +1,2594 @@
+// IntelliFin Database Schema
+// This is the main Prisma schema file for the IntelliFin application
+// Following multi-tenant architecture with schema-per-tenant approach
+// Compliant with Zambian Data Protection Act and business requirements
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// GLOBAL TABLES (Shared across all tenants)
+// ============================================================================
+
+model Category {
+  id              String   @id @default(uuid()) @db.Uuid
+  organizationId  String   @map("organization_id") @db.Uuid
+  name            String   @db.VarChar(255)
+  description     String?  @db.Text
+  type            CategoryType
+  parentId        String?  @map("parent_id") @db.Uuid
+  color           String?  @db.VarChar(20)
+  icon            String?  @db.VarChar(50)
+  isActive        Boolean  @default(true) @map("is_active")
+  isSystem        Boolean  @default(false) @map("is_system")
+  sortOrder       Int?     @default(0) @map("sort_order")
+  metadata        Json?    @default("{}")
+  
+  // Timestamps
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
+
+  // Relations
+  parent          Category?   @relation("CategoryToCategory", fields: [parentId], references: [id])
+  children        Category[]  @relation("CategoryToCategory")
+  transactions    Transaction[]
+  rules           CategorizationRule[]
+  organization    Organization @relation(fields: [organizationId], references: [id])
+
+  @@map("categories")
+  @@index([organizationId])
+  @@index([parentId])
+  @@index([type])
+  @@index([isActive])
+}
+
+enum CategoryType {
+  INCOME
+  EXPENSE
+  ASSET
+  LIABILITY
+  EQUITY
+  REVENUE
+  COST_OF_GOODS_SOLD
+  OPERATING_EXPENSE
+  OTHER_INCOME
+  OTHER_EXPENSE
+  TAX
+}
+
+model Tenant {
+  id            String   @id @default(uuid()) @db.Uuid
+  name          String   @db.VarChar(255)
+  slug          String   @unique @db.VarChar(100)
+  domain        String?  @unique @db.VarChar(255)
+  schemaName    String   @unique @map("schema_name") @db.VarChar(50)
+  status        TenantStatus @default(ACTIVE)
+  settings      Json?
+
+  // Business Information
+  businessType  String?  @map("business_type") @db.VarChar(50)
+  zraTin        String?  @unique @map("zra_tin") @db.VarChar(20)
+  address       String?  @db.Text
+  city          String?  @db.VarChar(100)
+  country       String   @default("Zambia") @db.VarChar(100)
+  phone         String?  @db.VarChar(20)
+  email         String?  @db.VarChar(255)
+  industry      String?  @db.VarChar(100)
+
+  // Subscription and billing
+  subscriptionPlan SubscriptionPlan @default(TRIAL) @map("subscription_plan")
+  subscriptionStatus SubscriptionStatus @default(TRIAL) @map("subscription_status")
+  subscriptionStartDate DateTime? @map("subscription_start_date")
+  subscriptionEndDate DateTime? @map("subscription_end_date")
+
+  // Audit fields
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
+
+  // Relationships
+  users         User[]
+  subscriptions TenantSubscription[]
+  invitations   UserInvitation[]
+
+  @@map("tenants")
+  @@index([status])
+  @@index([zraTin])
+  @@index([schemaName])
+  @@index([subscriptionStatus])
+}
+
+model User {
+  id                String   @id @default(uuid()) @db.Uuid
+  email             String   @unique @db.VarChar(255)
+  firstName         String   @map("first_name") @db.VarChar(100)
+  lastName          String   @map("last_name") @db.VarChar(100)
+  password          String   @db.VarChar(255)
+  phone             String?  @db.VarChar(20)
+  avatar            String?  @db.VarChar(255)
+
+  // Status and verification
+  status            UserStatus @default(PENDING_VERIFICATION)
+  role              UserRole @default(USER)
+  emailVerified     Boolean @default(false) @map("email_verified")
+  phoneVerified     Boolean @default(false) @map("phone_verified")
+
+  // Verification tokens
+  emailVerificationToken String? @map("email_verification_token") @db.VarChar(255)
+  emailVerificationExpires DateTime? @map("email_verification_expires")
+  resetPasswordToken String? @map("reset_password_token") @db.VarChar(255)
+  resetPasswordExpires DateTime? @map("reset_password_expires")
+
+  // Security
+  failedLoginAttempts Int @default(0) @map("failed_login_attempts")
+  lockedUntil       DateTime? @map("locked_until")
+  lastLoginAt       DateTime? @map("last_login_at")
+  lastLoginIp       String?  @map("last_login_ip") @db.VarChar(45)
+
+  // Preferences and settings
+  settings          Json?
+  timezone          String?  @default("Africa/Lusaka") @db.VarChar(50)
+  language          String?  @default("en") @db.VarChar(5)
+
+  // Audit fields
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  deletedAt         DateTime? @map("deleted_at")
+
+  // Tenant relationship
+  tenantId          String   @map("tenant_id") @db.Uuid
+  tenant            Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Relationships
+  sessions          UserSession[]
+  auditLogs         AuditLog[]
+  sentInvitations   UserInvitation[] @relation("InvitationSender")
+  receivedInvitations UserInvitation[] @relation("InvitationReceiver")
+  createdCategorizationRules CategorizationRule[]
+  acceptedCategorySuggestions TransactionCategorySuggestion[]
+
+  // Approval workflow relationships
+  approvalRequests  ApprovalRequest[] @relation("ApprovalRequester")
+  approvalTasks     ApprovalTask[] @relation("ApprovalTaskApprover")
+  delegatedTasks    ApprovalTask[] @relation("ApprovalTaskDelegatedFrom")
+  escalatedTasks    ApprovalTask[] @relation("ApprovalTaskEscalatedFrom")
+  createdApprovalRules ApprovalRule[] @relation("ApprovalRuleCreator")
+  approvalHistory   ApprovalHistory[] @relation("ApprovalHistoryUser")
+  delegatorRelations ApprovalDelegate[] @relation("ApprovalDelegator")
+  delegateRelations ApprovalDelegate[] @relation("ApprovalDelegate")
+
+  // Dashboard relationships
+  createdDashboards Dashboard[] @relation("DashboardCreator")
+  dashboardPermissions DashboardPermission[] @relation("DashboardPermissionUser")
+  grantedDashboardPermissions DashboardPermission[] @relation("DashboardPermissionGrantor")
+
+  @@map("users")
+  @@index([tenantId])
+  @@index([email])
+  @@index([status])
+  @@index([role])
+  @@index([emailVerified])
+}
+
+model UserSession {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  token         String   @unique @db.VarChar(255)
+  refreshToken  String?  @map("refresh_token") @db.Text // Changed to Text to support longer JWT tokens
+  expiresAt     DateTime @map("expires_at")
+  ipAddress     String?  @map("ip_address") @db.VarChar(45)
+  userAgent     String?  @map("user_agent") @db.Text
+  isActive      Boolean  @default(true) @map("is_active")
+  deviceInfo    Json?    @map("device_info")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relationships
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_sessions")
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@index([isActive])
+}
+
+model UserInvitation {
+  id              String   @id @default(uuid()) @db.Uuid
+  email           String   @db.VarChar(255)
+  role            UserRole @default(USER)
+  token           String   @unique @db.VarChar(255)
+  expiresAt       DateTime @map("expires_at")
+  acceptedAt      DateTime? @map("accepted_at")
+
+  // Status tracking
+  status          InvitationStatus @default(PENDING)
+
+  // Tenant and organization context
+  tenantId        String   @map("tenant_id") @db.Uuid
+  organizationId  String?  @map("organization_id") @db.Uuid
+
+  // Invitation metadata
+  invitedBy       String   @map("invited_by") @db.Uuid
+  invitedUser     String?  @map("invited_user") @db.Uuid // Set when invitation is accepted
+  message         String?  @db.Text
+
+  // Audit fields
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relationships
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  inviter         User     @relation("InvitationSender", fields: [invitedBy], references: [id], onDelete: Cascade)
+  invitee         User?    @relation("InvitationReceiver", fields: [invitedUser], references: [id], onDelete: SetNull)
+
+  @@map("user_invitations")
+  @@index([tenantId])
+  @@index([email])
+  @@index([token])
+  @@index([status])
+  @@index([expiresAt])
+  @@index([invitedBy])
+}
+
+model TenantSubscription {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  plan          SubscriptionPlan
+  status        SubscriptionStatus @default(TRIAL)
+  startDate     DateTime @map("start_date")
+  endDate       DateTime @map("end_date")
+  features      Json?
+  limits        Json?
+  billingCycle  String?  @map("billing_cycle") @db.VarChar(20) // monthly, yearly
+  amount        Decimal? @db.Decimal(10,2)
+  currency      String?  @default("ZMW") @db.VarChar(3)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relationships
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("tenant_subscriptions")
+  @@index([tenantId])
+  @@index([status])
+  @@index([endDate])
+}
+
+model AuditLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String?  @map("user_id") @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  action        String   @db.VarChar(100)
+  resource      String   @db.VarChar(50)
+  resourceId    String?  @map("resource_id") @db.VarChar(255)
+  oldValues     Json?    @map("old_values")
+  newValues     Json?    @map("new_values")
+  ipAddress     String?  @map("ip_address") @db.VarChar(45)
+  userAgent     String?  @map("user_agent") @db.Text
+  metadata      Json?
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  // Relationships
+  user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("audit_logs")
+  @@index([tenantId])
+  @@index([userId])
+  @@index([action])
+  @@index([resource])
+  @@index([createdAt])
+}
+
+// ============================================================================
+// TENANT-SPECIFIC MODELS (These will be created in each tenant schema)
+// ============================================================================
+
+// Organization model (per tenant)
+model Organization {
+  id                String   @id @default(uuid()) @db.Uuid
+  name              String   @db.VarChar(255)
+  businessType      String   @map("business_type") @db.VarChar(50)
+  zraTin            String   @unique @map("zra_tin") @db.VarChar(20)
+  address           String?  @db.Text
+  city              String?  @db.VarChar(100)
+  country           String   @default("Zambia") @db.VarChar(100)
+  phone             String?  @db.VarChar(20)
+  email             String?  @db.VarChar(255)
+  website           String?  @db.VarChar(255)
+  industry          String?  @db.VarChar(100)
+
+  // Banking and financial details
+  bankName          String?  @map("bank_name") @db.VarChar(100)
+  bankAccountNumber String?  @map("bank_account_number") @db.VarChar(50)
+  bankBranch        String?  @map("bank_branch") @db.VarChar(100)
+
+  // Settings and preferences
+  defaultCurrency   String   @default("ZMW") @map("default_currency") @db.VarChar(3)
+  fiscalYearStart   Int      @default(1) @map("fiscal_year_start") // Month (1-12)
+  timezone          String   @default("Africa/Lusaka") @db.VarChar(50)
+  dateFormat        String   @default("DD/MM/YYYY") @map("date_format") @db.VarChar(20)
+
+  // Logo and branding
+  logo              String?  @db.VarChar(255)
+  primaryColor      String?  @map("primary_color") @db.VarChar(7)
+  secondaryColor    String?  @map("secondary_color") @db.VarChar(7)
+
+  // Audit fields
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  deletedAt         DateTime? @map("deleted_at")
+
+  // Relationships
+  customers         Customer[]
+  invoices          Invoice[]
+  expenses          Expense[]
+  categories        Category[]
+  mobileMoneyAccounts MobileMoneyAccount[]
+  expensePolicies   ExpensePolicy[]
+  expenseTags       ExpenseTag[]
+  payments          Payment[]
+  transactions      Transaction[]
+  syncJobs          SyncJob[]
+  categorizationRules CategorizationRule[]
+  categorySuggestions TransactionCategorySuggestion[]
+
+  // Approval workflow relationships
+  approvalRequests  ApprovalRequest[]
+  approvalRules     ApprovalRule[]
+  approvalDelegates ApprovalDelegate[]
+
+  // Dashboard relationships
+  dashboards        Dashboard[]
+
+  // Chart of Accounts and General Ledger relationships
+  accounts          Account[]
+  journalEntries    JournalEntry[]
+  generalLedgerEntries GeneralLedgerEntry[]
+
+  // Tax management relationships
+  taxRates          TaxRate[]
+  taxPeriods        TaxPeriod[]
+  taxObligations    TaxObligation[]
+  withholdingCertificates WithholdingTaxCertificate[]
+  taxAdjustments    TaxAdjustment[]
+  taxFilings        TaxFiling[]
+  customerTaxProfiles CustomerTaxProfile[]
+
+  // Analytics relationships - Step 19
+  analyticsConfigurations AnalyticsConfiguration[]
+  analyticsCache      AnalyticsCache[]
+  forecastingModels   ForecastingModel[]
+  analyticsInsights   AnalyticsInsight[]
+  financialRatiosHistory FinancialRatiosHistory[]
+
+  // Inventory Management relationships - Step 21
+  products            Product[]
+  suppliers           Supplier[]
+  purchaseOrders      PurchaseOrder[]
+  stockMovements      StockMovement[]
+  inventoryAdjustments InventoryAdjustment[]
+  stockAlerts         StockAlert[]
+  inventoryReports    InventoryReport[]
+
+  @@map("organizations")
+  @@index([zraTin])
+}
+
+// Customer Management
+model Customer {
+  id              String   @id @default(uuid()) @db.Uuid
+  organizationId  String   @map("organization_id") @db.Uuid
+  name            String   @db.VarChar(255)
+  contactPerson   String?  @map("contact_person") @db.VarChar(100)
+  email           String?  @db.VarChar(255)
+  phone           String?  @db.VarChar(20)
+  address         String?  @db.Text
+  city            String?  @db.VarChar(100)
+  country         String   @default("Zambia") @db.VarChar(100)
+  zraTin          String?  @map("zra_tin") @db.VarChar(20)
+  paymentTerms    Int      @default(14) @map("payment_terms") // Days
+  creditLimit     Decimal? @map("credit_limit") @db.Decimal(15,2)
+  notes           String?  @db.Text
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
+
+  // Relationships
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invoices        Invoice[]
+  payments        Payment[]
+  taxProfile      CustomerTaxProfile?
+
+  @@map("customers")
+  @@index([organizationId])
+  @@index([zraTin])
+  @@index([name])
+  @@index([isActive])
+}
+
+// Customer tax profile for enhanced tax management
+model CustomerTaxProfile {
+  id                    String   @id @default(uuid()) @db.Uuid
+  organizationId        String   @map("organization_id") @db.Uuid
+  customerId            String   @unique @map("customer_id") @db.Uuid
+
+  // TIN information
+  tinNumber             String?  @map("tin_number") @db.VarChar(20)
+  tinValidated          Boolean  @default(false) @map("tin_validated")
+  tinValidatedAt        DateTime? @map("tin_validated_at")
+
+  // VAT information
+  vatRegistered         Boolean  @default(false) @map("vat_registered")
+  vatNumber             String?  @map("vat_number") @db.VarChar(20)
+
+  // Withholding tax exemptions
+  withholdingTaxExempt  Boolean  @default(false) @map("withholding_tax_exempt")
+  exemptionReason       String?  @map("exemption_reason") @db.Text
+  exemptionValidUntil   DateTime? @map("exemption_valid_until") @db.Date
+
+  // Tax residency and treatment
+  taxResidency          TaxResidencyStatus @default(RESIDENT) @map("tax_residency")
+  preferredTaxTreatment String?  @map("preferred_tax_treatment") @db.VarChar(100)
+
+  // Audit fields
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  // Relationships
+  organization          Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer              Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@map("customer_tax_profiles")
+  @@index([organizationId])
+  @@index([tinNumber])
+  @@index([vatNumber])
+  @@index([withholdingTaxExempt])
+}
+
+// Invoice Management
+model Invoice {
+  id                    String   @id @default(uuid()) @db.Uuid
+  organizationId        String   @map("organization_id") @db.Uuid
+  customerId            String   @map("customer_id") @db.Uuid
+  invoiceNumber         String   @map("invoice_number") @db.VarChar(50)
+  reference             String?  @db.VarChar(100)
+  issueDate             DateTime @map("issue_date") @db.Date
+  dueDate               DateTime @map("due_date") @db.Date
+
+  // Financial amounts
+  subtotal              Decimal  @db.Decimal(15,2)
+  vatAmount             Decimal  @map("vat_amount") @db.Decimal(15,2)
+  discountAmount        Decimal  @default(0) @map("discount_amount") @db.Decimal(15,2)
+  totalAmount           Decimal  @map("total_amount") @db.Decimal(15,2)
+  paidAmount            Decimal  @default(0) @map("paid_amount") @db.Decimal(15,2)
+  currency              String   @default("ZMW") @db.VarChar(3)
+
+  // Status and workflow
+  status                InvoiceStatus @default(DRAFT)
+  notes                 String?  @db.Text
+  terms                 String?  @db.Text
+  paymentInstructions   String?  @map("payment_instructions") @db.Text
+
+  // ZRA Smart Invoice integration
+  zraSubmissionStatus   ZraSubmissionStatus? @map("zra_submission_status")
+  zraSubmissionId       String?  @map("zra_submission_id") @db.VarChar(100)
+  zraSubmissionDate     DateTime? @map("zra_submission_date")
+  zraReceiptNumber      String?  @map("zra_receipt_number") @db.VarChar(100)
+  zraQrCode             String?  @map("zra_qr_code") @db.Text
+
+  // Audit fields
+  createdBy             String   @map("created_by") @db.Uuid
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+  deletedAt             DateTime? @map("deleted_at")
+
+  // Relationships
+  organization          Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer              Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  items                 InvoiceItem[]
+  payments              Payment[]
+  transactions          Transaction[]
+
+  @@map("invoices")
+  @@unique([organizationId, invoiceNumber])
+  @@index([organizationId])
+  @@index([customerId])
+  @@index([status])
+  @@index([issueDate])
+  @@index([dueDate])
+  @@index([zraSubmissionStatus])
+}
+
+model InvoiceItem {
+  id              String   @id @default(uuid()) @db.Uuid
+  invoiceId       String   @map("invoice_id") @db.Uuid
+  description     String   @db.VarChar(255)
+  quantity        Decimal  @db.Decimal(10,3)
+  unitPrice       Decimal  @map("unit_price") @db.Decimal(15,2)
+  lineTotal       Decimal  @map("line_total") @db.Decimal(15,2)
+  vatRate         Decimal  @default(16) @map("vat_rate") @db.Decimal(5,2) // Zambian VAT rate
+  vatAmount       Decimal  @map("vat_amount") @db.Decimal(15,2)
+  discountRate    Decimal  @default(0) @map("discount_rate") @db.Decimal(5,2)
+  discountAmount  Decimal  @default(0) @map("discount_amount") @db.Decimal(15,2)
+  sortOrder       Int      @default(0) @map("sort_order")
+
+  // Relationships
+  invoice         Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@map("invoice_items")
+  @@index([invoiceId])
+}
+
+model Payment {
+  id              String   @id @default(uuid()) @db.Uuid
+  organizationId  String   @map("organization_id") @db.Uuid
+  invoiceId       String?  @map("invoice_id") @db.Uuid
+  customerId      String   @map("customer_id") @db.Uuid
+  transactionId   String?  @map("transaction_id") @db.Uuid
+  amount          Decimal  @db.Decimal(15,2)
+  currency        String   @default("ZMW") @db.VarChar(3)
+  paymentDate     DateTime @map("payment_date") @db.Date
+  paymentMethod   PaymentMethod @map("payment_method")
+  reference       String?  @db.VarChar(100)
+  notes           String?  @db.Text
+
+  // Withholding tax fields
+  grossAmount             Decimal? @map("gross_amount") @db.Decimal(15,2)
+  withholdingTaxAmount    Decimal? @default(0) @map("withholding_tax_amount") @db.Decimal(15,2)
+  withholdingCertificateId String? @map("withholding_certificate_id") @db.Uuid
+  status                  PaymentStatus @default(PENDING)
+
+  createdBy       String   @map("created_by") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relationships
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invoice         Invoice?     @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  customer        Customer     @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  transaction     Transaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+  withholdingCertificate WithholdingTaxCertificate? @relation(fields: [withholdingCertificateId], references: [id], onDelete: SetNull)
+
+  @@map("payments")
+  @@index([organizationId])
+  @@index([invoiceId])
+  @@index([customerId])
+  @@index([transactionId])
+  @@index([paymentDate])
+  @@index([withholdingCertificateId])
+  @@index([status])
+}
+
+// Expense Management
+model Expense {
+  id                String   @id @default(uuid()) @db.Uuid
+  organizationId    String   @map("organization_id") @db.Uuid
+  categoryId        String   @map("category_id") @db.Uuid
+  transactionId     String?  @unique @map("transaction_id") @db.Uuid
+  vendor            String?  @db.VarChar(255)
+  date              DateTime @db.Date
+  amount            Decimal  @db.Decimal(15,2)
+  currency          String   @default("ZMW") @db.VarChar(3)
+  description       String   @db.Text
+  paymentMethod     PaymentMethod @map("payment_method")
+  reference         String?  @db.VarChar(100)
+
+  // Recurring expenses
+  isRecurring       Boolean  @default(false) @map("is_recurring")
+  recurrencePattern RecurrencePattern? @map("recurrence_pattern")
+  recurrenceEndDate DateTime? @map("recurrence_end_date") @db.Date
+  parentExpenseId   String?  @map("parent_expense_id") @db.Uuid
+
+  // Tax and compliance
+  isTaxDeductible   Boolean  @default(true) @map("is_tax_deductible")
+  vatAmount         Decimal  @default(0) @map("vat_amount") @db.Decimal(15,2)
+  withholdingTax    Decimal  @default(0) @map("withholding_tax") @db.Decimal(15,2)
+
+  // Approval workflow
+  status            ExpenseStatus @default(DRAFT)
+  createdBy         String   @map("created_by") @db.Uuid
+  approvedBy        String?  @map("approved_by") @db.Uuid
+  approvedAt        DateTime? @map("approved_at")
+  rejectionReason   String?  @map("rejection_reason") @db.Text
+
+  // Additional fields
+  notes             String?  @db.Text
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  deletedAt         DateTime? @map("deleted_at")
+
+  // Relationships
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  category          Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  transaction       Transaction?
+  parentExpense     Expense? @relation("ExpenseRecurrence", fields: [parentExpenseId], references: [id], onDelete: SetNull)
+  childExpenses     Expense[] @relation("ExpenseRecurrence")
+  receipts          Receipt[]
+  expenseTagLinks   ExpenseTagLink[]
+  approvalRequests  ApprovalRequest[]
+
+  @@map("expenses")
+  @@index([organizationId])
+  @@index([categoryId])
+  @@index([transactionId])
+  @@index([date])
+  @@index([status])
+  @@index([createdBy])
+  @@index([isRecurring])
+}
+
+model Receipt {
+  id              String   @id @default(uuid()) @db.Uuid
+  expenseId       String   @map("expense_id") @db.Uuid
+  fileName        String   @map("file_name") @db.VarChar(255)
+  fileType        String   @map("file_type") @db.VarChar(50)
+  fileSize        Int      @map("file_size")
+  storagePath     String   @map("storage_path") @db.VarChar(255)
+  thumbnailPath   String?  @map("thumbnail_path") @db.VarChar(255)
+
+  // OCR processing
+  ocrText         String?  @map("ocr_text") @db.Text
+  ocrData         Json?    @map("ocr_data")
+  ocrStatus       OcrStatus @default(PENDING) @map("ocr_status")
+  ocrProcessedAt  DateTime? @map("ocr_processed_at")
+
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  // Relationships
+  expense         Expense  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+
+  @@map("receipts")
+  @@index([expenseId])
+  @@index([ocrStatus])
+}
+
+model ExpensePolicy {
+  id              String   @id @default(uuid()) @db.Uuid
+  organizationId  String   @map("organization_id") @db.Uuid
+  name            String   @db.VarChar(100)
+  description     String?  @db.Text
+  categoryId      String?  @map("category_id") @db.Uuid
+  amountLimit     Decimal? @map("amount_limit") @db.Decimal(15,2)
+  requiresApproval Boolean @default(false) @map("requires_approval")
+  requiresReceipt Boolean  @default(true) @map("requires_receipt")
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relationships
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  category        Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@map("expense_policies")
+  @@index([organizationId])
+  @@index([categoryId])
+  @@index([active])
+}
+
+model ExpenseTag {
+  id              String   @id @default(uuid()) @db.Uuid
+  organizationId  String   @map("organization_id") @db.Uuid
+  name            String   @db.VarChar(50)
+  color           String?  @db.VarChar(7)
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  // Relationships
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  expenseTagLinks ExpenseTagLink[]
+
+  @@map("expense_tags")
+  @@unique([organizationId, name])
+  @@index([organizationId])
+}
+
+model ExpenseTagLink {
+  id        String     @id @default(uuid()) @db.Uuid
+  expenseId String     @map("expense_id") @db.Uuid
+  tagId     String     @map("tag_id") @db.Uuid
+
+  // Relationships
+  expense   Expense    @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  tag       ExpenseTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@map("expense_tag_links")
+  @@unique([expenseId, tagId])
+  @@index([expenseId])
+  @@index([tagId])
+}
+
+// Mobile Money Integration
+model MobileMoneyAccount {
+  id                String   @id @default(uuid()) @db.Uuid
+  organizationId    String   @map("organization_id") @db.Uuid
+  provider          MobileMoneyProvider
+  accountNumber     String   @map("account_number") @db.VarChar(50)
+  accountName       String   @map("account_name") @db.VarChar(255)
+
+  // OAuth and API credentials
+  accessToken       String?  @map("access_token") @db.Text
+  refreshToken      String?  @map("refresh_token") @db.Text
+  tokenExpiresAt    DateTime? @map("token_expires_at")
+
+  // Account status and settings
+  isActive          Boolean  @default(true) @map("is_active")
+  isLinked          Boolean  @default(false) @map("is_linked")
+  lastSyncAt        DateTime? @map("last_sync_at")
+  syncFrequency     SyncFrequency @default(HOURLY) @map("sync_frequency")
+
+  // Balance information
+  currentBalance    Decimal? @map("current_balance") @db.Decimal(15,2)
+  availableBalance  Decimal? @map("available_balance") @db.Decimal(15,2)
+  currency          String   @default("ZMW") @db.VarChar(3)
+  balanceUpdatedAt  DateTime? @map("balance_updated_at")
+
+  // Metadata and settings
+  metadata          Json?
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  deletedAt         DateTime? @map("deleted_at")
+
+  // Relationships
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  transactions      Transaction[]
+  syncJobs          SyncJob[]
+
+  @@map("mobile_money_accounts")
+  @@unique([organizationId, provider, accountNumber])
+  @@index([organizationId])
+  @@index([provider])
+  @@index([isActive])
+  @@index([isLinked])
+}
+
+model Transaction {
+  id                String   @id @default(uuid()) @db.Uuid
+  organizationId    String   @map("organization_id") @db.Uuid
+  accountId         String   @map("account_id") @db.Uuid
+  externalId        String   @map("external_id") @db.VarChar(100) // ID from mobile money provider
+  reference         String?  @db.VarChar(100)
+  transactionDate   DateTime @map("transaction_date")
+  amount            Decimal  @db.Decimal(15,2)
+  currency          String   @default("ZMW") @db.VarChar(3)
+  type              TransactionType
+
+  // Counterparty information
+  counterpartyName  String?  @map("counterparty_name") @db.VarChar(255)
+  counterpartyNumber String? @map("counterparty_number") @db.VarChar(50)
+
+  // Transaction details
+  description       String?  @db.Text
+  balanceAfter      Decimal? @map("balance_after") @db.Decimal(15,2)
+  status            TransactionStatus @default(COMPLETED)
+  fees              Decimal  @default(0) @db.Decimal(15,2)
+
+  // Categorization and linking
+  categoryId        String?  @map("category_id") @db.Uuid
+  isReconciled      Boolean  @default(false) @map("is_reconciled")
+  invoiceId         String?  @map("invoice_id") @db.Uuid
+  expenseId         String?  @unique @map("expense_id") @db.Uuid
+
+  // Metadata and audit
+  metadata          Json?
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  // Relationships
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  account           MobileMoneyAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  category          Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  invoice           Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  expense           Expense? @relation(fields: [expenseId], references: [id], onDelete: SetNull)
+  payments          Payment[]
+
+  @@map("transactions")
+  @@unique([organizationId, externalId])
+  @@index([organizationId])
+  @@index([accountId])
+  @@index([externalId])
+  @@index([transactionDate])
+  @@index([type])
+  @@index([status])
+  parent            Category? @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children          Category[] @relation("CategoryHierarchy")
+  transactions      Transaction[]
+  expenses          Expense[]
+  expensePolicies   ExpensePolicy[]
+  categorizationRules CategorizationRule[]
+  categorySuggestions TransactionCategorySuggestion[]
+
+  @@map("categories")
+  @@unique([organizationId, name, parentId])
+  @@index([organizationId])
+  @@index([type])
+  @@index([parentId])
+  @@index([isSystem])
+  @@index([isActive])
+}
+
+model SyncJob {
+  id                String   @id @default(uuid()) @db.Uuid
+  organizationId    String   @map("organization_id") @db.Uuid
+  accountId         String   @map("account_id") @db.Uuid
+  status            SyncJobStatus @default(PENDING)
+  startDate         DateTime @map("start_date")
+  endDate           DateTime @map("end_date")
+  transactionsCount Int      @default(0) @map("transactions_count")
+  newTransactions   Int      @default(0) @map("new_transactions")
+  updatedTransactions Int    @default(0) @map("updated_transactions")
+  errorMessage      String?  @map("error_message") @db.Text
+  startedAt         DateTime? @map("started_at")
+  completedAt       DateTime? @map("completed_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  // Relationships
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  account           MobileMoneyAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@map("sync_jobs")
+  @@index([organizationId])
+  @@index([accountId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model CategorizationRule {
+  id                String   @id @default(uuid()) @db.Uuid
+  organizationId    String   @map("organization_id") @db.Uuid
+  categoryId        String   @map("category_id") @db.Uuid
+  name              String   @db.VarChar(100)
+  type              CategorizationRuleType
+  isActive          Boolean  @default(true) @map("is_active")
+  priority          Int      @default(0) // Higher number = higher priority
+
+  // Rule conditions (JSON structure varies by type)
+  conditions        Json
+
+  // Rule metadata
+  description       String?  @db.Text
+  confidence        CategorizationConfidence @default(MEDIUM)
+  matchCount        Int      @default(0) @map("match_count") // Number of times this rule has matched
+  lastMatchedAt     DateTime? @map("last_matched_at")
+
+  // Audit fields
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  createdBy         String   @map("created_by") @db.Uuid
+
+  // Relationships
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  category          Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  creator           User @relation(fields: [createdBy], references: [id], onDelete: Restrict)
+  suggestions       TransactionCategorySuggestion[]
+
+  @@map("categorization_rules")
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@index([categoryId])
+  @@index([type])
+  @@index([isActive])
+  @@index([priority])
+}
+
+model TransactionCategorySuggestion {
+  id                String   @id @default(uuid()) @db.Uuid
+  organizationId    String   @map("organization_id") @db.Uuid
+  transactionId     String   @map("transaction_id") @db.Uuid
+  categoryId        String   @map("category_id") @db.Uuid
+  ruleId            String?  @map("rule_id") @db.Uuid
+  confidence        CategorizationConfidence
+  reason            String?  @db.Text // Explanation of why this category was suggested
+  isAccepted        Boolean? @map("is_accepted") // null = pending, true = accepted, false = rejected
+  acceptedAt        DateTime? @map("accepted_at")
+  acceptedBy        String?  @map("accepted_by") @db.Uuid
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  // Relationships
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  transaction       Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  category          Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  rule              CategorizationRule? @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+  acceptedByUser    User? @relation(fields: [acceptedBy], references: [id], onDelete: SetNull)
+
+  @@map("transaction_category_suggestions")
+  @@unique([transactionId, categoryId])
+  @@index([organizationId])
+  @@index([transactionId])
+  @@index([categoryId])
+  @@index([ruleId])
+  @@index([confidence])
+  @@index([isAccepted])
+  @@index([createdAt])
+}
+
+// ============================================================================
+// APPROVAL WORKFLOW MODELS
+// ============================================================================
+
+model ApprovalRequest {
+  id              String   @id @default(uuid()) @db.Uuid
+  organizationId  String   @map("organization_id") @db.Uuid
+  expenseId       String   @map("expense_id") @db.Uuid
+  requesterId     String   @map("requester_id") @db.Uuid
+  status          ApprovalRequestStatus @default(PENDING)
+  priority        ApprovalPriority @default(NORMAL)
+  dueDate         DateTime? @map("due_date")
+  submittedAt     DateTime @default(now()) @map("submitted_at")
+  completedAt     DateTime? @map("completed_at")
+
+  // Approval metadata
+  totalAmount     Decimal  @map("total_amount") @db.Decimal(15,2)
+  currency        String   @default("ZMW") @db.VarChar(3)
+  reason          String?  @db.Text
+
+  // Audit fields
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relationships
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  expense         Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  requester       User @relation("ApprovalRequester", fields: [requesterId], references: [id], onDelete: Restrict)
+  approvalTasks   ApprovalTask[]
+  approvalHistory ApprovalHistory[]
+
+  @@map("approval_requests")
+  @@index([organizationId])
+  @@index([expenseId])
+  @@index([requesterId])
+  @@index([status])
+  @@index([priority])
+  @@index([dueDate])
+  @@index([submittedAt])
+}
+
+model ApprovalTask {
+  id                String   @id @default(uuid()) @db.Uuid
+  approvalRequestId String   @map("approval_request_id") @db.Uuid
+  approverId        String   @map("approver_id") @db.Uuid
+  status            ApprovalTaskStatus @default(PENDING)
+  decision          ApprovalDecision?
+  comments          String?  @db.Text
+  decidedAt         DateTime? @map("decided_at")
+
+  // Task metadata
+  sequence          Int      @default(0) // For sequential approvals
+  isRequired        Boolean  @default(true) @map("is_required")
+  delegatedFrom     String?  @map("delegated_from") @db.Uuid
+  escalatedFrom     String?  @map("escalated_from") @db.Uuid
+
+  // Audit fields
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  // Relationships
+  approvalRequest   ApprovalRequest @relation(fields: [approvalRequestId], references: [id], onDelete: Cascade)
+  approver          User @relation("ApprovalTaskApprover", fields: [approverId], references: [id], onDelete: Restrict)
+  delegatedFromUser User? @relation("ApprovalTaskDelegatedFrom", fields: [delegatedFrom], references: [id], onDelete: SetNull)
+  escalatedFromUser User? @relation("ApprovalTaskEscalatedFrom", fields: [escalatedFrom], references: [id], onDelete: SetNull)
+
+  @@map("approval_tasks")
+  @@index([approvalRequestId])
+  @@index([approverId])
+  @@index([status])
+  @@index([decision])
+  @@index([sequence])
+  @@index([createdAt])
+}
+
+model ApprovalRule {
+  id              String   @id @default(uuid()) @db.Uuid
+  organizationId  String   @map("organization_id") @db.Uuid
+  name            String   @db.VarChar(100)
+  description     String?  @db.Text
+  isActive        Boolean  @default(true) @map("is_active")
+  priority        Int      @default(0) // Higher number = higher priority
+
+  // Rule conditions and actions (JSON structure)
+  conditions      Json     // Array of conditions that must be met
+  actions         Json     // Array of actions to take when conditions are met
+
+  // Rule metadata
+  matchCount      Int      @default(0) @map("match_count")
+  lastMatchedAt   DateTime? @map("last_matched_at")
+
+  // Audit fields
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  createdBy       String   @map("created_by") @db.Uuid
+
+  // Relationships
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  creator         User @relation("ApprovalRuleCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+
+  @@map("approval_rules")
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@index([isActive])
+  @@index([priority])
+  @@index([createdBy])
+}
+
+model ApprovalHistory {
+  id                String   @id @default(uuid()) @db.Uuid
+  approvalRequestId String   @map("approval_request_id") @db.Uuid
+  userId            String   @map("user_id") @db.Uuid
+  action            ApprovalAction
+  fromStatus        ApprovalRequestStatus? @map("from_status")
+  toStatus          ApprovalRequestStatus? @map("to_status")
+  comments          String?  @db.Text
+  metadata          Json?    // Additional context data
+
+  // Audit fields
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  // Relationships
+  approvalRequest   ApprovalRequest @relation(fields: [approvalRequestId], references: [id], onDelete: Cascade)
+  user              User @relation("ApprovalHistoryUser", fields: [userId], references: [id], onDelete: Restrict)
+
+  @@map("approval_history")
+  @@index([approvalRequestId])
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model ApprovalDelegate {
+  id              String   @id @default(uuid()) @db.Uuid
+  organizationId  String   @map("organization_id") @db.Uuid
+  delegatorId     String   @map("delegator_id") @db.Uuid
+  delegateId      String   @map("delegate_id") @db.Uuid
+  isActive        Boolean  @default(true) @map("is_active")
+  startDate       DateTime @map("start_date")
+  endDate         DateTime? @map("end_date")
+  reason          String?  @db.Text
+
+  // Delegation scope
+  amountLimit     Decimal? @map("amount_limit") @db.Decimal(15,2)
+  categoryIds     String[] @map("category_ids") @db.Uuid // Specific categories if limited
+
+  // Audit fields
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relationships
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  delegator       User @relation("ApprovalDelegator", fields: [delegatorId], references: [id], onDelete: Cascade)
+  delegate        User @relation("ApprovalDelegate", fields: [delegateId], references: [id], onDelete: Cascade)
+
+  @@map("approval_delegates")
+  @@unique([delegatorId, delegateId, startDate])
+  @@index([organizationId])
+  @@index([delegatorId])
+  @@index([delegateId])
+  @@index([isActive])
+  @@index([startDate])
+  @@index([endDate])
+}
+
+// ============================================================================
+// DASHBOARD MANAGEMENT MODELS
+// ============================================================================
+
+model Dashboard {
+  id                String   @id @default(uuid()) @db.Uuid
+  organizationId    String   @map("organization_id") @db.Uuid
+  name              String   @db.VarChar(255)
+  description       String?  @db.Text
+  isDefault         Boolean  @default(false) @map("is_default")
+  isPublic          Boolean  @default(false) @map("is_public")
+  layout            Json     // Stores grid layout configuration
+  settings          Json?    // Dashboard-specific settings
+  createdBy         String   @map("created_by") @db.Uuid
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  // Relationships
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  creator           User @relation("DashboardCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  widgets           DashboardWidget[]
+  permissions       DashboardPermission[]
+
+  @@map("dashboards")
+  @@index([organizationId])
+  @@index([createdBy])
+  @@index([isDefault])
+  @@index([isPublic])
+}
+
+model DashboardWidget {
+  id                String   @id @default(uuid()) @db.Uuid
+  dashboardId       String   @map("dashboard_id") @db.Uuid
+  widgetType        WidgetType @map("widget_type")
+  title             String   @db.VarChar(255)
+  description       String?  @db.Text
+  position          Json     // Grid position and size
+  configuration     Json     // Widget-specific configuration
+  dataSource        Json?    // Data source configuration
+  refreshInterval   Int?     @map("refresh_interval") // Refresh interval in seconds
+  isVisible         Boolean  @default(true) @map("is_visible")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  // Relationships
+  dashboard         Dashboard @relation(fields: [dashboardId], references: [id], onDelete: Cascade)
+
+  @@map("dashboard_widgets")
+  @@index([dashboardId])
+  @@index([widgetType])
+  @@index([isVisible])
+}
+
+model DashboardPermission {
+  id                String   @id @default(uuid()) @db.Uuid
+  dashboardId       String   @map("dashboard_id") @db.Uuid
+  userId            String   @map("user_id") @db.Uuid
+  permission        DashboardPermissionType
+  grantedBy         String   @map("granted_by") @db.Uuid
+  grantedAt         DateTime @default(now()) @map("granted_at")
+
+  // Relationships
+  dashboard         Dashboard @relation(fields: [dashboardId], references: [id], onDelete: Cascade)
+  user              User @relation("DashboardPermissionUser", fields: [userId], references: [id], onDelete: Cascade)
+  grantor           User @relation("DashboardPermissionGrantor", fields: [grantedBy], references: [id], onDelete: Restrict)
+
+  @@map("dashboard_permissions")
+  @@unique([dashboardId, userId])
+  @@index([dashboardId])
+  @@index([userId])
+  @@index([permission])
+}
+
+// ============================================================================
+// CHART OF ACCOUNTS AND GENERAL LEDGER MODELS
+// ============================================================================
+
+// Chart of Accounts model
+model Account {
+  id                String   @id @default(uuid()) @db.Uuid
+  organizationId    String   @map("organization_id") @db.Uuid
+  accountCode       String   @map("account_code") @db.VarChar(20)
+  accountName       String   @map("account_name") @db.VarChar(255)
+  accountType       AccountType @map("account_type")
+  accountSubType    AccountSubType? @map("account_sub_type")
+  parentAccountId   String?  @map("parent_account_id") @db.Uuid
+
+  // Account properties
+  normalBalance     NormalBalance @map("normal_balance")
+  isActive          Boolean  @default(true) @map("is_active")
+  isSystem          Boolean  @default(false) @map("is_system") // System accounts cannot be deleted
+  isBankAccount     Boolean  @default(false) @map("is_bank_account")
+  isTaxAccount      Boolean  @default(false) @map("is_tax_account")
+
+  // Financial information
+  currentBalance    Decimal  @default(0) @map("current_balance") @db.Decimal(15,2)
+  currency          String   @default("ZMW") @db.VarChar(3)
+
+  // Account details
+  description       String?  @db.Text
+  accountNumber     String?  @map("account_number") @db.VarChar(50) // For bank accounts
+  bankName          String?  @map("bank_name") @db.VarChar(100)
+  taxCode           String?  @map("tax_code") @db.VarChar(20) // For tax-related accounts
+
+  // Audit fields
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  deletedAt         DateTime? @map("deleted_at")
+
+  // Relationships
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  parentAccount     Account? @relation("AccountHierarchy", fields: [parentAccountId], references: [id], onDelete: SetNull)
+  childAccounts     Account[] @relation("AccountHierarchy")
+  generalLedgerEntries GeneralLedgerEntry[]
+  debitEntries      JournalEntryLine[] @relation("DebitAccount")
+  creditEntries     JournalEntryLine[] @relation("CreditAccount")
+
+  @@map("accounts")
+  @@unique([organizationId, accountCode])
+  @@index([organizationId])
+  @@index([accountType])
+  @@index([accountSubType])
+  @@index([parentAccountId])
+  @@index([isActive])
+  @@index([isSystem])
+  @@index([isBankAccount])
+  @@index([accountCode])
+}
+
+// Journal Entry model for double-entry bookkeeping
+model JournalEntry {
+  id                String   @id @default(uuid()) @db.Uuid
+  organizationId    String   @map("organization_id") @db.Uuid
+  entryNumber       String   @map("entry_number") @db.VarChar(50)
+  entryDate         DateTime @map("entry_date") @db.Date
+  description       String   @db.Text
+  reference         String?  @db.VarChar(100)
+
+  // Entry properties
+  entryType         JournalEntryType @map("entry_type")
+  isReversing       Boolean  @default(false) @map("is_reversing")
+  reversedEntryId   String?  @map("reversed_entry_id") @db.Uuid
+  isPosted          Boolean  @default(false) @map("is_posted")
+  postedAt          DateTime? @map("posted_at")
+  postedBy          String?  @map("posted_by") @db.Uuid
+
+  // Source tracking
+  sourceType        SourceType? @map("source_type")
+  sourceId          String?  @map("source_id") @db.Uuid
+
+  // Financial totals
+  totalDebit        Decimal  @map("total_debit") @db.Decimal(15,2)
+  totalCredit       Decimal  @map("total_credit") @db.Decimal(15,2)
+  currency          String   @default("ZMW") @db.VarChar(3)
+
+  // Audit fields
+  createdBy         String   @map("created_by") @db.Uuid
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  deletedAt         DateTime? @map("deleted_at")
+
+  // Relationships
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  reversedEntry     JournalEntry? @relation("JournalEntryReversal", fields: [reversedEntryId], references: [id], onDelete: SetNull)
+  reversingEntries  JournalEntry[] @relation("JournalEntryReversal")
+  lines             JournalEntryLine[]
+  generalLedgerEntries GeneralLedgerEntry[]
+
+  @@map("journal_entries")
+  @@unique([organizationId, entryNumber])
+  @@index([organizationId])
+  @@index([entryDate])
+  @@index([entryType])
+  @@index([isPosted])
+  @@index([sourceType, sourceId])
+  @@index([createdBy])
+}
+
+// Journal Entry Line model for individual debit/credit lines
+model JournalEntryLine {
+  id                String   @id @default(uuid()) @db.Uuid
+  journalEntryId    String   @map("journal_entry_id") @db.Uuid
+  debitAccountId    String?  @map("debit_account_id") @db.Uuid
+  creditAccountId   String?  @map("credit_account_id") @db.Uuid
+  amount            Decimal  @db.Decimal(15,2)
+  description       String?  @db.Text
+  reference         String?  @db.VarChar(100)
+  lineNumber        Int      @map("line_number")
+
+  // Relationships
+  journalEntry      JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  debitAccount      Account? @relation("DebitAccount", fields: [debitAccountId], references: [id], onDelete: Restrict)
+  creditAccount     Account? @relation("CreditAccount", fields: [creditAccountId], references: [id], onDelete: Restrict)
+
+  @@map("journal_entry_lines")
+  @@index([journalEntryId])
+  @@index([debitAccountId])
+  @@index([creditAccountId])
+  @@index([lineNumber])
+}
+
+// General Ledger Entry model for account balances and history
+model GeneralLedgerEntry {
+  id                String   @id @default(uuid()) @db.Uuid
+  organizationId    String   @map("organization_id") @db.Uuid
+  accountId         String   @map("account_id") @db.Uuid
+  journalEntryId    String   @map("journal_entry_id") @db.Uuid
+  entryDate         DateTime @map("entry_date") @db.Date
+
+  // Transaction details
+  debitAmount       Decimal  @default(0) @map("debit_amount") @db.Decimal(15,2)
+  creditAmount      Decimal  @default(0) @map("credit_amount") @db.Decimal(15,2)
+  runningBalance    Decimal  @map("running_balance") @db.Decimal(15,2)
+  description       String   @db.Text
+  reference         String?  @db.VarChar(100)
+
+  // Source tracking
+  sourceType        SourceType? @map("source_type")
+  sourceId          String?  @map("source_id") @db.Uuid
+
+  // Audit fields
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  // Relationships
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  account           Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  journalEntry      JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+
+  @@map("general_ledger_entries")
+  @@index([organizationId])
+  @@index([accountId])
+  @@index([journalEntryId])
+  @@index([entryDate])
+  @@index([sourceType, sourceId])
+}
+
+// ============================================================================
+// TAX MANAGEMENT MODELS
+// ============================================================================
+
+// Tax rates and rules management
+model TaxRate {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  taxType        TaxType   @map("tax_type")
+  rate           Decimal   @db.Decimal(5,4)
+  effectiveDate  DateTime  @map("effective_date") @db.Date
+  endDate        DateTime? @map("end_date") @db.Date
+  description    String?   @db.Text
+  isActive       Boolean   @default(true) @map("is_active")
+  isSystem       Boolean   @default(false) @map("is_system")
+
+  // Audit fields
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  createdBy      String?   @map("created_by") @db.Uuid
+  updatedBy      String?   @map("updated_by") @db.Uuid
+
+  // Relationships
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("tax_rates")
+  @@unique([organizationId, taxType, effectiveDate])
+  @@index([organizationId])
+  @@index([taxType])
+  @@index([effectiveDate])
+  @@index([isActive])
+}
+
+// Tax periods and filing deadlines
+model TaxPeriod {
+  id              String           @id @default(uuid()) @db.Uuid
+  organizationId  String           @map("organization_id") @db.Uuid
+  taxType         TaxType          @map("tax_type")
+  periodStart     DateTime         @map("period_start") @db.Date
+  periodEnd       DateTime         @map("period_end") @db.Date
+  filingDeadline  DateTime         @map("filing_deadline") @db.Date
+  paymentDeadline DateTime         @map("payment_deadline") @db.Date
+  status          TaxPeriodStatus  @default(OPEN)
+  year            Int
+  quarter         Int?             // For quarterly taxes like VAT
+  month           Int?             // For monthly taxes like PAYE
+
+  // Filing information
+  filedAt         DateTime?        @map("filed_at")
+  filedBy         String?          @map("filed_by") @db.Uuid
+  filingReference String?          @map("filing_reference") @db.VarChar(100)
+
+  // Audit fields
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  // Relationships
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  obligations     TaxObligation[]
+  withholdingCertificates WithholdingTaxCertificate[]
+  taxAdjustments  TaxAdjustment[]
+  taxFilings      TaxFiling[]
+
+  @@map("tax_periods")
+  @@unique([organizationId, taxType, periodStart, periodEnd])
+  @@index([organizationId])
+  @@index([taxType])
+  @@index([status])
+  @@index([filingDeadline])
+  @@index([paymentDeadline])
+}
+
+// Tax obligations and compliance tracking
+model TaxObligation {
+  id            String              @id @default(uuid()) @db.Uuid
+  organizationId String             @map("organization_id") @db.Uuid
+  taxPeriodId   String              @map("tax_period_id") @db.Uuid
+  obligationType TaxObligationType  @map("obligation_type")
+  amountDue     Decimal             @map("amount_due") @db.Decimal(15,2)
+  amountPaid    Decimal             @default(0) @map("amount_paid") @db.Decimal(15,2)
+  dueDate       DateTime            @map("due_date") @db.Date
+  status        TaxObligationStatus @default(PENDING)
+
+  // Payment tracking
+  paidAt        DateTime?           @map("paid_at")
+  paymentMethod String?             @map("payment_method") @db.VarChar(50)
+  paymentReference String?          @map("payment_reference") @db.VarChar(100)
+
+  // Penalty and interest
+  penaltyAmount Decimal             @default(0) @map("penalty_amount") @db.Decimal(15,2)
+  interestAmount Decimal            @default(0) @map("interest_amount") @db.Decimal(15,2)
+
+  // Audit fields
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
+
+  // Relationships
+  organization  Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  taxPeriod     TaxPeriod           @relation(fields: [taxPeriodId], references: [id], onDelete: Cascade)
+
+  @@map("tax_obligations")
+  @@index([organizationId])
+  @@index([taxPeriodId])
+  @@index([obligationType])
+  @@index([status])
+  @@index([dueDate])
+}
+
+// Withholding tax certificates
+model WithholdingTaxCertificate {
+  id                String    @id @default(uuid()) @db.Uuid
+  organizationId    String    @map("organization_id") @db.Uuid
+  supplierId        String?   @map("supplier_id") @db.Uuid
+  taxPeriodId       String    @map("tax_period_id") @db.Uuid
+  certificateNumber String    @map("certificate_number") @db.VarChar(50)
+
+  // Certificate details
+  supplierName      String    @map("supplier_name") @db.VarChar(255)
+  supplierTin       String?   @map("supplier_tin") @db.VarChar(20)
+  serviceType       String    @map("service_type") @db.VarChar(100)
+  serviceDescription String?  @map("service_description") @db.Text
+
+  // Financial details
+  grossAmount       Decimal   @map("gross_amount") @db.Decimal(15,2)
+  taxWithheld       Decimal   @map("tax_withheld") @db.Decimal(15,2)
+  netAmount         Decimal   @map("net_amount") @db.Decimal(15,2)
+  withholdingRate   Decimal   @map("withholding_rate") @db.Decimal(5,4)
+
+  // Certificate metadata
+  issueDate         DateTime  @map("issue_date") @db.Date
+  paymentDate       DateTime  @map("payment_date") @db.Date
+  status            WithholdingCertificateStatus @default(ISSUED)
+
+  // ZRA submission
+  submittedToZra    Boolean   @default(false) @map("submitted_to_zra")
+  zraSubmissionDate DateTime? @map("zra_submission_date")
+  zraReference      String?   @map("zra_reference") @db.VarChar(100)
+
+  // Audit fields
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  createdBy         String?   @map("created_by") @db.Uuid
+
+  // Relationships
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  taxPeriod         TaxPeriod    @relation(fields: [taxPeriodId], references: [id], onDelete: Cascade)
+  payments          Payment[]
+
+  @@map("withholding_tax_certificates")
+  @@unique([organizationId, certificateNumber])
+  @@index([organizationId])
+  @@index([taxPeriodId])
+  @@index([supplierTin])
+  @@index([issueDate])
+  @@index([status])
+}
+
+// Tax adjustments and corrections
+model TaxAdjustment {
+  id              String            @id @default(uuid()) @db.Uuid
+  organizationId  String            @map("organization_id") @db.Uuid
+  taxPeriodId     String            @map("tax_period_id") @db.Uuid
+  adjustmentType  TaxAdjustmentType @map("adjustment_type")
+
+  // Original values
+  originalAmount  Decimal           @map("original_amount") @db.Decimal(15,2)
+  adjustedAmount  Decimal           @map("adjusted_amount") @db.Decimal(15,2)
+  adjustmentAmount Decimal          @map("adjustment_amount") @db.Decimal(15,2)
+
+  // Adjustment details
+  reason          String            @db.Text
+  description     String?           @db.Text
+  supportingDocs  Json?             @map("supporting_docs")
+
+  // Approval workflow
+  status          TaxAdjustmentStatus @default(PENDING)
+  requestedBy     String            @map("requested_by") @db.Uuid
+  requestedAt     DateTime          @default(now()) @map("requested_at")
+  approvedBy      String?           @map("approved_by") @db.Uuid
+  approvedAt      DateTime?         @map("approved_at")
+  rejectedBy      String?           @map("rejected_by") @db.Uuid
+  rejectedAt      DateTime?         @map("rejected_at")
+  rejectionReason String?           @map("rejection_reason") @db.Text
+
+  // ZRA submission
+  submittedToZra  Boolean           @default(false) @map("submitted_to_zra")
+  zraReference    String?           @map("zra_reference") @db.VarChar(100)
+
+  // Audit fields
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  // Relationships
+  organization    Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  taxPeriod       TaxPeriod         @relation(fields: [taxPeriodId], references: [id], onDelete: Cascade)
+
+  @@map("tax_adjustments")
+  @@index([organizationId])
+  @@index([taxPeriodId])
+  @@index([adjustmentType])
+  @@index([status])
+  @@index([requestedAt])
+}
+
+// Tax filing records
+model TaxFiling {
+  id              String          @id @default(uuid()) @db.Uuid
+  organizationId  String          @map("organization_id") @db.Uuid
+  taxPeriodId     String          @map("tax_period_id") @db.Uuid
+  filingType      TaxFilingType   @map("filing_type")
+
+  // Filing details
+  filingData      Json            @map("filing_data")
+  calculatedTax   Decimal         @map("calculated_tax") @db.Decimal(15,2)
+  taxDue          Decimal         @map("tax_due") @db.Decimal(15,2)
+  taxPaid         Decimal         @default(0) @map("tax_paid") @db.Decimal(15,2)
+
+  // Filing status
+  status          TaxFilingStatus @default(DRAFT)
+  preparedAt      DateTime?       @map("prepared_at")
+  submittedAt     DateTime?       @map("submitted_at")
+  acknowledgedAt  DateTime?       @map("acknowledged_at")
+
+  // ZRA integration
+  zraReference    String?         @map("zra_reference") @db.VarChar(100)
+  zraStatus       String?         @map("zra_status") @db.VarChar(50)
+  zraResponse     Json?           @map("zra_response")
+
+  // Audit fields
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+  preparedBy      String?         @map("prepared_by") @db.Uuid
+  submittedBy     String?         @map("submitted_by") @db.Uuid
+
+  // Relationships
+  organization    Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  taxPeriod       TaxPeriod       @relation(fields: [taxPeriodId], references: [id], onDelete: Cascade)
+
+  @@map("tax_filings")
+  @@unique([organizationId, taxPeriodId, filingType])
+  @@index([organizationId])
+  @@index([taxPeriodId])
+  @@index([filingType])
+  @@index([status])
+  @@index([submittedAt])
+}
+
+// ============================================================================
+// INVENTORY MANAGEMENT MODELS - STEP 21
+// ============================================================================
+
+// Product model for inventory management
+model Product {
+  id                String   @id @default(uuid()) @db.Uuid
+  organizationId    String   @map("organization_id") @db.Uuid
+  sku               String   @db.VarChar(100) // Stock Keeping Unit
+  name              String   @db.VarChar(255)
+  description       String?  @db.Text
+  category          String?  @db.VarChar(100)
+  brand             String?  @db.VarChar(100)
+
+  // Product identification
+  barcode           String?  @db.VarChar(100)
+  qrCode            String?  @map("qr_code") @db.VarChar(255)
+  zraItemCode       String?  @map("zra_item_code") @db.VarChar(50) // ZRA item classification
+
+  // Pricing information
+  costPrice         Decimal  @map("cost_price") @db.Decimal(15,2)
+  sellingPrice      Decimal  @map("selling_price") @db.Decimal(15,2)
+  currency          String   @default("ZMW") @db.VarChar(3)
+
+  // Tax information
+  vatRate           Decimal  @default(16) @map("vat_rate") @db.Decimal(5,2) // Zambian VAT rate
+  isTaxable         Boolean  @default(true) @map("is_taxable")
+
+  // Stock information
+  currentStock      Decimal  @default(0) @map("current_stock") @db.Decimal(10,3)
+  minimumStock      Decimal  @default(0) @map("minimum_stock") @db.Decimal(10,3)
+  maximumStock      Decimal? @map("maximum_stock") @db.Decimal(10,3)
+  reorderPoint      Decimal  @default(0) @map("reorder_point") @db.Decimal(10,3)
+  reorderQuantity   Decimal  @default(0) @map("reorder_quantity") @db.Decimal(10,3)
+
+  // Product properties
+  unit              String   @default("pcs") @db.VarChar(20) // Unit of measurement
+  weight            Decimal? @db.Decimal(10,3) // Weight in kg
+  dimensions        Json?    // Length, width, height
+  isActive          Boolean  @default(true) @map("is_active")
+  isService         Boolean  @default(false) @map("is_service") // Service vs physical product
+  trackStock        Boolean  @default(true) @map("track_stock")
+
+  // Images and attachments
+  images            String[] @db.VarChar(255) // Array of image URLs
+  attachments       Json?    // Additional file attachments
+
+  // Audit fields
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  deletedAt         DateTime? @map("deleted_at")
+
+  // Relationships
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  stockMovements    StockMovement[]
+  purchaseOrderItems PurchaseOrderItem[]
+  inventoryAdjustments InventoryAdjustment[]
+  stockAlerts       StockAlert[]
+
+  @@map("products")
+  @@unique([organizationId, sku])
+  @@index([organizationId])
+  @@index([sku])
+  @@index([barcode])
+  @@index([zraItemCode])
+  @@index([category])
+  @@index([isActive])
+  @@index([trackStock])
+  @@index([currentStock])
+  @@index([minimumStock])
+}
+
+// Supplier model for vendor management
+model Supplier {
+  id                String   @id @default(uuid()) @db.Uuid
+  organizationId    String   @map("organization_id") @db.Uuid
+  name              String   @db.VarChar(255)
+  contactPerson     String?  @map("contact_person") @db.VarChar(100)
+  email             String?  @db.VarChar(255)
+  phone             String?  @db.VarChar(20)
+  address           String?  @db.Text
+  city              String?  @db.VarChar(100)
+  country           String   @default("Zambia") @db.VarChar(100)
+
+  // Business information
+  zraTin            String?  @map("zra_tin") @db.VarChar(20)
+  vatNumber         String?  @map("vat_number") @db.VarChar(20)
+  businessType      String?  @map("business_type") @db.VarChar(50)
+
+  // Payment terms
+  paymentTerms      Int      @default(30) @map("payment_terms") // Days
+  creditLimit       Decimal? @map("credit_limit") @db.Decimal(15,2)
+  currency          String   @default("ZMW") @db.VarChar(3)
+
+  // Supplier rating and performance
+  rating            Decimal? @db.Decimal(3,2) // 0.00 to 5.00
+  totalOrders       Int      @default(0) @map("total_orders")
+  totalValue        Decimal  @default(0) @map("total_value") @db.Decimal(15,2)
+
+  // Status and preferences
+  isActive          Boolean  @default(true) @map("is_active")
+  isPreferred       Boolean  @default(false) @map("is_preferred")
+  notes             String?  @db.Text
+
+  // Audit fields
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  deletedAt         DateTime? @map("deleted_at")
+
+  // Relationships
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  purchaseOrders    PurchaseOrder[]
+
+  @@map("suppliers")
+  @@index([organizationId])
+  @@index([name])
+  @@index([zraTin])
+  @@index([isActive])
+  @@index([isPreferred])
+}
+
+// Purchase Order model for procurement
+model PurchaseOrder {
+  id                String   @id @default(uuid()) @db.Uuid
+  organizationId    String   @map("organization_id") @db.Uuid
+  supplierId        String   @map("supplier_id") @db.Uuid
+  orderNumber       String   @map("order_number") @db.VarChar(50)
+  reference         String?  @db.VarChar(100)
+  orderDate         DateTime @map("order_date") @db.Date
+  expectedDate      DateTime? @map("expected_date") @db.Date
+  receivedDate      DateTime? @map("received_date") @db.Date
+
+  // Financial information
+  subtotal          Decimal  @db.Decimal(15,2)
+  vatAmount         Decimal  @map("vat_amount") @db.Decimal(15,2)
+  totalAmount       Decimal  @map("total_amount") @db.Decimal(15,2)
+  currency          String   @default("ZMW") @db.VarChar(3)
+
+  // Status and workflow
+  status            PurchaseOrderStatus @default(DRAFT)
+  priority          PurchaseOrderPriority @default(NORMAL)
+
+  // Delivery information
+  deliveryAddress   String?  @map("delivery_address") @db.Text
+  deliveryInstructions String? @map("delivery_instructions") @db.Text
+
+  // Additional information
+  notes             String?  @db.Text
+  terms             String?  @db.Text
+
+  // Audit fields
+  createdBy         String   @map("created_by") @db.Uuid
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  deletedAt         DateTime? @map("deleted_at")
+
+  // Relationships
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  supplier          Supplier @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  items             PurchaseOrderItem[]
+  stockMovements    StockMovement[]
+
+  @@map("purchase_orders")
+  @@unique([organizationId, orderNumber])
+  @@index([organizationId])
+  @@index([supplierId])
+  @@index([status])
+  @@index([orderDate])
+  @@index([expectedDate])
+  @@index([priority])
+}
+
+// Purchase Order Item model
+model PurchaseOrderItem {
+  id                String   @id @default(uuid()) @db.Uuid
+  purchaseOrderId   String   @map("purchase_order_id") @db.Uuid
+  productId         String   @map("product_id") @db.Uuid
+  description       String?  @db.VarChar(255)
+
+  // Quantity information
+  quantityOrdered   Decimal  @map("quantity_ordered") @db.Decimal(10,3)
+  quantityReceived  Decimal  @default(0) @map("quantity_received") @db.Decimal(10,3)
+  unit              String   @default("pcs") @db.VarChar(20)
+
+  // Pricing information
+  unitPrice         Decimal  @map("unit_price") @db.Decimal(15,2)
+  lineTotal         Decimal  @map("line_total") @db.Decimal(15,2)
+  vatRate           Decimal  @default(16) @map("vat_rate") @db.Decimal(5,2)
+  vatAmount         Decimal  @map("vat_amount") @db.Decimal(15,2)
+
+  // Status
+  status            PurchaseOrderItemStatus @default(PENDING)
+
+  // Audit fields
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  // Relationships
+  purchaseOrder     PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  product           Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@map("purchase_order_items")
+  @@index([purchaseOrderId])
+  @@index([productId])
+  @@index([status])
+}
+
+// Stock Movement model for tracking inventory changes
+model StockMovement {
+  id                String   @id @default(uuid()) @db.Uuid
+  organizationId    String   @map("organization_id") @db.Uuid
+  productId         String   @map("product_id") @db.Uuid
+  movementType      StockMovementType @map("movement_type")
+  movementDate      DateTime @map("movement_date") @db.Date
+
+  // Quantity information
+  quantity          Decimal  @db.Decimal(10,3)
+  unit              String   @default("pcs") @db.VarChar(20)
+
+  // Stock levels
+  stockBefore       Decimal  @map("stock_before") @db.Decimal(10,3)
+  stockAfter        Decimal  @map("stock_after") @db.Decimal(10,3)
+
+  // Cost information
+  unitCost          Decimal? @map("unit_cost") @db.Decimal(15,2)
+  totalCost         Decimal? @map("total_cost") @db.Decimal(15,2)
+  currency          String   @default("ZMW") @db.VarChar(3)
+
+  // Source tracking
+  sourceType        StockMovementSourceType? @map("source_type")
+  sourceId          String?  @map("source_id") @db.Uuid // PO, Adjustment, Sale, etc.
+  reference         String?  @db.VarChar(100)
+
+  // Additional information
+  reason            String?  @db.Text
+  notes             String?  @db.Text
+
+  // Location information (for future multi-location support)
+  locationFrom      String?  @map("location_from") @db.VarChar(100)
+  locationTo        String?  @map("location_to") @db.VarChar(100)
+
+  // Audit fields
+  createdBy         String   @map("created_by") @db.Uuid
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  // Relationships
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  product           Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  purchaseOrder     PurchaseOrder? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+
+  @@map("stock_movements")
+  @@index([organizationId])
+  @@index([productId])
+  @@index([movementType])
+  @@index([movementDate])
+  @@index([sourceType])
+  @@index([sourceId])
+  @@index([createdAt])
+}
+
+// Inventory Adjustment model for stock corrections
+model InventoryAdjustment {
+  id                String   @id @default(uuid()) @db.Uuid
+  organizationId    String   @map("organization_id") @db.Uuid
+  productId         String   @map("product_id") @db.Uuid
+  adjustmentNumber  String   @map("adjustment_number") @db.VarChar(50)
+  adjustmentDate    DateTime @map("adjustment_date") @db.Date
+
+  // Adjustment details
+  adjustmentType    InventoryAdjustmentType @map("adjustment_type")
+  reason            InventoryAdjustmentReason
+
+  // Quantity information
+  quantityBefore    Decimal  @map("quantity_before") @db.Decimal(10,3)
+  quantityAfter     Decimal  @map("quantity_after") @db.Decimal(10,3)
+  adjustmentQuantity Decimal @map("adjustment_quantity") @db.Decimal(10,3)
+  unit              String   @default("pcs") @db.VarChar(20)
+
+  // Cost impact
+  unitCost          Decimal? @map("unit_cost") @db.Decimal(15,2)
+  totalCostImpact   Decimal? @map("total_cost_impact") @db.Decimal(15,2)
+  currency          String   @default("ZMW") @db.VarChar(3)
+
+  // Additional information
+  description       String?  @db.Text
+  notes             String?  @db.Text
+  reference         String?  @db.VarChar(100)
+
+  // Approval workflow
+  status            InventoryAdjustmentStatus @default(DRAFT)
+  approvedBy        String?  @map("approved_by") @db.Uuid
+  approvedAt        DateTime? @map("approved_at")
+
+  // Audit fields
+  createdBy         String   @map("created_by") @db.Uuid
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  // Relationships
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  product           Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@map("inventory_adjustments")
+  @@unique([organizationId, adjustmentNumber])
+  @@index([organizationId])
+  @@index([productId])
+  @@index([adjustmentType])
+  @@index([reason])
+  @@index([status])
+  @@index([adjustmentDate])
+}
+
+// Stock Alert model for low stock notifications
+model StockAlert {
+  id                String   @id @default(uuid()) @db.Uuid
+  organizationId    String   @map("organization_id") @db.Uuid
+  productId         String   @map("product_id") @db.Uuid
+  alertType         StockAlertType @map("alert_type")
+  alertLevel        StockAlertLevel @map("alert_level")
+
+  // Alert details
+  currentStock      Decimal  @map("current_stock") @db.Decimal(10,3)
+  thresholdValue    Decimal  @map("threshold_value") @db.Decimal(10,3)
+  message           String   @db.Text
+
+  // Alert status
+  isActive          Boolean  @default(true) @map("is_active")
+  isAcknowledged    Boolean  @default(false) @map("is_acknowledged")
+  acknowledgedBy    String?  @map("acknowledged_by") @db.Uuid
+  acknowledgedAt    DateTime? @map("acknowledged_at")
+
+  // Notification tracking
+  notificationsSent Int      @default(0) @map("notifications_sent")
+  lastNotificationAt DateTime? @map("last_notification_at")
+
+  // Audit fields
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  // Relationships
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  product           Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("stock_alerts")
+  @@index([organizationId])
+  @@index([productId])
+  @@index([alertType])
+  @@index([alertLevel])
+  @@index([isActive])
+  @@index([isAcknowledged])
+  @@index([createdAt])
+}
+
+// Inventory Report model for scheduled reports
+model InventoryReport {
+  id                String   @id @default(uuid()) @db.Uuid
+  organizationId    String   @map("organization_id") @db.Uuid
+  reportType        InventoryReportType @map("report_type")
+  reportName        String   @map("report_name") @db.VarChar(255)
+
+  // Report configuration
+  parameters        Json     // Report parameters and filters
+  schedule          Json?    // Scheduling configuration
+
+  // Report data
+  reportData        Json?    @map("report_data") // Generated report data
+  filePath          String?  @map("file_path") @db.VarChar(255) // Path to generated file
+
+  // Report status
+  status            InventoryReportStatus @default(PENDING)
+  generatedAt       DateTime? @map("generated_at")
+  expiresAt         DateTime? @map("expires_at")
+
+  // Error handling
+  errorMessage      String?  @map("error_message") @db.Text
+  retryCount        Int      @default(0) @map("retry_count")
+
+  // Audit fields
+  createdBy         String   @map("created_by") @db.Uuid
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  // Relationships
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("inventory_reports")
+  @@index([organizationId])
+  @@index([reportType])
+  @@index([status])
+  @@index([generatedAt])
+  @@index([createdBy])
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+// Global enums
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  INACTIVE
+  DELETED
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING_VERIFICATION
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  TENANT_ADMIN
+  ADMIN
+  MANAGER
+  USER
+  VIEWER
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  CANCELLED
+  RESENT
+}
+
+enum SubscriptionPlan {
+  TRIAL
+  BASIC
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+
+// Invoice and payment enums
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELLED
+  BAD_DEBT
+}
+
+enum ZraSubmissionStatus {
+  PENDING
+  SUBMITTED
+  ACCEPTED
+  REJECTED
+  ERROR
+}
+
+enum PaymentMethod {
+  CASH
+  MOBILE_MONEY
+  BANK_TRANSFER
+  CREDIT_CARD
+  DEBIT_CARD
+  CHECK
+  OTHER
+}
+
+// Expense management enums
+enum ExpenseStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  PAID
+}
+
+enum RecurrencePattern {
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  ANNUALLY
+}
+
+enum OcrStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+// Transaction and mobile money enums
+enum MobileMoneyProvider {
+  AIRTEL_MONEY
+  MTN_MONEY
+  ZAMTEL_KWACHA
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  PAYMENT
+  TRANSFER
+  FEE
+  REFUND
+  ADJUSTMENT
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELLED
+  REVERSED
+}
+
+enum SyncFrequency {
+  MANUAL
+  HOURLY
+  DAILY
+  WEEKLY
+}
+
+enum SyncJobStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum CategorizationRuleType {
+  KEYWORD_MATCH
+  AMOUNT_RANGE
+  COUNTERPARTY_MATCH
+  DESCRIPTION_PATTERN
+  COMBINED_RULE
+}
+
+enum CategorizationConfidence {
+  LOW
+  MEDIUM
+  HIGH
+  VERY_HIGH
+}
+
+// Approval workflow enums
+enum ApprovalRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+  EXPIRED
+}
+
+enum ApprovalTaskStatus {
+  PENDING
+  COMPLETED
+  SKIPPED
+  EXPIRED
+}
+
+enum ApprovalDecision {
+  APPROVED
+  REJECTED
+  RETURNED
+}
+
+enum ApprovalPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum ApprovalAction {
+  SUBMITTED
+  APPROVED
+  REJECTED
+  RETURNED
+  CANCELLED
+  ESCALATED
+  DELEGATED
+  EXPIRED
+}
+
+// Dashboard management enums
+enum WidgetType {
+  METRIC_CARD
+  CHART_LINE
+  CHART_BAR
+  CHART_PIE
+  CHART_DOUGHNUT
+  TABLE
+  LIST
+  CALENDAR
+  PROGRESS
+  GAUGE
+  MAP
+  TEXT
+  IMAGE
+  IFRAME
+  CUSTOM
+  // Step 18: Executive Dashboard Widget Types
+  CASH_FLOW
+  REVENUE_EXPENSES
+  KPI_SUMMARY
+  RECEIVABLES_AGING
+  // Step 19: Advanced Analytics Widget Types
+  REVENUE_FORECAST
+  EXPENSE_TRENDS
+  PROFITABILITY_ANALYSIS
+  TAX_ANALYTICS
+  FINANCIAL_HEALTH
+}
+
+enum DashboardPermissionType {
+  VIEW
+  EDIT
+  ADMIN
+}
+
+// Chart of Accounts and General Ledger enums
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  REVENUE
+  EXPENSE
+}
+
+enum AccountSubType {
+  // Asset subtypes
+  CURRENT_ASSET
+  NON_CURRENT_ASSET
+  FIXED_ASSET
+  INTANGIBLE_ASSET
+  CASH_AND_EQUIVALENTS
+  ACCOUNTS_RECEIVABLE
+  INVENTORY
+  PREPAID_EXPENSES
+  INVESTMENTS
+  PROPERTY_PLANT_EQUIPMENT
+
+  // Liability subtypes
+  CURRENT_LIABILITY
+  NON_CURRENT_LIABILITY
+  ACCOUNTS_PAYABLE
+  ACCRUED_EXPENSES
+  SHORT_TERM_DEBT
+  LONG_TERM_DEBT
+  TAX_LIABILITY
+
+  // Equity subtypes
+  OWNER_EQUITY
+  RETAINED_EARNINGS
+  CAPITAL_STOCK
+  ADDITIONAL_PAID_IN_CAPITAL
+  TREASURY_STOCK
+
+  // Revenue subtypes
+  OPERATING_REVENUE
+  NON_OPERATING_REVENUE
+  SALES_REVENUE
+  SERVICE_REVENUE
+  INTEREST_INCOME
+  OTHER_INCOME
+
+  // Expense subtypes
+  OPERATING_EXPENSE
+  NON_OPERATING_EXPENSE
+  COST_OF_GOODS_SOLD
+  ADMINISTRATIVE_EXPENSE
+  SELLING_EXPENSE
+  INTEREST_EXPENSE
+  TAX_EXPENSE
+  DEPRECIATION_EXPENSE
+}
+
+enum NormalBalance {
+  DEBIT
+  CREDIT
+}
+
+enum JournalEntryType {
+  STANDARD
+  ADJUSTING
+  CLOSING
+  REVERSING
+  OPENING
+  CORRECTION
+}
+
+enum SourceType {
+  INVOICE
+  PAYMENT
+  EXPENSE
+  TRANSACTION
+  MANUAL
+  ADJUSTMENT
+  DEPRECIATION
+  ACCRUAL
+  BANK_RECONCILIATION
+}
+
+// ============================================================================
+// TAX MANAGEMENT ENUMS
+// ============================================================================
+
+enum TaxType {
+  VAT              // Value Added Tax (16% standard rate)
+  INCOME_TAX       // Corporate/Individual Income Tax
+  PAYE             // Pay As You Earn (Employee tax)
+  WITHHOLDING_TAX  // Withholding Tax (15% standard rate)
+  ADVANCE_TAX      // Advance Income Tax payments
+  TURNOVER_TAX     // Turnover Tax for small businesses
+  PROPERTY_TAX     // Property Transfer Tax
+  EXCISE_TAX       // Excise Tax on specific goods
+}
+
+enum TaxPeriodStatus {
+  OPEN             // Period is open for transactions
+  CLOSED           // Period is closed, ready for filing
+  FILED            // Tax return has been filed
+  PAID             // Tax obligation has been paid
+  OVERDUE          // Filing or payment deadline passed
+  AMENDED          // Return has been amended
+}
+
+enum TaxObligationType {
+  FILING           // Tax return filing obligation
+  PAYMENT          // Tax payment obligation
+  WITHHOLDING      // Withholding tax remittance
+  ADVANCE_PAYMENT  // Advance tax payment
+  PENALTY          // Penalty payment
+  INTEREST         // Interest payment
+}
+
+enum TaxObligationStatus {
+  PENDING          // Obligation is pending
+  COMPLETED        // Obligation has been completed
+  OVERDUE          // Obligation is overdue
+  PARTIALLY_PAID   // Partial payment made
+  WAIVED           // Obligation has been waived
+  DISPUTED         // Obligation is under dispute
+}
+
+enum WithholdingCertificateStatus {
+  ISSUED           // Certificate has been issued
+  SUBMITTED        // Submitted to ZRA
+  ACKNOWLEDGED     // Acknowledged by ZRA
+  REJECTED         // Rejected by ZRA
+  CANCELLED        // Certificate cancelled
+}
+
+enum TaxAdjustmentType {
+  CORRECTION       // Correction of calculation error
+  AMENDMENT        // Amendment to filed return
+  REFUND_CLAIM     // Claim for tax refund
+  PENALTY_WAIVER   // Request for penalty waiver
+  INTEREST_WAIVER  // Request for interest waiver
+  OVERPAYMENT      // Overpayment adjustment
+  UNDERPAYMENT     // Underpayment adjustment
+}
+
+enum TaxAdjustmentStatus {
+  PENDING          // Adjustment request pending
+  APPROVED         // Adjustment approved
+  REJECTED         // Adjustment rejected
+  PROCESSING       // Being processed
+  COMPLETED        // Adjustment completed
+  CANCELLED        // Adjustment cancelled
+}
+
+enum TaxFilingType {
+  VAT_RETURN       // VAT quarterly return
+  INCOME_TAX       // Annual income tax return
+  PAYE_RETURN      // Monthly PAYE return
+  WHT_RETURN       // Monthly withholding tax return
+  ADVANCE_TAX      // Quarterly advance tax
+  TURNOVER_TAX     // Monthly turnover tax
+  AMENDED_RETURN   // Amended tax return
+}
+
+enum TaxFilingStatus {
+  DRAFT            // Filing is in draft
+  PREPARED         // Filing prepared for submission
+  SUBMITTED        // Filed with ZRA
+  ACKNOWLEDGED     // Acknowledged by ZRA
+  PROCESSED        // Processed by ZRA
+  REJECTED         // Rejected by ZRA
+  AMENDED          // Return has been amended
+}
+
+enum TaxResidencyStatus {
+  RESIDENT         // Tax resident of Zambia
+  NON_RESIDENT     // Non-resident for tax purposes
+}
+
+enum PaymentStatus {
+  PENDING          // Payment is pending
+  PROCESSING       // Payment is being processed
+  COMPLETED        // Payment completed successfully
+  FAILED           // Payment failed
+  CANCELLED        // Payment was cancelled
+  REFUNDED         // Payment was refunded
+}
+
+// ============================================================================
+// ANALYTICS MODELS - Step 19: Advanced Analytics and Business Intelligence
+// ============================================================================
+
+// Analytics Configuration for customizable analytics settings
+model AnalyticsConfiguration {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  analyticsType  String   @map("analytics_type") @db.VarChar(50) // 'FORECASTING', 'TRENDS', 'RATIOS', 'TAX_ANALYTICS', 'PROFITABILITY'
+  configuration  Json
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Relationships
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("analytics_configurations")
+  @@index([organizationId])
+  @@index([analyticsType])
+  @@index([isActive])
+}
+
+// Analytics Cache for performance optimization in low-bandwidth environments
+model AnalyticsCache {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  cacheKey       String   @map("cache_key") @db.VarChar(255)
+  cacheData      Json     @map("cache_data")
+  expiresAt      DateTime @map("expires_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  // Relationships
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, cacheKey])
+  @@map("analytics_cache")
+  @@index([organizationId])
+  @@index([expiresAt])
+}
+
+// Forecasting Models for revenue prediction and business planning
+model ForecastingModel {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  modelType        String   @map("model_type") @db.VarChar(50) // 'LINEAR', 'SEASONAL', 'ARIMA', 'EXPONENTIAL'
+  modelParameters  Json     @map("model_parameters")
+  accuracyMetrics  Json?    @map("accuracy_metrics")
+  isActive         Boolean  @default(true) @map("is_active")
+  lastTrainedAt    DateTime @default(now()) @map("last_trained_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  // Relationships
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("forecasting_models")
+  @@index([organizationId])
+  @@index([modelType])
+  @@index([isActive])
+  @@index([lastTrainedAt])
+}
+
+// Analytics Insights for actionable business recommendations
+model AnalyticsInsight {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  insightType    String    @map("insight_type") @db.VarChar(50) // 'REVENUE_FORECAST', 'EXPENSE_ANOMALY', 'PROFITABILITY_ALERT', 'TAX_OPTIMIZATION'
+  insightData    Json      @map("insight_data")
+  priority       String    @default("MEDIUM") @db.VarChar(10) // 'HIGH', 'MEDIUM', 'LOW'
+  isRead         Boolean   @default(false) @map("is_read")
+  expiresAt      DateTime? @map("expires_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  // Relationships
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("analytics_insights")
+  @@index([organizationId])
+  @@index([insightType])
+  @@index([priority])
+  @@index([isRead])
+  @@index([createdAt])
+}
+
+// Financial Ratios History for trend tracking and benchmarking
+model FinancialRatiosHistory {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  periodStart    DateTime @map("period_start") @db.Date
+  periodEnd      DateTime @map("period_end") @db.Date
+  ratiosData     Json     @map("ratios_data") // Stores all calculated ratios
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  // Relationships
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, periodStart, periodEnd])
+  @@map("financial_ratios_history")
+  @@index([organizationId])
+  @@index([periodStart])
+  @@index([periodEnd])
+}
+
+// ============================================================================
+// INVENTORY MANAGEMENT ENUMS - Step 21
+// ============================================================================
+
+// Purchase Order enums
+enum PurchaseOrderStatus {
+  DRAFT            // Order is being created
+  PENDING          // Order is pending approval
+  APPROVED         // Order has been approved
+  SENT             // Order has been sent to supplier
+  PARTIALLY_RECEIVED // Some items have been received
+  RECEIVED         // All items have been received
+  CANCELLED        // Order has been cancelled
+  CLOSED           // Order is closed
+}
+
+enum PurchaseOrderPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum PurchaseOrderItemStatus {
+  PENDING          // Item is pending
+  PARTIALLY_RECEIVED // Partially received
+  RECEIVED         // Fully received
+  CANCELLED        // Item cancelled
+  BACKORDERED      // Item is backordered
+}
+
+// Stock Movement enums
+enum StockMovementType {
+  IN               // Stock increase
+  OUT              // Stock decrease
+  TRANSFER         // Stock transfer between locations
+  ADJUSTMENT       // Stock adjustment
+}
+
+enum StockMovementSourceType {
+  PURCHASE_ORDER   // From purchase order
+  SALE             // From sale/invoice
+  ADJUSTMENT       // From inventory adjustment
+  TRANSFER         // From stock transfer
+  RETURN           // From return
+  DAMAGE           // From damage/loss
+  THEFT            // From theft
+  EXPIRY           // From expiry
+  MANUAL           // Manual entry
+}
+
+// Inventory Adjustment enums
+enum InventoryAdjustmentType {
+  INCREASE         // Increase stock
+  DECREASE         // Decrease stock
+  RECOUNT          // Physical recount adjustment
+}
+
+enum InventoryAdjustmentReason {
+  PHYSICAL_COUNT   // Physical count discrepancy
+  DAMAGE           // Damaged goods
+  THEFT            // Theft or loss
+  EXPIRY           // Expired products
+  RETURN           // Customer return
+  SUPPLIER_CREDIT  // Supplier credit
+  WRITE_OFF        // Write-off
+  FOUND            // Found stock
+  OTHER            // Other reason
+}
+
+enum InventoryAdjustmentStatus {
+  DRAFT            // Adjustment is in draft
+  PENDING          // Pending approval
+  APPROVED         // Approved and applied
+  REJECTED         // Rejected
+  CANCELLED        // Cancelled
+}
+
+// Stock Alert enums
+enum StockAlertType {
+  LOW_STOCK        // Stock below minimum level
+  OUT_OF_STOCK     // Stock is zero
+  OVERSTOCK        // Stock above maximum level
+  REORDER_POINT    // Stock at reorder point
+  EXPIRY_WARNING   // Products nearing expiry
+}
+
+enum StockAlertLevel {
+  INFO             // Informational alert
+  WARNING          // Warning level
+  CRITICAL         // Critical level
+  URGENT           // Urgent action required
+}
+
+// Inventory Report enums
+enum InventoryReportType {
+  STOCK_LEVELS     // Current stock levels
+  STOCK_MOVEMENTS  // Stock movement history
+  LOW_STOCK        // Low stock report
+  VALUATION        // Inventory valuation
+  ABC_ANALYSIS     // ABC analysis
+  AGING            // Inventory aging
+  TURNOVER         // Inventory turnover
+  PURCHASE_ORDERS  // Purchase order report
+  SUPPLIER_PERFORMANCE // Supplier performance
+  CUSTOM           // Custom report
+}
+
+enum InventoryReportStatus {
+  PENDING          // Report generation pending
+  GENERATING       // Report is being generated
+  COMPLETED        // Report completed
+  FAILED           // Report generation failed
+  EXPIRED          // Report has expired
+}

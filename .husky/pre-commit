@@ -1,0 +1,43 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🔍 Running pre-commit checks..."
+
+# Run lint-staged for staged files
+npx lint-staged
+
+# Check TypeScript compilation in frontend
+echo "🔧 Checking TypeScript compilation (Frontend)..."
+cd frontend && npm run type-check
+if [ $? -ne 0 ]; then
+  echo "❌ TypeScript compilation failed in frontend"
+  exit 1
+fi
+cd ..
+
+# Check TypeScript compilation in backend
+echo "🔧 Checking TypeScript compilation (Backend)..."
+cd backend && npm run build
+if [ $? -ne 0 ]; then
+  echo "❌ TypeScript compilation failed in backend"
+  exit 1
+fi
+cd ..
+
+# Run tests
+echo "🧪 Running tests..."
+cd frontend && npm run test -- --passWithNoTests --watchAll=false
+if [ $? -ne 0 ]; then
+  echo "❌ Frontend tests failed"
+  exit 1
+fi
+cd ..
+
+cd backend && npm run test -- --passWithNoTests
+if [ $? -ne 0 ]; then
+  echo "❌ Backend tests failed"
+  exit 1
+fi
+cd ..
+
+echo "✅ All pre-commit checks passed!"

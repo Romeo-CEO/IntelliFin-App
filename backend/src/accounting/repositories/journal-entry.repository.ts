@@ -1,6 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
-import { JournalEntry, JournalEntryLine, JournalEntryType, SourceType, Prisma } from '@prisma/client';
+import {
+  JournalEntry,
+  JournalEntryLine,
+  JournalEntryType,
+  Prisma,
+  SourceType,
+} from '@prisma/client';
 
 export interface CreateJournalEntryLineDto {
   debitAccountId?: string;
@@ -64,13 +70,16 @@ export class JournalEntryRepository {
   /**
    * Create a new journal entry with lines
    */
-  async create(organizationId: string, data: CreateJournalEntryDto): Promise<JournalEntryWithLines> {
+  async create(
+    organizationId: string,
+    data: CreateJournalEntryDto
+  ): Promise<JournalEntryWithLines> {
     try {
       // Validate that debits equal credits
       const totalDebits = data.lines
         .filter(line => line.debitAccountId)
         .reduce((sum, line) => sum + line.amount, 0);
-      
+
       const totalCredits = data.lines
         .filter(line => line.creditAccountId)
         .reduce((sum, line) => sum + line.amount, 0);
@@ -80,9 +89,14 @@ export class JournalEntryRepository {
       }
 
       // Check if entry number already exists
-      const existingEntry = await this.findByEntryNumber(organizationId, data.entryNumber);
+      const existingEntry = await this.findByEntryNumber(
+        organizationId,
+        data.entryNumber
+      );
       if (existingEntry) {
-        throw new Error(`Journal entry with number ${data.entryNumber} already exists`);
+        throw new Error(
+          `Journal entry with number ${data.entryNumber} already exists`
+        );
       }
 
       return await this.prisma.journalEntry.create({
@@ -127,7 +141,10 @@ export class JournalEntryRepository {
         },
       });
     } catch (error) {
-      this.logger.error(`Failed to create journal entry: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to create journal entry: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -135,7 +152,10 @@ export class JournalEntryRepository {
   /**
    * Find journal entry by ID
    */
-  async findById(organizationId: string, id: string): Promise<JournalEntryWithLines | null> {
+  async findById(
+    organizationId: string,
+    id: string
+  ): Promise<JournalEntryWithLines | null> {
     try {
       return await this.prisma.journalEntry.findFirst({
         where: {
@@ -158,7 +178,10 @@ export class JournalEntryRepository {
         },
       });
     } catch (error) {
-      this.logger.error(`Failed to find journal entry by ID: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to find journal entry by ID: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -166,7 +189,10 @@ export class JournalEntryRepository {
   /**
    * Find journal entry by entry number
    */
-  async findByEntryNumber(organizationId: string, entryNumber: string): Promise<JournalEntry | null> {
+  async findByEntryNumber(
+    organizationId: string,
+    entryNumber: string
+  ): Promise<JournalEntry | null> {
     try {
       return await this.prisma.journalEntry.findFirst({
         where: {
@@ -176,7 +202,10 @@ export class JournalEntryRepository {
         },
       });
     } catch (error) {
-      this.logger.error(`Failed to find journal entry by number: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to find journal entry by number: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -184,7 +213,10 @@ export class JournalEntryRepository {
   /**
    * Find all journal entries with pagination and filtering
    */
-  async findMany(organizationId: string, query: JournalEntryQueryDto): Promise<{
+  async findMany(
+    organizationId: string,
+    query: JournalEntryQueryDto
+  ): Promise<{
     entries: JournalEntryWithLines[];
     total: number;
     page: number;
@@ -203,12 +235,13 @@ export class JournalEntryRepository {
         ...(query.sourceType && { sourceType: query.sourceType }),
         ...(query.sourceId && { sourceId: query.sourceId }),
         ...(query.isPosted !== undefined && { isPosted: query.isPosted }),
-        ...(query.dateFrom && query.dateTo && {
-          entryDate: {
-            gte: query.dateFrom,
-            lte: query.dateTo,
-          },
-        }),
+        ...(query.dateFrom &&
+          query.dateTo && {
+            entryDate: {
+              gte: query.dateFrom,
+              lte: query.dateTo,
+            },
+          }),
         ...(query.search && {
           OR: [
             { entryNumber: { contains: query.search, mode: 'insensitive' } },
@@ -256,7 +289,10 @@ export class JournalEntryRepository {
         totalPages: Math.ceil(total / limit),
       };
     } catch (error) {
-      this.logger.error(`Failed to find journal entries: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to find journal entries: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -264,7 +300,11 @@ export class JournalEntryRepository {
   /**
    * Update journal entry (only if not posted)
    */
-  async update(organizationId: string, id: string, data: UpdateJournalEntryDto): Promise<JournalEntryWithLines> {
+  async update(
+    organizationId: string,
+    id: string,
+    data: UpdateJournalEntryDto
+  ): Promise<JournalEntryWithLines> {
     try {
       // Verify entry exists and is not posted
       const existingEntry = await this.findById(organizationId, id);
@@ -281,7 +321,7 @@ export class JournalEntryRepository {
         const totalDebits = data.lines
           .filter(line => line.debitAccountId)
           .reduce((sum, line) => sum + line.amount, 0);
-        
+
         const totalCredits = data.lines
           .filter(line => line.creditAccountId)
           .reduce((sum, line) => sum + line.amount, 0);
@@ -350,7 +390,10 @@ export class JournalEntryRepository {
         });
       }
     } catch (error) {
-      this.logger.error(`Failed to update journal entry: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to update journal entry: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -358,7 +401,11 @@ export class JournalEntryRepository {
   /**
    * Post journal entry (make it permanent)
    */
-  async post(organizationId: string, id: string, postedBy: string): Promise<JournalEntryWithLines> {
+  async post(
+    organizationId: string,
+    id: string,
+    postedBy: string
+  ): Promise<JournalEntryWithLines> {
     try {
       const entry = await this.findById(organizationId, id);
       if (!entry) {
@@ -391,7 +438,10 @@ export class JournalEntryRepository {
         },
       });
     } catch (error) {
-      this.logger.error(`Failed to post journal entry: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to post journal entry: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -417,7 +467,10 @@ export class JournalEntryRepository {
         },
       });
     } catch (error) {
-      this.logger.error(`Failed to delete journal entry: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to delete journal entry: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -425,11 +478,14 @@ export class JournalEntryRepository {
   /**
    * Generate next entry number
    */
-  async generateEntryNumber(organizationId: string, entryType: JournalEntryType): Promise<string> {
+  async generateEntryNumber(
+    organizationId: string,
+    entryType: JournalEntryType
+  ): Promise<string> {
     try {
       const year = new Date().getFullYear();
       const prefix = this.getEntryNumberPrefix(entryType);
-      
+
       const lastEntry = await this.prisma.journalEntry.findFirst({
         where: {
           organizationId,
@@ -451,20 +507,30 @@ export class JournalEntryRepository {
 
       return `${prefix}${year}${nextNumber.toString().padStart(4, '0')}`;
     } catch (error) {
-      this.logger.error(`Failed to generate entry number: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to generate entry number: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
 
   private getEntryNumberPrefix(entryType: JournalEntryType): string {
     switch (entryType) {
-      case 'STANDARD': return 'JE';
-      case 'ADJUSTING': return 'AJE';
-      case 'CLOSING': return 'CJE';
-      case 'REVERSING': return 'RJE';
-      case 'OPENING': return 'OJE';
-      case 'CORRECTION': return 'COR';
-      default: return 'JE';
+      case 'STANDARD':
+        return 'JE';
+      case 'ADJUSTING':
+        return 'AJE';
+      case 'CLOSING':
+        return 'CJE';
+      case 'REVERSING':
+        return 'RJE';
+      case 'OPENING':
+        return 'OJE';
+      case 'CORRECTION':
+        return 'COR';
+      default:
+        return 'JE';
     }
   }
 }

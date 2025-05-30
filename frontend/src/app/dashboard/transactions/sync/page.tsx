@@ -1,9 +1,5 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import {
   Activity,
   History,
@@ -13,9 +9,13 @@ import {
   Clock,
   TrendingUp
 } from 'lucide-react';
+import React, { useState } from 'react';
 
-import { SyncStatusDashboard } from '@/components/transactions/sync/SyncStatusDashboard';
 import { SyncHistory } from '@/components/transactions/sync/SyncHistory';
+import { SyncStatusDashboard } from '@/components/transactions/sync/SyncStatusDashboard';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function TransactionSyncPage() {
   const [selectedAccountId, _setSelectedAccountId] = useState<string | undefined>();

@@ -107,7 +107,7 @@ import { StockMovementProcessor } from './processors/stock-movement.processor';
             delay: 1000,
           },
         },
-      },
+      }
     ),
   ],
   controllers: [

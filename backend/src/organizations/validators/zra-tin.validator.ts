@@ -1,21 +1,21 @@
 import { Injectable } from '@nestjs/common';
-import { 
-  ValidatorConstraint, 
-  ValidatorConstraintInterface, 
+import {
   ValidationArguments,
+  ValidationOptions,
+  ValidatorConstraint,
+  ValidatorConstraintInterface,
   registerDecorator,
-  ValidationOptions 
 } from 'class-validator';
 
 /**
  * ZRA TIN (Tax Identification Number) Validator for Zambian businesses
- * 
+ *
  * ZRA TIN Format:
  * - 10 digits for individuals: XXXXXXXXXX
  * - 10 digits for companies: XXXXXXXXXX
  * - Must start with specific prefixes based on taxpayer type
  * - Contains check digit validation
- * 
+ *
  * Reference: Zambia Revenue Authority TIN specifications
  */
 @ValidatorConstraint({ name: 'isValidZraTin', async: false })
@@ -35,7 +35,9 @@ export class ZraTinValidator implements ValidatorConstraintInterface {
     }
 
     // Validate TIN format and check digit
-    return this.validateTinFormat(cleanTin) && this.validateCheckDigit(cleanTin);
+    return (
+      this.validateTinFormat(cleanTin) && this.validateCheckDigit(cleanTin)
+    );
   }
 
   defaultMessage(args: ValidationArguments): string {
@@ -57,15 +59,15 @@ export class ZraTinValidator implements ValidatorConstraintInterface {
     // This is a simplified version - actual ZRA algorithm may differ
     const digits = tin.split('').map(d => parseInt(d));
     const weights = [2, 3, 4, 5, 6, 7, 8, 9, 2, 1];
-    
+
     let sum = 0;
     for (let i = 0; i < 9; i++) {
       sum += digits[i] * weights[i];
     }
-    
+
     const remainder = sum % 11;
     const checkDigit = remainder < 2 ? remainder : 11 - remainder;
-    
+
     return checkDigit === digits[9];
   }
 
@@ -76,7 +78,7 @@ export class ZraTinValidator implements ValidatorConstraintInterface {
     if (!tin) return false;
     const cleanTin = tin.replace(/[\s-]/g, '');
     if (!/^\d{10}$/.test(cleanTin)) return false;
-    
+
     const firstDigit = parseInt(cleanTin.charAt(0));
     return firstDigit >= 4 && firstDigit <= 6;
   }
@@ -88,7 +90,7 @@ export class ZraTinValidator implements ValidatorConstraintInterface {
     if (!tin) return false;
     const cleanTin = tin.replace(/[\s-]/g, '');
     if (!/^\d{10}$/.test(cleanTin)) return false;
-    
+
     const firstDigit = parseInt(cleanTin.charAt(0));
     return firstDigit >= 1 && firstDigit <= 3;
   }
@@ -110,10 +112,10 @@ export class ZraTinValidator implements ValidatorConstraintInterface {
  * Custom decorator for ZRA TIN validation
  */
 export function IsValidZraTin(validationOptions?: ValidationOptions) {
-  return function (object: Object, propertyName: string) {
+  return function (object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
-      propertyName: propertyName,
+      propertyName,
       options: validationOptions,
       constraints: [],
       validator: ZraTinValidator,
@@ -125,10 +127,10 @@ export function IsValidZraTin(validationOptions?: ValidationOptions) {
  * Custom decorator for company TIN validation
  */
 export function IsCompanyZraTin(validationOptions?: ValidationOptions) {
-  return function (object: Object, propertyName: string) {
+  return function (object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
-      propertyName: propertyName,
+      propertyName,
       options: {
         message: 'ZRA TIN must be a valid company Tax Identification Number',
         ...validationOptions,
@@ -137,7 +139,10 @@ export function IsCompanyZraTin(validationOptions?: ValidationOptions) {
       validator: {
         validate(value: any, args: ValidationArguments) {
           const validator = new ZraTinValidator();
-          return validator.validate(value, args) && ZraTinValidator.isCompanyTin(value);
+          return (
+            validator.validate(value, args) &&
+            ZraTinValidator.isCompanyTin(value)
+          );
         },
       },
     });

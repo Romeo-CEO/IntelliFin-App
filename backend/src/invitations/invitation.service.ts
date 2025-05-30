@@ -1,22 +1,22 @@
 import {
-  Injectable,
-  ConflictException,
-  NotFoundException,
   BadRequestException,
-  Logger,
+  ConflictException,
   ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { UserInvitation, InvitationStatus, UserRole } from '@prisma/client';
+import { InvitationStatus, UserInvitation, UserRole } from '@prisma/client';
 import { InvitationRepository } from './invitation.repository';
 import { UsersService } from '../users/users.service';
 import { EmailService } from '../email/email.service';
 import {
-  CreateInvitationDto,
   AcceptInvitationDto,
-  InvitationResponseDto,
   BulkInvitationDto,
   BulkInvitationResponseDto,
+  CreateInvitationDto,
+  InvitationResponseDto,
   ResendInvitationDto,
 } from './dto/invitation.dto';
 import * as crypto from 'crypto';
@@ -31,21 +31,21 @@ export class InvitationService {
     private readonly invitationRepository: InvitationRepository,
     private readonly usersService: UsersService,
     private readonly emailService: EmailService,
-    private readonly configService: ConfigService,
+    private readonly configService: ConfigService
   ) {
     this.invitationExpiryHours = this.configService.get<number>(
       'INVITATION_EXPIRY_HOURS',
-      72, // Default 72 hours
+      72 // Default 72 hours
     );
   }
 
   async createInvitation(
     createInvitationDto: CreateInvitationDto,
     inviterId: string,
-    tenantId: string,
+    tenantId: string
   ): Promise<InvitationResponseDto> {
     this.logger.log(
-      `Creating invitation for ${createInvitationDto.email} by user ${inviterId}`,
+      `Creating invitation for ${createInvitationDto.email} by user ${inviterId}`
     );
 
     // Validate inviter permissions
@@ -53,24 +53,25 @@ export class InvitationService {
 
     // Check if user already exists
     const existingUser = await this.usersService.findByEmail(
-      createInvitationDto.email,
+      createInvitationDto.email
     );
     if (existingUser && existingUser.tenantId === tenantId) {
       throw new ConflictException(
-        'User with this email already exists in your organization',
+        'User with this email already exists in your organization'
       );
     }
 
     // Check for existing pending invitation
-    const existingInvitation = await this.invitationRepository.findByEmailAndTenant(
-      createInvitationDto.email,
-      tenantId,
-      InvitationStatus.PENDING,
-    );
+    const existingInvitation =
+      await this.invitationRepository.findByEmailAndTenant(
+        createInvitationDto.email,
+        tenantId,
+        InvitationStatus.PENDING
+      );
 
     if (existingInvitation && existingInvitation.expiresAt > new Date()) {
       throw new ConflictException(
-        'A pending invitation already exists for this email address',
+        'A pending invitation already exists for this email address'
       );
     }
 
@@ -99,19 +100,21 @@ export class InvitationService {
     } catch (error) {
       this.logger.error(
         `Failed to create invitation: ${error.message}`,
-        error.stack,
+        error.stack
       );
       throw new BadRequestException('Failed to create invitation');
     }
   }
 
   async acceptInvitation(
-    acceptInvitationDto: AcceptInvitationDto,
+    acceptInvitationDto: AcceptInvitationDto
   ): Promise<{ user: any; invitation: InvitationResponseDto }> {
-    this.logger.log(`Accepting invitation with token: ${acceptInvitationDto.token}`);
+    this.logger.log(
+      `Accepting invitation with token: ${acceptInvitationDto.token}`
+    );
 
     const invitation = await this.invitationRepository.findByToken(
-      acceptInvitationDto.token,
+      acceptInvitationDto.token
     );
 
     if (!invitation) {
@@ -137,7 +140,10 @@ export class InvitationService {
 
     try {
       // Create user account
-      const hashedPassword = await bcrypt.hash(acceptInvitationDto.password, 12);
+      const hashedPassword = await bcrypt.hash(
+        acceptInvitationDto.password,
+        12
+      );
 
       const user = await this.usersService.create({
         email: invitation.email,
@@ -157,7 +163,7 @@ export class InvitationService {
           status: InvitationStatus.ACCEPTED,
           acceptedAt: new Date(),
           invitee: { connect: { id: user.id } },
-        },
+        }
       );
 
       this.logger.log(`Invitation accepted successfully: ${invitation.id}`);
@@ -169,7 +175,7 @@ export class InvitationService {
     } catch (error) {
       this.logger.error(
         `Failed to accept invitation: ${error.message}`,
-        error.stack,
+        error.stack
       );
       throw new BadRequestException('Failed to accept invitation');
     }
@@ -178,7 +184,7 @@ export class InvitationService {
   async resendInvitation(
     invitationId: string,
     resendDto: ResendInvitationDto,
-    userId: string,
+    userId: string
   ): Promise<InvitationResponseDto> {
     this.logger.log(`Resending invitation: ${invitationId}`);
 
@@ -207,7 +213,7 @@ export class InvitationService {
           expiresAt: newExpiresAt,
           status: InvitationStatus.RESENT,
           message: resendDto.message || invitation.message,
-        },
+        }
       );
 
       // Send new invitation email
@@ -218,16 +224,13 @@ export class InvitationService {
     } catch (error) {
       this.logger.error(
         `Failed to resend invitation: ${error.message}`,
-        error.stack,
+        error.stack
       );
       throw new BadRequestException('Failed to resend invitation');
     }
   }
 
-  async cancelInvitation(
-    invitationId: string,
-    userId: string,
-  ): Promise<void> {
+  async cancelInvitation(invitationId: string, userId: string): Promise<void> {
     this.logger.log(`Cancelling invitation: ${invitationId}`);
 
     const invitation = await this.invitationRepository.findById(invitationId);
@@ -248,7 +251,7 @@ export class InvitationService {
     } catch (error) {
       this.logger.error(
         `Failed to cancel invitation: ${error.message}`,
-        error.stack,
+        error.stack
       );
       throw new BadRequestException('Failed to cancel invitation');
     }
@@ -258,7 +261,7 @@ export class InvitationService {
     tenantId: string,
     page: number = 1,
     limit: number = 10,
-    status?: InvitationStatus,
+    status?: InvitationStatus
   ): Promise<{
     invitations: InvitationResponseDto[];
     total: number;
@@ -293,7 +296,7 @@ export class InvitationService {
 
   private async validateInviterPermissions(
     inviterId: string,
-    targetRole: UserRole,
+    targetRole: UserRole
   ): Promise<void> {
     const inviter = await this.usersService.findById(inviterId);
     if (!inviter) {
@@ -315,7 +318,7 @@ export class InvitationService {
 
     if (inviterLevel <= targetLevel) {
       throw new ForbiddenException(
-        'You cannot invite users with equal or higher privileges',
+        'You cannot invite users with equal or higher privileges'
       );
     }
   }
@@ -336,7 +339,7 @@ export class InvitationService {
     } catch (error) {
       this.logger.error(
         `Failed to send invitation email: ${error.message}`,
-        error.stack,
+        error.stack
       );
       // Don't throw error here to avoid breaking the invitation creation
     }
@@ -363,8 +366,9 @@ export class InvitationService {
       throw new NotFoundException('Invalid invitation token');
     }
 
-    const isValid = invitation.status === InvitationStatus.PENDING &&
-                   invitation.expiresAt > new Date();
+    const isValid =
+      invitation.status === InvitationStatus.PENDING &&
+      invitation.expiresAt > new Date();
 
     return {
       email: invitation.email,
@@ -379,9 +383,11 @@ export class InvitationService {
   async sendBulkInvitations(
     bulkInvitationDto: BulkInvitationDto,
     inviterId: string,
-    tenantId: string,
+    tenantId: string
   ): Promise<BulkInvitationResponseDto> {
-    this.logger.log(`Sending bulk invitations for ${bulkInvitationDto.emails.length} emails`);
+    this.logger.log(
+      `Sending bulk invitations for ${bulkInvitationDto.emails.length} emails`
+    );
 
     // Validate inviter permissions
     await this.validateInviterPermissions(inviterId, bulkInvitationDto.role);
@@ -399,7 +405,7 @@ export class InvitationService {
             message: bulkInvitationDto.message,
           },
           inviterId,
-          tenantId,
+          tenantId
         );
         successful.push(invitation);
       } catch (error) {
@@ -422,7 +428,8 @@ export class InvitationService {
   async cleanupExpiredInvitations(): Promise<number> {
     this.logger.log('Cleaning up expired invitations');
 
-    const expiredInvitations = await this.invitationRepository.findExpiredInvitations();
+    const expiredInvitations =
+      await this.invitationRepository.findExpiredInvitations();
     const expiredIds = expiredInvitations.map(inv => inv.id);
 
     if (expiredIds.length > 0) {
@@ -450,18 +457,22 @@ export class InvitationService {
       tenantId: invitation.tenantId,
       createdAt: invitation.createdAt,
       updatedAt: invitation.updatedAt,
-      inviter: invitation.inviter ? {
-        id: invitation.inviter.id,
-        firstName: invitation.inviter.firstName,
-        lastName: invitation.inviter.lastName,
-        email: invitation.inviter.email,
-      } : undefined,
-      invitee: invitation.invitee ? {
-        id: invitation.invitee.id,
-        firstName: invitation.invitee.firstName,
-        lastName: invitation.invitee.lastName,
-        email: invitation.invitee.email,
-      } : undefined,
+      inviter: invitation.inviter
+        ? {
+            id: invitation.inviter.id,
+            firstName: invitation.inviter.firstName,
+            lastName: invitation.inviter.lastName,
+            email: invitation.inviter.email,
+          }
+        : undefined,
+      invitee: invitation.invitee
+        ? {
+            id: invitation.invitee.id,
+            firstName: invitation.invitee.firstName,
+            lastName: invitation.invitee.lastName,
+            email: invitation.invitee.email,
+          }
+        : undefined,
     };
   }
 }

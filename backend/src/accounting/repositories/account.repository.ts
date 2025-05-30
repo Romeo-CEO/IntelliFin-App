@@ -1,6 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
-import { Account, AccountType, AccountSubType, NormalBalance, Prisma } from '@prisma/client';
+import {
+  Account,
+  AccountSubType,
+  AccountType,
+  NormalBalance,
+  Prisma,
+} from '@prisma/client';
 
 export interface CreateAccountDto {
   accountCode: string;
@@ -71,10 +77,16 @@ export class AccountRepository {
   /**
    * Create a new account
    */
-  async create(organizationId: string, data: CreateAccountDto): Promise<Account> {
+  async create(
+    organizationId: string,
+    data: CreateAccountDto
+  ): Promise<Account> {
     try {
       // Check if account code already exists
-      const existingAccount = await this.findByCode(organizationId, data.accountCode);
+      const existingAccount = await this.findByCode(
+        organizationId,
+        data.accountCode
+      );
       if (existingAccount) {
         throw new Error(`Account with code ${data.accountCode} already exists`);
       }
@@ -101,7 +113,10 @@ export class AccountRepository {
         },
       });
     } catch (error) {
-      this.logger.error(`Failed to create account: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to create account: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -109,7 +124,10 @@ export class AccountRepository {
   /**
    * Find account by ID
    */
-  async findById(organizationId: string, id: string): Promise<AccountWithChildren | null> {
+  async findById(
+    organizationId: string,
+    id: string
+  ): Promise<AccountWithChildren | null> {
     try {
       return await this.prisma.account.findFirst({
         where: {
@@ -133,7 +151,10 @@ export class AccountRepository {
         },
       });
     } catch (error) {
-      this.logger.error(`Failed to find account by ID: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to find account by ID: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -141,7 +162,10 @@ export class AccountRepository {
   /**
    * Find account by code
    */
-  async findByCode(organizationId: string, accountCode: string): Promise<Account | null> {
+  async findByCode(
+    organizationId: string,
+    accountCode: string
+  ): Promise<Account | null> {
     try {
       return await this.prisma.account.findFirst({
         where: {
@@ -151,7 +175,10 @@ export class AccountRepository {
         },
       });
     } catch (error) {
-      this.logger.error(`Failed to find account by code: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to find account by code: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -159,7 +186,10 @@ export class AccountRepository {
   /**
    * Find all accounts with pagination and filtering
    */
-  async findMany(organizationId: string, query: AccountQueryDto): Promise<{
+  async findMany(
+    organizationId: string,
+    query: AccountQueryDto
+  ): Promise<{
     accounts: AccountWithChildren[];
     total: number;
     page: number;
@@ -176,11 +206,17 @@ export class AccountRepository {
         deletedAt: null,
         ...(query.accountType && { accountType: query.accountType }),
         ...(query.accountSubType && { accountSubType: query.accountSubType }),
-        ...(query.parentAccountId && { parentAccountId: query.parentAccountId }),
+        ...(query.parentAccountId && {
+          parentAccountId: query.parentAccountId,
+        }),
         ...(query.isActive !== undefined && { isActive: query.isActive }),
         ...(query.isSystem !== undefined && { isSystem: query.isSystem }),
-        ...(query.isBankAccount !== undefined && { isBankAccount: query.isBankAccount }),
-        ...(query.isTaxAccount !== undefined && { isTaxAccount: query.isTaxAccount }),
+        ...(query.isBankAccount !== undefined && {
+          isBankAccount: query.isBankAccount,
+        }),
+        ...(query.isTaxAccount !== undefined && {
+          isTaxAccount: query.isTaxAccount,
+        }),
         ...(query.search && {
           OR: [
             { accountCode: { contains: query.search, mode: 'insensitive' } },
@@ -229,7 +265,10 @@ export class AccountRepository {
         totalPages: Math.ceil(total / limit),
       };
     } catch (error) {
-      this.logger.error(`Failed to find accounts: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to find accounts: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -237,7 +276,10 @@ export class AccountRepository {
   /**
    * Get account hierarchy (tree structure)
    */
-  async getAccountHierarchy(organizationId: string, accountType?: AccountType): Promise<AccountWithChildren[]> {
+  async getAccountHierarchy(
+    organizationId: string,
+    accountType?: AccountType
+  ): Promise<AccountWithChildren[]> {
     try {
       const where: Prisma.AccountWhereInput = {
         organizationId,
@@ -263,7 +305,10 @@ export class AccountRepository {
         orderBy: { accountCode: 'asc' },
       });
     } catch (error) {
-      this.logger.error(`Failed to get account hierarchy: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to get account hierarchy: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -271,7 +316,11 @@ export class AccountRepository {
   /**
    * Update account
    */
-  async update(organizationId: string, id: string, data: UpdateAccountDto): Promise<Account> {
+  async update(
+    organizationId: string,
+    id: string,
+    data: UpdateAccountDto
+  ): Promise<Account> {
     try {
       // Verify account exists and belongs to organization
       const existingAccount = await this.findById(organizationId, id);
@@ -292,7 +341,10 @@ export class AccountRepository {
         },
       });
     } catch (error) {
-      this.logger.error(`Failed to update account: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to update account: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -300,7 +352,11 @@ export class AccountRepository {
   /**
    * Update account balance
    */
-  async updateBalance(organizationId: string, accountId: string, newBalance: number): Promise<Account> {
+  async updateBalance(
+    organizationId: string,
+    accountId: string,
+    newBalance: number
+  ): Promise<Account> {
     try {
       return await this.prisma.account.update({
         where: {
@@ -313,7 +369,10 @@ export class AccountRepository {
         },
       });
     } catch (error) {
-      this.logger.error(`Failed to update account balance: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to update account balance: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -335,10 +394,12 @@ export class AccountRepository {
       }
 
       // Check if account has transactions
-      if (existingAccount._count && 
-          (existingAccount._count.generalLedgerEntries > 0 || 
-           existingAccount._count.debitEntries > 0 || 
-           existingAccount._count.creditEntries > 0)) {
+      if (
+        existingAccount._count &&
+        (existingAccount._count.generalLedgerEntries > 0 ||
+          existingAccount._count.debitEntries > 0 ||
+          existingAccount._count.creditEntries > 0)
+      ) {
         throw new Error('Cannot delete account with existing transactions');
       }
 
@@ -350,7 +411,10 @@ export class AccountRepository {
         },
       });
     } catch (error) {
-      this.logger.error(`Failed to delete account: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to delete account: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -358,7 +422,10 @@ export class AccountRepository {
   /**
    * Get accounts by type
    */
-  async findByType(organizationId: string, accountType: AccountType): Promise<Account[]> {
+  async findByType(
+    organizationId: string,
+    accountType: AccountType
+  ): Promise<Account[]> {
     try {
       return await this.prisma.account.findMany({
         where: {
@@ -370,7 +437,10 @@ export class AccountRepository {
         orderBy: { accountCode: 'asc' },
       });
     } catch (error) {
-      this.logger.error(`Failed to find accounts by type: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to find accounts by type: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -390,7 +460,10 @@ export class AccountRepository {
         orderBy: { accountCode: 'asc' },
       });
     } catch (error) {
-      this.logger.error(`Failed to get bank accounts: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to get bank accounts: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -410,7 +483,10 @@ export class AccountRepository {
         orderBy: { accountCode: 'asc' },
       });
     } catch (error) {
-      this.logger.error(`Failed to get tax accounts: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to get tax accounts: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }

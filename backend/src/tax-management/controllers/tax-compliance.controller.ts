@@ -1,43 +1,86 @@
 import {
   Controller,
   Get,
-  Post,
-  Body,
-  Query,
-  UseGuards,
-  Request,
-  HttpStatus,
   HttpCode,
+  HttpStatus,
   ParseIntPipe,
+  Post,
+  Query,
+  Request,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { TaxComplianceService } from '../services/tax-compliance.service';
+import { TaxComplianceService, ComplianceScore, ComplianceAlert, ComplianceReport, DeadlineReminder } from '../services/tax-compliance.service';
+import { Logger } from '@nestjs/common';
+import { RolesGuard } from '../../auth/guards/roles.guard';
+import { Roles } from '../../auth/decorators/roles.decorator';
+import { UserRole } from '@prisma/client';
+import { AuthContext } from '../../auth/interfaces/auth.interface';
+import { TaxAnalyticsService, TaxTrendAnalysis } from '../services/tax-analytics.service';
+
+export interface ComplianceHealthCheck {
+  healthStatus: 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR' | 'CRITICAL';
+  complianceScore: number;
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  issues: {
+    critical: number;
+    warnings: number;
+    urgentDeadlines: number;
+  };
+  breakdown: {
+    filing: number;
+    payment: number;
+    timeliness: number;
+    accuracy: number;
+  };
+  actionItems: Array<{
+    priority: 'HIGH' | 'MEDIUM' | 'LOW';
+    action: string;
+    description: string;
+  }>;
+  lastChecked: Date;
+}
 
 @ApiTags('Tax Compliance')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('tax-compliance')
 export class TaxComplianceController {
-  constructor(private readonly taxComplianceService: TaxComplianceService) {}
+  constructor(
+    private readonly taxComplianceService: TaxComplianceService,
+    private readonly taxAnalyticsService: TaxAnalyticsService,
+  ) {}
 
   @Get('score')
   @ApiOperation({ summary: 'Get compliance score for organization' })
-  @ApiResponse({ status: 200, description: 'Compliance score retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Compliance score retrieved successfully',
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getComplianceScore(@Request() req: any) {
+  async getComplianceScore(@Request() req: AuthContext): Promise<{ success: boolean; data: ComplianceScore | null; message: string; error?: string }> {
     try {
-      const score = await this.taxComplianceService.calculateComplianceScore(req.user.organizationId);
+      const score = await this.taxComplianceService.calculateComplianceScore(
+        req.tenant.id
+      );
 
       return {
         success: true,
         data: score,
         message: 'Compliance score retrieved successfully',
       };
-    } catch (error) {
+    } catch (error: unknown) {
       return {
         success: false,
-        error: error.message,
+        data: null,
+        error: error instanceof Error ? error.message : String(error),
         message: 'Failed to retrieve compliance score',
       };
     }
@@ -45,20 +88,26 @@ export class TaxComplianceController {
 
   @Get('alerts')
   @ApiOperation({ summary: 'Get compliance alerts for organization' })
-  @ApiResponse({ status: 200, description: 'Compliance alerts retrieved successfully' })
-  async getComplianceAlerts(@Request() req: any) {
+  @ApiResponse({
+    status: 200,
+    description: 'Compliance alerts retrieved successfully',
+  })
+  async getComplianceAlerts(@Request() req: AuthContext): Promise<{ success: boolean; data: ComplianceAlert[] | null; message: string; error?: string }> {
     try {
-      const alerts = await this.taxComplianceService.generateComplianceAlerts(req.user.organizationId);
+      const alerts = await this.taxComplianceService.generateComplianceAlerts(
+        req.tenant.id
+      );
 
       return {
         success: true,
         data: alerts,
         message: 'Compliance alerts retrieved successfully',
       };
-    } catch (error) {
+    } catch (error: unknown) {
       return {
         success: false,
-        error: error.message,
+        data: null,
+        error: error instanceof Error ? error.message : String(error),
         message: 'Failed to retrieve compliance alerts',
       };
     }
@@ -66,20 +115,26 @@ export class TaxComplianceController {
 
   @Get('report')
   @ApiOperation({ summary: 'Generate comprehensive compliance report' })
-  @ApiResponse({ status: 200, description: 'Compliance report generated successfully' })
-  async getComplianceReport(@Request() req: any) {
+  @ApiResponse({
+    status: 200,
+    description: 'Compliance report generated successfully',
+  })
+  async getComplianceReport(@Request() req: AuthContext): Promise<{ success: boolean; data: ComplianceReport | null; message: string; error?: string }> {
     try {
-      const report = await this.taxComplianceService.generateComplianceReport(req.user.organizationId);
+      const report = await this.taxComplianceService.generateComplianceReport(
+        req.tenant.id
+      );
 
       return {
         success: true,
         data: report,
         message: 'Compliance report generated successfully',
       };
-    } catch (error) {
+    } catch (error: unknown) {
       return {
         success: false,
-        error: error.message,
+        data: null,
+        error: error instanceof Error ? error.message : String(error),
         message: 'Failed to generate compliance report',
       };
     }
@@ -87,16 +142,24 @@ export class TaxComplianceController {
 
   @Get('deadlines')
   @ApiOperation({ summary: 'Get upcoming tax deadlines' })
-  @ApiQuery({ name: 'days', required: false, type: Number, description: 'Number of days to look ahead (default: 30)' })
-  @ApiResponse({ status: 200, description: 'Upcoming deadlines retrieved successfully' })
+  @ApiQuery({
+    name: 'days',
+    required: false,
+    type: Number,
+    description: 'Number of days to look ahead (default: 30)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Upcoming deadlines retrieved successfully',
+  })
   async getUpcomingDeadlines(
-    @Request() req: any,
-    @Query('days', new ParseIntPipe({ optional: true })) days: number = 30,
-  ) {
+    @Request() req: AuthContext,
+    @Query('days', new ParseIntPipe({ optional: true })) days: number = 30
+  ): Promise<{ success: boolean; data: DeadlineReminder[] | null; message: string; error?: string }> {
     try {
       const deadlines = await this.taxComplianceService.getUpcomingDeadlines(
-        req.user.organizationId,
-        days,
+        req.tenant.id,
+        days
       );
 
       return {
@@ -104,10 +167,11 @@ export class TaxComplianceController {
         data: deadlines,
         message: 'Upcoming deadlines retrieved successfully',
       };
-    } catch (error) {
+    } catch (error: unknown) {
       return {
         success: false,
-        error: error.message,
+        data: null,
+        error: error instanceof Error ? error.message : String(error),
         message: 'Failed to retrieve upcoming deadlines',
       };
     }
@@ -115,25 +179,36 @@ export class TaxComplianceController {
 
   @Get('dashboard')
   @ApiOperation({ summary: 'Get compliance dashboard data' })
-  @ApiResponse({ status: 200, description: 'Compliance dashboard data retrieved successfully' })
-  async getComplianceDashboard(@Request() req: any) {
+  @ApiResponse({
+    status: 200,
+    description: 'Compliance dashboard data retrieved successfully',
+  })
+  async getComplianceDashboard(@Request() req: AuthContext): Promise<{ success: boolean; data: any | null; message: string; error?: string }> {
     try {
       // Get compliance score
-      const score = await this.taxComplianceService.calculateComplianceScore(req.user.organizationId);
+      const score = await this.taxComplianceService.calculateComplianceScore(
+        req.tenant.id
+      );
 
       // Get alerts (limit to top 10)
-      const allAlerts = await this.taxComplianceService.generateComplianceAlerts(req.user.organizationId);
+      const allAlerts = await this.taxComplianceService.generateComplianceAlerts(
+          req.tenant.id
+        );
       const alerts = allAlerts.slice(0, 10);
 
       // Get upcoming deadlines (next 14 days)
       const upcomingDeadlines = await this.taxComplianceService.getUpcomingDeadlines(
-        req.user.organizationId,
-        14,
-      );
+          req.tenant.id,
+          14
+        );
 
       // Calculate quick stats
-      const criticalAlerts = allAlerts.filter(a => a.severity === 'CRITICAL' || a.severity === 'ERROR').length;
-      const urgentDeadlines = upcomingDeadlines.filter(d => d.priority === 'URGENT' || d.priority === 'HIGH').length;
+      const criticalAlerts = allAlerts.filter(
+        a => a.severity === 'CRITICAL' || a.severity === 'ERROR'
+      ).length;
+      const urgentDeadlines = upcomingDeadlines.filter(
+        d => d.priority === 'URGENT' || d.priority === 'HIGH'
+      ).length;
 
       const dashboardData = {
         complianceScore: score,
@@ -161,10 +236,11 @@ export class TaxComplianceController {
         data: dashboardData,
         message: 'Compliance dashboard data retrieved successfully',
       };
-    } catch (error) {
+    } catch (error: unknown) {
       return {
         success: false,
-        error: error.message,
+        data: null,
+        error: error instanceof Error ? error.message : String(error),
         message: 'Failed to retrieve compliance dashboard data',
       };
     }
@@ -172,20 +248,31 @@ export class TaxComplianceController {
 
   @Get('health-check')
   @ApiOperation({ summary: 'Perform compliance health check' })
-  @ApiResponse({ status: 200, description: 'Compliance health check completed successfully' })
-  async performHealthCheck(@Request() req: any) {
+  @ApiResponse({
+    status: 200,
+    description: 'Compliance health check completed successfully',
+  })
+  async performHealthCheck(@Request() req: AuthContext): Promise<{ success: boolean; data: ComplianceHealthCheck | null; message: string; error?: string }> {
     try {
-      const score = await this.taxComplianceService.calculateComplianceScore(req.user.organizationId);
-      const alerts = await this.taxComplianceService.generateComplianceAlerts(req.user.organizationId);
-      const upcomingDeadlines = await this.taxComplianceService.getUpcomingDeadlines(
-        req.user.organizationId,
-        7, // Next 7 days
+      const score = await this.taxComplianceService.calculateComplianceScore(
+        req.tenant.id
       );
+      const alerts = await this.taxComplianceService.generateComplianceAlerts(
+        req.tenant.id
+      );
+      const upcomingDeadlines = await this.taxComplianceService.getUpcomingDeadlines(
+          req.tenant.id,
+          7 // Next 7 days
+        );
 
       // Categorize issues
-      const criticalIssues = alerts.filter(a => a.severity === 'CRITICAL' || a.severity === 'ERROR');
+      const criticalIssues = alerts.filter(
+        a => a.severity === 'CRITICAL' || a.severity === 'ERROR'
+      );
       const warnings = alerts.filter(a => a.severity === 'WARNING');
-      const urgentDeadlines = upcomingDeadlines.filter(d => d.priority === 'URGENT');
+      const urgentDeadlines = upcomingDeadlines.filter(
+        d => d.priority === 'URGENT'
+      );
 
       // Determine overall health status
       let healthStatus: 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR' | 'CRITICAL';
@@ -201,7 +288,7 @@ export class TaxComplianceController {
         healthStatus = 'CRITICAL';
       }
 
-      const healthCheck = {
+      const healthCheck: ComplianceHealthCheck = {
         healthStatus,
         complianceScore: score.overall,
         riskLevel: score.riskLevel,
@@ -218,12 +305,12 @@ export class TaxComplianceController {
         },
         actionItems: [
           ...criticalIssues.slice(0, 3).map(issue => ({
-            priority: 'HIGH',
+            priority: 'HIGH' as const,
             action: issue.actionRequired,
             description: issue.description,
           })),
           ...urgentDeadlines.slice(0, 2).map(deadline => ({
-            priority: 'MEDIUM',
+            priority: 'MEDIUM' as const,
             action: `Prepare ${deadline.taxType} filing`,
             description: `${deadline.periodDescription} due in ${deadline.daysUntilFiling} days`,
           })),
@@ -236,82 +323,88 @@ export class TaxComplianceController {
         data: healthCheck,
         message: 'Compliance health check completed successfully',
       };
-    } catch (error) {
+    } catch (error: unknown) {
       return {
         success: false,
-        error: error.message,
+        data: null,
+        error: error instanceof Error ? error.message : String(error),
         message: 'Failed to perform compliance health check',
       };
     }
   }
 
   @Post('refresh-score')
-  @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Refresh compliance score calculation' })
-  @ApiResponse({ status: 200, description: 'Compliance score refreshed successfully' })
-  async refreshComplianceScore(@Request() req: any) {
+  @ApiResponse({
+    status: 200,
+    description: 'Compliance score calculation refreshed successfully',
+  })
+  async refreshComplianceScore(@Request() req: AuthContext): Promise<{ success: boolean; data: ComplianceScore | null; message: string; error?: string }> {
     try {
-      const score = await this.taxComplianceService.calculateComplianceScore(req.user.organizationId);
+      const score = await this.taxComplianceService.calculateComplianceScore(
+        req.tenant.id
+      );
 
       return {
         success: true,
         data: score,
-        message: 'Compliance score refreshed successfully',
+        message: 'Compliance score calculation refreshed successfully',
       };
-    } catch (error) {
+    } catch (error: unknown) {
       return {
         success: false,
-        error: error.message,
-        message: 'Failed to refresh compliance score',
+        data: null,
+        error: error instanceof Error ? error.message : String(error),
+        message: 'Failed to refresh compliance score calculation',
       };
     }
   }
 
   @Get('trends')
   @ApiOperation({ summary: 'Get compliance trends over time' })
-  @ApiQuery({ name: 'months', required: false, type: Number, description: 'Number of months to analyze (default: 12)' })
-  @ApiResponse({ status: 200, description: 'Compliance trends retrieved successfully' })
+  @ApiQuery({
+    name: 'months',
+    required: false,
+    type: Number,
+    description: 'Number of months to analyze (default: 12)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Compliance trends retrieved successfully',
+  })
   async getComplianceTrends(
-    @Request() req: any,
-    @Query('months', new ParseIntPipe({ optional: true })) months: number = 12,
-  ) {
+    @Request() req: AuthContext,
+    @Query('months', new ParseIntPipe({ optional: true })) months: number = 12
+  ): Promise<{ success: boolean; data: { trends: TaxTrendAnalysis[], summary: any } | null; message: string; error?: string }> {
     try {
-      // For now, return mock trend data
-      // In a full implementation, this would analyze historical compliance data
-      const trends = Array.from({ length: months }, (_, i) => {
-        const date = new Date();
-        date.setMonth(date.getMonth() - (months - 1 - i));
-        
-        return {
-          month: date.toLocaleString('default', { month: 'long', year: 'numeric' }),
-          score: Math.floor(Math.random() * 20) + 80, // Mock scores between 80-100
-          filingCompliance: Math.floor(Math.random() * 15) + 85,
-          paymentCompliance: Math.floor(Math.random() * 15) + 85,
-          timeliness: Math.floor(Math.random() * 20) + 80,
-        };
-      });
+      const trends = await this.taxAnalyticsService.generateTrendAnalysis(
+        req.tenant.id,
+        months
+      );
 
       return {
         success: true,
         data: {
           trends,
           summary: {
-            averageScore: trends.reduce((sum, t) => sum + t.score, 0) / trends.length,
-            improvement: trends[trends.length - 1].score - trends[0].score,
-            bestMonth: trends.reduce((best, current) => 
-              current.score > best.score ? current : best
+            averageScore:
+              trends.reduce((sum, t) => sum + t.complianceScore, 0) / trends.length,
+            improvement: trends[trends.length - 1].complianceScore - trends[0].complianceScore,
+            bestMonth: trends.reduce((best, current) =>
+              current.complianceScore > best.complianceScore ? current : best
             ),
-            worstMonth: trends.reduce((worst, current) => 
-              current.score < worst.score ? current : worst
+            worstMonth: trends.reduce((worst, current) =>
+              current.complianceScore < worst.complianceScore ? current : worst
             ),
           },
         },
         message: 'Compliance trends retrieved successfully',
       };
-    } catch (error) {
+    } catch (error: unknown) {
       return {
         success: false,
-        error: error.message,
+        data: null,
+        error: error instanceof Error ? error.message : String(error),
         message: 'Failed to retrieve compliance trends',
       };
     }
@@ -320,11 +413,13 @@ export class TaxComplianceController {
   /**
    * Generate quick recommendations based on score and alerts
    */
-  private generateQuickRecommendations(score: any, alerts: any[]): string[] {
+  private generateQuickRecommendations(score: ComplianceScore, alerts: ComplianceAlert[]): string[] {
     const recommendations: string[] = [];
 
     if (score.overall < 70) {
-      recommendations.push('Urgent: Address critical compliance issues immediately');
+      recommendations.push(
+        'Urgent: Address critical compliance issues immediately'
+      );
     }
 
     if (alerts.some(a => a.type === 'OVERDUE_FILING')) {
@@ -332,7 +427,9 @@ export class TaxComplianceController {
     }
 
     if (alerts.some(a => a.type === 'OVERDUE_PAYMENT')) {
-      recommendations.push('Make overdue tax payments to minimize interest charges');
+      recommendations.push(
+        'Make overdue tax payments to minimize interest charges'
+      );
     }
 
     if (alerts.some(a => a.type === 'UPCOMING_DEADLINE')) {

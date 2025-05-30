@@ -1,20 +1,20 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
-  IsString,
-  IsOptional,
-  IsBoolean,
-  IsObject,
-  IsEnum,
-  IsNumber,
   IsArray,
-  ValidateNested,
+  IsBoolean,
+  IsEnum,
   IsNotEmpty,
+  IsNumber,
+  IsObject,
+  IsOptional,
+  IsString,
+  Max,
   MaxLength,
   Min,
-  Max,
+  ValidateNested,
 } from 'class-validator';
-import { Type, Transform } from 'class-transformer';
-import { WidgetType, DashboardPermissionType } from '@prisma/client';
+import { Transform, Type } from 'class-transformer';
+import { DashboardPermissionType, WidgetType } from '@prisma/client';
 
 // Dashboard DTOs
 export class CreateDashboardDto {
@@ -388,7 +388,9 @@ export class DashboardResponseDto {
   @ApiProperty({ example: 'Financial Overview' })
   name: string;
 
-  @ApiPropertyOptional({ example: 'Main dashboard showing key financial metrics' })
+  @ApiPropertyOptional({
+    example: 'Main dashboard showing key financial metrics',
+  })
   description?: string;
 
   @ApiProperty({ example: false })

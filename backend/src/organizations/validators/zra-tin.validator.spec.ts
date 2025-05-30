@@ -9,11 +9,7 @@ describe('ZraTinValidator', () => {
 
   describe('validate', () => {
     it('should validate correct company TIN format', () => {
-      const validTins = [
-        '4567890123',
-        '5123456789',
-        '6987654321',
-      ];
+      const validTins = ['4567890123', '5123456789', '6987654321'];
 
       validTins.forEach(tin => {
         expect(validator.validate(tin, {} as any)).toBe(true);
@@ -53,11 +49,7 @@ describe('ZraTinValidator', () => {
 
   describe('isCompanyTin', () => {
     it('should identify company TINs correctly', () => {
-      const companyTins = [
-        '4567890123',
-        '5123456789',
-        '6987654321',
-      ];
+      const companyTins = ['4567890123', '5123456789', '6987654321'];
 
       companyTins.forEach(tin => {
         expect(ZraTinValidator.isCompanyTin(tin)).toBe(true);
@@ -65,11 +57,7 @@ describe('ZraTinValidator', () => {
     });
 
     it('should reject individual TINs', () => {
-      const individualTins = [
-        '1234567890',
-        '2234567890',
-        '3234567890',
-      ];
+      const individualTins = ['1234567890', '2234567890', '3234567890'];
 
       individualTins.forEach(tin => {
         expect(ZraTinValidator.isCompanyTin(tin)).toBe(false);
@@ -79,11 +67,7 @@ describe('ZraTinValidator', () => {
 
   describe('isIndividualTin', () => {
     it('should identify individual TINs correctly', () => {
-      const individualTins = [
-        '1234567890',
-        '2234567890',
-        '3234567890',
-      ];
+      const individualTins = ['1234567890', '2234567890', '3234567890'];
 
       individualTins.forEach(tin => {
         expect(ZraTinValidator.isIndividualTin(tin)).toBe(true);
@@ -91,11 +75,7 @@ describe('ZraTinValidator', () => {
     });
 
     it('should reject company TINs', () => {
-      const companyTins = [
-        '4567890123',
-        '5123456789',
-        '6987654321',
-      ];
+      const companyTins = ['4567890123', '5123456789', '6987654321'];
 
       companyTins.forEach(tin => {
         expect(ZraTinValidator.isIndividualTin(tin)).toBe(false);
@@ -122,7 +102,9 @@ describe('ZraTinValidator', () => {
   describe('defaultMessage', () => {
     it('should return appropriate error message', () => {
       const message = validator.defaultMessage({} as any);
-      expect(message).toBe('ZRA TIN must be a valid 10-digit Zambian Tax Identification Number');
+      expect(message).toBe(
+        'ZRA TIN must be a valid 10-digit Zambian Tax Identification Number'
+      );
     });
   });
 });

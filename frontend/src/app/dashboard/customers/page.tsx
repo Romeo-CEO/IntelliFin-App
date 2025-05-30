@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Customer, ImportResult } from '../../../services/customer.service';
-import CustomerList from '../../../components/customers/CustomerList';
-import CustomerForm from '../../../components/customers/CustomerForm';
+
 import CustomerDetail from '../../../components/customers/CustomerDetail';
+import CustomerForm from '../../../components/customers/CustomerForm';
 import CustomerImportExport from '../../../components/customers/CustomerImportExport';
+import CustomerList from '../../../components/customers/CustomerList';
+import { Customer, ImportResult } from '../../../services/customer.service';
 
 type ModalType = 'form' | 'detail' | 'import-export' | null;
 

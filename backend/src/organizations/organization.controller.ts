@@ -1,25 +1,25 @@
 import {
-  Controller,
-  Get,
-  Post,
-  Put,
-  Delete,
   Body,
-  Param,
-  Query,
-  UseGuards,
+  Controller,
+  Delete,
+  Get,
   HttpStatus,
   Logger,
+  Param,
   ParseUUIDPipe,
+  Post,
+  Put,
+  Query,
+  UseGuards,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiParam,
-  ApiQuery,
   ApiBearerAuth,
   ApiBody,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -29,8 +29,8 @@ import { UserRole } from '@prisma/client';
 import { OrganizationService } from './organization.service';
 import {
   CreateOrganizationDto,
-  UpdateOrganizationDto,
   OrganizationResponseDto,
+  UpdateOrganizationDto,
 } from './dto/organization.dto';
 
 @ApiTags('Organizations')
@@ -46,7 +46,8 @@ export class OrganizationController {
   @Roles(UserRole.TENANT_ADMIN, UserRole.ADMIN)
   @ApiOperation({
     summary: 'Create a new organization',
-    description: 'Creates a new organization with business information and ZRA TIN validation',
+    description:
+      'Creates a new organization with business information and ZRA TIN validation',
   })
   @ApiBody({ type: CreateOrganizationDto })
   @ApiResponse({
@@ -72,7 +73,7 @@ export class OrganizationController {
   })
   async create(
     @Body() createOrganizationDto: CreateOrganizationDto,
-    @CurrentUser() user: any,
+    @CurrentUser() user: any
   ): Promise<OrganizationResponseDto> {
     this.logger.log(`Creating organization for user: ${user.id}`);
     return this.organizationService.create(createOrganizationDto);
@@ -104,7 +105,7 @@ export class OrganizationController {
     description: 'Authentication required',
   })
   async findById(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ParseUUIDPipe) id: string
   ): Promise<OrganizationResponseDto> {
     this.logger.log(`Finding organization by ID: ${id}`);
     return this.organizationService.findById(id);
@@ -132,7 +133,7 @@ export class OrganizationController {
     description: 'Organization not found',
   })
   async findByZraTin(
-    @Param('zraTin') zraTin: string,
+    @Param('zraTin') zraTin: string
   ): Promise<OrganizationResponseDto> {
     this.logger.log(`Finding organization by ZRA TIN: ${zraTin}`);
     return this.organizationService.findByZraTin(zraTin);
@@ -167,7 +168,7 @@ export class OrganizationController {
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateOrganizationDto: UpdateOrganizationDto,
-    @CurrentUser() user: any,
+    @CurrentUser() user: any
   ): Promise<OrganizationResponseDto> {
     this.logger.log(`Updating organization ${id} by user: ${user.id}`);
     return this.organizationService.update(id, updateOrganizationDto);
@@ -195,7 +196,7 @@ export class OrganizationController {
   })
   async delete(
     @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: any
   ): Promise<void> {
     this.logger.log(`Deleting organization ${id} by user: ${user.id}`);
     return this.organizationService.delete(id);
@@ -233,20 +234,21 @@ export class OrganizationController {
   })
   async validateZraTin(
     @Param('zraTin') zraTin: string,
-    @Query('excludeId') excludeId?: string,
+    @Query('excludeId') excludeId?: string
   ): Promise<{ isValid: boolean; isAvailable: boolean; message: string }> {
     this.logger.log(`Validating ZRA TIN: ${zraTin}`);
-    
-    const isAvailable = await this.organizationService.validateZraTinAvailability(
-      zraTin,
-      excludeId,
-    );
+
+    const isAvailable =
+      await this.organizationService.validateZraTinAvailability(
+        zraTin,
+        excludeId
+      );
 
     return {
       isValid: true, // If we reach here, format is valid
       isAvailable,
-      message: isAvailable 
-        ? 'ZRA TIN is valid and available' 
+      message: isAvailable
+        ? 'ZRA TIN is valid and available'
         : 'ZRA TIN is already in use by another organization',
     };
   }

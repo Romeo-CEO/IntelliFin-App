@@ -1,11 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
-import { 
-  Transaction, 
-  TransactionType, 
-  TransactionStatus, 
+import {
   MobileMoneyProvider,
-  Prisma 
+  Prisma,
+  Transaction,
+  TransactionStatus,
+  TransactionType,
 } from '@prisma/client';
 
 export interface CreateTransactionData {
@@ -91,14 +91,21 @@ export class TransactionRepository {
           counterpartyName: data.counterpartyName,
           counterpartyNumber: data.counterpartyNumber,
           description: data.description,
-          balanceAfter: data.balanceAfter ? new Prisma.Decimal(data.balanceAfter) : null,
+          balanceAfter: data.balanceAfter
+            ? new Prisma.Decimal(data.balanceAfter)
+            : null,
           status: data.status,
-          fees: data.fees ? new Prisma.Decimal(data.fees) : new Prisma.Decimal(0),
+          fees: data.fees
+            ? new Prisma.Decimal(data.fees)
+            : new Prisma.Decimal(0),
           metadata: data.metadata,
         },
       });
-    } catch (error) {
-      this.logger.error(`Failed to create transaction: ${error.message}`, error);
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to create transaction: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -106,7 +113,9 @@ export class TransactionRepository {
   /**
    * Create multiple transactions in a batch
    */
-  async createMany(transactions: CreateTransactionData[]): Promise<{ count: number }> {
+  async createMany(
+    transactions: CreateTransactionData[]
+  ): Promise<{ count: number }> {
     try {
       const data = transactions.map(tx => ({
         organizationId: tx.organizationId,
@@ -120,7 +129,9 @@ export class TransactionRepository {
         counterpartyName: tx.counterpartyName,
         counterpartyNumber: tx.counterpartyNumber,
         description: tx.description,
-        balanceAfter: tx.balanceAfter ? new Prisma.Decimal(tx.balanceAfter) : null,
+        balanceAfter: tx.balanceAfter
+          ? new Prisma.Decimal(tx.balanceAfter)
+          : null,
         status: tx.status,
         fees: tx.fees ? new Prisma.Decimal(tx.fees) : new Prisma.Decimal(0),
         metadata: tx.metadata,
@@ -130,8 +141,11 @@ export class TransactionRepository {
         data,
         skipDuplicates: true, // Skip transactions with duplicate externalId
       });
-    } catch (error) {
-      this.logger.error(`Failed to create transactions batch: ${error.message}`, error);
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to create transactions batch: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -140,7 +154,7 @@ export class TransactionRepository {
    * Find transaction by external ID
    */
   async findByExternalId(
-    organizationId: string, 
+    organizationId: string,
     externalId: string
   ): Promise<Transaction | null> {
     try {
@@ -152,8 +166,11 @@ export class TransactionRepository {
           },
         },
       });
-    } catch (error) {
-      this.logger.error(`Failed to find transaction by external ID: ${error.message}`, error);
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to find transaction by external ID: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -164,10 +181,12 @@ export class TransactionRepository {
   async update(id: string, data: UpdateTransactionData): Promise<Transaction> {
     try {
       const updateData: any = { ...data };
-      
+
       // Convert numeric fields to Prisma.Decimal
       if (data.balanceAfter !== undefined) {
-        updateData.balanceAfter = data.balanceAfter ? new Prisma.Decimal(data.balanceAfter) : null;
+        updateData.balanceAfter = data.balanceAfter
+          ? new Prisma.Decimal(data.balanceAfter)
+          : null;
       }
       if (data.fees !== undefined) {
         updateData.fees = new Prisma.Decimal(data.fees);
@@ -177,8 +196,11 @@ export class TransactionRepository {
         where: { id },
         data: updateData,
       });
-    } catch (error) {
-      this.logger.error(`Failed to update transaction: ${error.message}`, error);
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to update transaction: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -190,7 +212,9 @@ export class TransactionRepository {
     filters: TransactionFilters,
     page: number = 1,
     limit: number = 50,
-    orderBy: Prisma.TransactionOrderByWithRelationInput = { transactionDate: 'desc' }
+    orderBy: Prisma.TransactionOrderByWithRelationInput = {
+      transactionDate: 'desc',
+    }
   ): Promise<{
     transactions: Transaction[];
     total: number;
@@ -236,7 +260,7 @@ export class TransactionRepository {
         limit,
         totalPages: Math.ceil(total / limit),
       };
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`Failed to find transactions: ${error.message}`, error);
       throw error;
     }
@@ -249,41 +273,39 @@ export class TransactionRepository {
     try {
       const where = this.buildWhereClause(filters);
 
-      const [
-        totalStats,
-        typeStats,
-        statusStats,
-        dateRange,
-      ] = await Promise.all([
-        this.prisma.transaction.aggregate({
-          where,
-          _count: { id: true },
-          _sum: { 
-            amount: true,
-            fees: true,
-          },
-        }),
-        this.prisma.transaction.groupBy({
-          by: ['type'],
-          where,
-          _count: { id: true },
-          _sum: { amount: true },
-        }),
-        this.prisma.transaction.groupBy({
-          by: ['status'],
-          where,
-          _count: { id: true },
-          _sum: { amount: true },
-        }),
-        this.prisma.transaction.aggregate({
-          where,
-          _min: { transactionDate: true },
-          _max: { transactionDate: true },
-        }),
-      ]);
+      const [totalStats, typeStats, statusStats, dateRange] = await Promise.all(
+        [
+          this.prisma.transaction.aggregate({
+            where,
+            _count: { id: true },
+            _sum: {
+              amount: true,
+              fees: true,
+            },
+          }),
+          this.prisma.transaction.groupBy({
+            by: ['type'],
+            where,
+            _count: { id: true },
+            _sum: { amount: true },
+          }),
+          this.prisma.transaction.groupBy({
+            by: ['status'],
+            where,
+            _count: { id: true },
+            _sum: { amount: true },
+          }),
+          this.prisma.transaction.aggregate({
+            where,
+            _min: { transactionDate: true },
+            _max: { transactionDate: true },
+          }),
+        ]
+      );
 
       // Build type summary
-      const byType: Record<TransactionType, { count: number; amount: number }> = {} as any;
+      const byType: Record<TransactionType, { count: number; amount: number }> =
+        {} as any;
       Object.values(TransactionType).forEach(type => {
         byType[type] = { count: 0, amount: 0 };
       });
@@ -295,7 +317,10 @@ export class TransactionRepository {
       });
 
       // Build status summary
-      const byStatus: Record<TransactionStatus, { count: number; amount: number }> = {} as any;
+      const byStatus: Record<
+        TransactionStatus,
+        { count: number; amount: number }
+      > = {} as any;
       Object.values(TransactionStatus).forEach(status => {
         byStatus[status] = { count: 0, amount: 0 };
       });
@@ -317,8 +342,11 @@ export class TransactionRepository {
           latest: dateRange._max.transactionDate,
         },
       };
-    } catch (error) {
-      this.logger.error(`Failed to get transaction summary: ${error.message}`, error);
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to get transaction summary: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -335,8 +363,11 @@ export class TransactionRepository {
       });
 
       return result?.transactionDate || null;
-    } catch (error) {
-      this.logger.error(`Failed to get latest transaction date: ${error.message}`, error);
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to get latest transaction date: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -344,7 +375,10 @@ export class TransactionRepository {
   /**
    * Check if transaction exists by external ID
    */
-  async existsByExternalId(organizationId: string, externalId: string): Promise<boolean> {
+  async existsByExternalId(
+    organizationId: string,
+    externalId: string
+  ): Promise<boolean> {
     try {
       const count = await this.prisma.transaction.count({
         where: {
@@ -354,8 +388,11 @@ export class TransactionRepository {
       });
 
       return count > 0;
-    } catch (error) {
-      this.logger.error(`Failed to check transaction existence: ${error.message}`, error);
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to check transaction existence: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -368,8 +405,11 @@ export class TransactionRepository {
       return await this.prisma.transaction.deleteMany({
         where: { accountId },
       });
-    } catch (error) {
-      this.logger.error(`Failed to delete transactions: ${error.message}`, error);
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to delete transactions: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -377,7 +417,9 @@ export class TransactionRepository {
   /**
    * Build where clause for transaction queries
    */
-  private buildWhereClause(filters: TransactionFilters): Prisma.TransactionWhereInput {
+  private buildWhereClause(
+    filters: TransactionFilters
+  ): Prisma.TransactionWhereInput {
     const where: Prisma.TransactionWhereInput = {
       organizationId: filters.organizationId,
     };

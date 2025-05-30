@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+
 import { Dashboard, DashboardWidget } from '../../../types/dashboard.types';
 
 interface ChartWidgetProps {

@@ -1,6 +1,6 @@
 /**
  * Analytics Engine Interface
- * 
+ *
  * Defines contracts for analytics engines to enable seamless transition
  * from statistical methods to AI/ML implementations
  */
@@ -16,7 +16,7 @@ export interface IForecastingEngine extends IAnalyticsEngine {
     data: TimeSeriesData,
     options: ForecastingOptions
   ): Promise<ForecastResult>;
-  
+
   validateModel(data: TimeSeriesData): Promise<ModelValidation>;
   getModelMetrics(): Promise<ModelMetrics>;
 }
@@ -26,7 +26,7 @@ export interface IAnomalyDetectionEngine extends IAnalyticsEngine {
     data: AnalyticsData,
     sensitivity: AnomalySensitivity
   ): Promise<AnomalyResult>;
-  
+
   trainModel(historicalData: AnalyticsData): Promise<void>;
   updateModel(newData: AnalyticsData): Promise<void>;
 }
@@ -35,15 +35,13 @@ export interface IPredictiveEngine extends IAnalyticsEngine {
   predictCustomerBehavior(
     customerData: CustomerAnalyticsData
   ): Promise<CustomerPrediction>;
-  
+
   predictCashFlow(
     financialData: FinancialData,
     horizon: number
   ): Promise<CashFlowPrediction>;
-  
-  predictRisk(
-    businessData: BusinessData
-  ): Promise<RiskAssessment>;
+
+  predictRisk(businessData: BusinessData): Promise<RiskAssessment>;
 }
 
 // Data Types
@@ -106,7 +104,7 @@ export interface ModelMetrics {
 }
 
 // Enums and Types
-export type AnalyticsCapability = 
+export type AnalyticsCapability =
   | 'FORECASTING'
   | 'ANOMALY_DETECTION'
   | 'TREND_ANALYSIS'

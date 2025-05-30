@@ -1,6 +1,14 @@
-import { IsString, IsEnum, IsOptional, IsNumber, IsUUID, IsDateString, Min } from 'class-validator';
+import {
+  IsDateString,
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Min,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { AccountType, SourceType } from '@prisma/client';
+import { SourceType } from '@prisma/client';
 
 export class GeneralLedgerQueryDto {
   @ApiPropertyOptional({ description: 'Page number', default: 1 })
@@ -20,7 +28,10 @@ export class GeneralLedgerQueryDto {
   @IsUUID()
   accountId?: string;
 
-  @ApiPropertyOptional({ description: 'Filter by source type', enum: SourceType })
+  @ApiPropertyOptional({
+    description: 'Filter by source type',
+    enum: SourceType,
+  })
   @IsOptional()
   @IsEnum(SourceType)
   sourceType?: SourceType;

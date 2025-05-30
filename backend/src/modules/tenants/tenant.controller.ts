@@ -1,22 +1,21 @@
 import {
+  Body,
   Controller,
+  Delete,
   Get,
+  HttpStatus,
+  Param,
   Post,
   Put,
-  Delete,
-  Body,
-  Param,
-  HttpStatus,
 } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiParam,
-} from '@nestjs/swagger';
+import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 import { TenantService } from './tenant.service';
-import { CreateTenantDto, UpdateTenantDto, TenantResponseDto } from './dto/tenant.dto';
+import {
+  CreateTenantDto,
+  TenantResponseDto,
+  UpdateTenantDto,
+} from './dto/tenant.dto';
 
 @ApiTags('Tenants')
 @Controller('tenants')
@@ -84,7 +83,7 @@ export class TenantController {
   })
   public async updateTenant(
     @Param('id') id: string,
-    @Body() updateTenantDto: UpdateTenantDto,
+    @Body() updateTenantDto: UpdateTenantDto
   ) {
     return this.tenantService.updateTenant(id, updateTenantDto);
   }
@@ -102,7 +101,7 @@ export class TenantController {
   })
   public async suspendTenant(
     @Param('id') id: string,
-    @Body('reason') reason?: string,
+    @Body('reason') reason?: string
   ) {
     return this.tenantService.suspendTenant(id, reason);
   }

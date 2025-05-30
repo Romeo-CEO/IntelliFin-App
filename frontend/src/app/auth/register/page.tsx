@@ -1,5 +1,6 @@
-import { Suspense } from 'react';
 import { Metadata } from 'next';
+import { Suspense } from 'react';
+
 import { RegistrationForm } from '../../../components/auth/RegistrationForm';
 
 export const metadata: Metadata = {

@@ -1,8 +1,5 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
-import { useDropzone } from 'react-dropzone';
-import { toast } from 'react-hot-toast';
 import {
   Upload,
   FileImage,
@@ -13,15 +10,17 @@ import {
   CheckCircle,
   AlertCircle,
 } from 'lucide-react';
+import React, { useState, useCallback } from 'react';
+import { useDropzone } from 'react-dropzone';
+import { toast } from 'react-hot-toast';
 
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-
-import { receiptService } from '@/services/receipt.service';
 import { formatFileSize } from '@/lib/utils';
+import { receiptService } from '@/services/receipt.service';
 
 interface ReceiptUploadProps {
   expenseId: string;

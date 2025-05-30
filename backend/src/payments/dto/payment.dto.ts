@@ -1,17 +1,17 @@
 import {
-  IsString,
+  IsBoolean,
+  IsDateString,
+  IsEnum,
   IsNumber,
   IsOptional,
-  IsEnum,
-  IsDateString,
-  IsUUID,
   IsPositive,
-  Min,
-  Max,
+  IsString,
+  IsUUID,
   Length,
-  IsBoolean,
-  ValidateNested,
+  Max,
+  Min,
   Type,
+  ValidateNested,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
@@ -43,7 +43,7 @@ export class CreatePaymentDto {
 
   @ApiProperty({
     description: 'Payment amount in ZMW',
-    example: 1500.00,
+    example: 1500.0,
     minimum: 0.01,
   })
   @IsNumber({ maxDecimalPlaces: 2 })
@@ -143,7 +143,7 @@ export class PaymentQueryDto {
 
   @ApiPropertyOptional({
     description: 'Minimum payment amount',
-    example: 100.00,
+    example: 100.0,
     minimum: 0,
   })
   @IsOptional()
@@ -154,7 +154,7 @@ export class PaymentQueryDto {
 
   @ApiPropertyOptional({
     description: 'Maximum payment amount',
-    example: 10000.00,
+    example: 10000.0,
     minimum: 0,
   })
   @IsOptional()
@@ -202,7 +202,13 @@ export class PaymentQueryDto {
   @ApiPropertyOptional({
     description: 'Sort field',
     example: 'paymentDate',
-    enum: ['paymentDate', 'amount', 'customerName', 'paymentMethod', 'createdAt'],
+    enum: [
+      'paymentDate',
+      'amount',
+      'customerName',
+      'paymentMethod',
+      'createdAt',
+    ],
     default: 'paymentDate',
   })
   @IsOptional()
@@ -253,7 +259,7 @@ export class PaymentResponseDto {
 
   @ApiProperty({
     description: 'Payment amount',
-    example: 1500.00,
+    example: 1500.0,
   })
   amount: number;
 
@@ -372,7 +378,7 @@ export class PaymentStatsDto {
 
   @ApiProperty({
     description: 'Total payment amount',
-    example: 125000.00,
+    example: 125000.0,
   })
   totalAmount: number;
 
@@ -384,7 +390,7 @@ export class PaymentStatsDto {
       properties: {
         method: { type: 'string', enum: Object.values(PaymentMethod) },
         count: { type: 'number', example: 50 },
-        amount: { type: 'number', example: 45000.00 },
+        amount: { type: 'number', example: 45000.0 },
       },
     },
   })

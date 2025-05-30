@@ -1,20 +1,24 @@
 import {
+  Body,
   Controller,
   Get,
-  Post,
-  Put,
-  Delete,
-  Body,
-  Param,
-  Query,
-  UseGuards,
-  Request,
-  HttpStatus,
   HttpCode,
+  HttpStatus,
+  Post,
+  Request,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { TaxCalculationService, TaxCalculationRequest } from '../services/tax-calculation.service';
+import {
+  TaxCalculationRequest,
+  TaxCalculationService,
+} from '../services/tax-calculation.service';
 import { TaxType } from '@prisma/client';
 
 @ApiTags('Tax Management')
@@ -27,18 +31,22 @@ export class TaxManagementController {
   @Post('calculate')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Calculate tax for any tax type' })
-  @ApiResponse({ status: 200, description: 'Tax calculation completed successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Tax calculation completed successfully',
+  })
   @ApiResponse({ status: 400, description: 'Invalid calculation request' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async calculateTax(
     @Request() req: any,
-    @Body() calculationRequest: TaxCalculationRequest,
+    @Body() calculationRequest: TaxCalculationRequest
   ) {
     try {
       // Ensure the request is for the user's organization
       calculationRequest.organizationId = req.user.organizationId;
 
-      const result = await this.taxCalculationService.calculateTax(calculationRequest);
+      const result =
+        await this.taxCalculationService.calculateTax(calculationRequest);
 
       return {
         success: true,
@@ -57,10 +65,14 @@ export class TaxManagementController {
   @Post('calculate/vat')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Calculate VAT specifically' })
-  @ApiResponse({ status: 200, description: 'VAT calculation completed successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'VAT calculation completed successfully',
+  })
   async calculateVAT(
     @Request() req: any,
-    @Body() body: { amount: number; isInclusive?: boolean; effectiveDate?: string },
+    @Body()
+    body: { amount: number; isInclusive?: boolean; effectiveDate?: string }
   ) {
     try {
       const calculationRequest: TaxCalculationRequest = {
@@ -68,10 +80,13 @@ export class TaxManagementController {
         taxType: TaxType.VAT,
         amount: body.amount,
         isInclusive: body.isInclusive || false,
-        effectiveDate: body.effectiveDate ? new Date(body.effectiveDate) : undefined,
+        effectiveDate: body.effectiveDate
+          ? new Date(body.effectiveDate)
+          : undefined,
       };
 
-      const result = await this.taxCalculationService.calculateTax(calculationRequest);
+      const result =
+        await this.taxCalculationService.calculateTax(calculationRequest);
 
       return {
         success: true,
@@ -90,21 +105,28 @@ export class TaxManagementController {
   @Post('calculate/withholding-tax')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Calculate withholding tax' })
-  @ApiResponse({ status: 200, description: 'Withholding tax calculation completed successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Withholding tax calculation completed successfully',
+  })
   async calculateWithholdingTax(
     @Request() req: any,
-    @Body() body: { amount: number; serviceType?: string; effectiveDate?: string },
+    @Body()
+    body: { amount: number; serviceType?: string; effectiveDate?: string }
   ) {
     try {
       const calculationRequest: TaxCalculationRequest = {
         organizationId: req.user.organizationId,
         taxType: TaxType.WITHHOLDING_TAX,
         amount: body.amount,
-        effectiveDate: body.effectiveDate ? new Date(body.effectiveDate) : undefined,
+        effectiveDate: body.effectiveDate
+          ? new Date(body.effectiveDate)
+          : undefined,
         metadata: { serviceType: body.serviceType },
       };
 
-      const result = await this.taxCalculationService.calculateTax(calculationRequest);
+      const result =
+        await this.taxCalculationService.calculateTax(calculationRequest);
 
       return {
         success: true,
@@ -123,20 +145,26 @@ export class TaxManagementController {
   @Post('calculate/income-tax')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Calculate income tax' })
-  @ApiResponse({ status: 200, description: 'Income tax calculation completed successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Income tax calculation completed successfully',
+  })
   async calculateIncomeTax(
     @Request() req: any,
-    @Body() body: { taxableIncome: number; effectiveDate?: string },
+    @Body() body: { taxableIncome: number; effectiveDate?: string }
   ) {
     try {
       const calculationRequest: TaxCalculationRequest = {
         organizationId: req.user.organizationId,
         taxType: TaxType.INCOME_TAX,
         amount: body.taxableIncome,
-        effectiveDate: body.effectiveDate ? new Date(body.effectiveDate) : undefined,
+        effectiveDate: body.effectiveDate
+          ? new Date(body.effectiveDate)
+          : undefined,
       };
 
-      const result = await this.taxCalculationService.calculateTax(calculationRequest);
+      const result =
+        await this.taxCalculationService.calculateTax(calculationRequest);
 
       return {
         success: true,
@@ -155,20 +183,26 @@ export class TaxManagementController {
   @Post('calculate/paye')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Calculate PAYE tax' })
-  @ApiResponse({ status: 200, description: 'PAYE calculation completed successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'PAYE calculation completed successfully',
+  })
   async calculatePAYE(
     @Request() req: any,
-    @Body() body: { grossSalary: number; effectiveDate?: string },
+    @Body() body: { grossSalary: number; effectiveDate?: string }
   ) {
     try {
       const calculationRequest: TaxCalculationRequest = {
         organizationId: req.user.organizationId,
         taxType: TaxType.PAYE,
         amount: body.grossSalary,
-        effectiveDate: body.effectiveDate ? new Date(body.effectiveDate) : undefined,
+        effectiveDate: body.effectiveDate
+          ? new Date(body.effectiveDate)
+          : undefined,
       };
 
-      const result = await this.taxCalculationService.calculateTax(calculationRequest);
+      const result =
+        await this.taxCalculationService.calculateTax(calculationRequest);
 
       return {
         success: true,
@@ -187,20 +221,26 @@ export class TaxManagementController {
   @Post('calculate/turnover-tax')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Calculate turnover tax for small businesses' })
-  @ApiResponse({ status: 200, description: 'Turnover tax calculation completed successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Turnover tax calculation completed successfully',
+  })
   async calculateTurnoverTax(
     @Request() req: any,
-    @Body() body: { turnover: number; effectiveDate?: string },
+    @Body() body: { turnover: number; effectiveDate?: string }
   ) {
     try {
       const calculationRequest: TaxCalculationRequest = {
         organizationId: req.user.organizationId,
         taxType: TaxType.TURNOVER_TAX,
         amount: body.turnover,
-        effectiveDate: body.effectiveDate ? new Date(body.effectiveDate) : undefined,
+        effectiveDate: body.effectiveDate
+          ? new Date(body.effectiveDate)
+          : undefined,
       };
 
-      const result = await this.taxCalculationService.calculateTax(calculationRequest);
+      const result =
+        await this.taxCalculationService.calculateTax(calculationRequest);
 
       return {
         success: true,

@@ -1,10 +1,26 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Prisma, ApprovalRule, UserRole } from '@prisma/client';
+import { ApprovalRule, Prisma, UserRole } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
 
 export interface ApprovalCondition {
-  field: 'amount' | 'category' | 'submitter_role' | 'date' | 'vendor' | 'payment_method';
-  operator: 'gt' | 'gte' | 'lt' | 'lte' | 'eq' | 'ne' | 'in' | 'not_in' | 'contains' | 'starts_with';
+  field:
+    | 'amount'
+    | 'category'
+    | 'submitter_role'
+    | 'date'
+    | 'vendor'
+    | 'payment_method';
+  operator:
+    | 'gt'
+    | 'gte'
+    | 'lt'
+    | 'lte'
+    | 'eq'
+    | 'ne'
+    | 'in'
+    | 'not_in'
+    | 'contains'
+    | 'starts_with';
   value: any;
 }
 
@@ -63,7 +79,9 @@ export class ApprovalRulesEngine {
   /**
    * Evaluate all approval rules for an expense
    */
-  async evaluateExpense(expenseContext: ExpenseContext): Promise<ApprovalRequirement[]> {
+  async evaluateExpense(
+    expenseContext: ExpenseContext
+  ): Promise<ApprovalRequirement[]> {
     try {
       // Get all active rules for the organization, ordered by priority
       const rules = await this.getActiveRules(expenseContext.organizationId);
@@ -72,10 +90,18 @@ export class ApprovalRulesEngine {
 
       for (const rule of rules) {
         const ruleDefinition = this.parseRule(rule);
-        
-        if (await this.evaluateConditions(ruleDefinition.conditions, expenseContext)) {
+
+        if (
+          await this.evaluateConditions(
+            ruleDefinition.conditions,
+            expenseContext
+          )
+        ) {
           // Rule matches, process actions
-          const ruleRequirements = this.processActions(rule, ruleDefinition.actions);
+          const ruleRequirements = this.processActions(
+            rule,
+            ruleDefinition.actions
+          );
           requirements.push(...ruleRequirements);
 
           // Update rule match statistics
@@ -86,10 +112,15 @@ export class ApprovalRulesEngine {
       // Sort requirements by priority (higher number = higher priority)
       requirements.sort((a, b) => b.priority - a.priority);
 
-      this.logger.log(`Evaluated ${rules.length} rules for expense ${expenseContext.id}, found ${requirements.length} requirements`);
+      this.logger.log(
+        `Evaluated ${rules.length} rules for expense ${expenseContext.id}, found ${requirements.length} requirements`
+      );
       return requirements;
     } catch (error) {
-      this.logger.error(`Failed to evaluate approval rules: ${error.message}`, error);
+      this.logger.error(
+        `Failed to evaluate approval rules: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -97,7 +128,10 @@ export class ApprovalRulesEngine {
   /**
    * Create a new approval rule
    */
-  async createRule(ruleDefinition: ApprovalRuleDefinition, createdBy: string): Promise<ApprovalRule> {
+  async createRule(
+    ruleDefinition: ApprovalRuleDefinition,
+    createdBy: string
+  ): Promise<ApprovalRule> {
     try {
       // Validate rule definition
       this.validateRuleDefinition(ruleDefinition);
@@ -124,7 +158,10 @@ export class ApprovalRulesEngine {
       this.logger.log(`Created approval rule: ${rule.id} - ${rule.name}`);
       return rule;
     } catch (error) {
-      this.logger.error(`Failed to create approval rule: ${error.message}`, error);
+      this.logger.error(
+        `Failed to create approval rule: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -132,14 +169,20 @@ export class ApprovalRulesEngine {
   /**
    * Update an existing approval rule
    */
-  async updateRule(ruleId: string, updates: Partial<ApprovalRuleDefinition>): Promise<ApprovalRule> {
+  async updateRule(
+    ruleId: string,
+    updates: Partial<ApprovalRuleDefinition>
+  ): Promise<ApprovalRule> {
     try {
       const updateData: Prisma.ApprovalRuleUpdateInput = {};
 
       if (updates.name) updateData.name = updates.name;
-      if (updates.description !== undefined) updateData.description = updates.description;
-      if (updates.isActive !== undefined) updateData.isActive = updates.isActive;
-      if (updates.priority !== undefined) updateData.priority = updates.priority;
+      if (updates.description !== undefined)
+        updateData.description = updates.description;
+      if (updates.isActive !== undefined)
+        updateData.isActive = updates.isActive;
+      if (updates.priority !== undefined)
+        updateData.priority = updates.priority;
       if (updates.conditions) updateData.conditions = updates.conditions as any;
       if (updates.actions) updateData.actions = updates.actions as any;
 
@@ -151,7 +194,10 @@ export class ApprovalRulesEngine {
       this.logger.log(`Updated approval rule: ${rule.id} - ${rule.name}`);
       return rule;
     } catch (error) {
-      this.logger.error(`Failed to update approval rule: ${error.message}`, error);
+      this.logger.error(
+        `Failed to update approval rule: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -167,7 +213,10 @@ export class ApprovalRulesEngine {
 
       this.logger.log(`Deleted approval rule: ${ruleId}`);
     } catch (error) {
-      this.logger.error(`Failed to delete approval rule: ${error.message}`, error);
+      this.logger.error(
+        `Failed to delete approval rule: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -175,7 +224,10 @@ export class ApprovalRulesEngine {
   /**
    * Get all rules for an organization
    */
-  async getRules(organizationId: string, includeInactive: boolean = false): Promise<ApprovalRule[]> {
+  async getRules(
+    organizationId: string,
+    includeInactive: boolean = false
+  ): Promise<ApprovalRule[]> {
     try {
       const where: Prisma.ApprovalRuleWhereInput = {
         organizationId,
@@ -187,13 +239,13 @@ export class ApprovalRulesEngine {
 
       return await this.prisma.approvalRule.findMany({
         where,
-        orderBy: [
-          { priority: 'desc' },
-          { createdAt: 'asc' },
-        ],
+        orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }],
       });
     } catch (error) {
-      this.logger.error(`Failed to get approval rules: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get approval rules: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -201,16 +253,15 @@ export class ApprovalRulesEngine {
   /**
    * Get active rules for an organization
    */
-  private async getActiveRules(organizationId: string): Promise<ApprovalRule[]> {
+  private async getActiveRules(
+    organizationId: string
+  ): Promise<ApprovalRule[]> {
     return await this.prisma.approvalRule.findMany({
       where: {
         organizationId,
         isActive: true,
       },
-      orderBy: [
-        { priority: 'desc' },
-        { createdAt: 'asc' },
-      ],
+      orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }],
     });
   }
 
@@ -235,7 +286,7 @@ export class ApprovalRulesEngine {
    */
   private async evaluateConditions(
     conditions: ApprovalCondition[],
-    context: ExpenseContext,
+    context: ExpenseContext
   ): Promise<boolean> {
     // All conditions must be true (AND logic)
     for (const condition of conditions) {
@@ -249,7 +300,10 @@ export class ApprovalRulesEngine {
   /**
    * Evaluate a single condition
    */
-  private evaluateCondition(condition: ApprovalCondition, context: ExpenseContext): boolean {
+  private evaluateCondition(
+    condition: ApprovalCondition,
+    context: ExpenseContext
+  ): boolean {
     const fieldValue = this.getFieldValue(condition.field, context);
     const conditionValue = condition.value;
 
@@ -267,13 +321,23 @@ export class ApprovalRulesEngine {
       case 'ne':
         return fieldValue !== conditionValue;
       case 'in':
-        return Array.isArray(conditionValue) && conditionValue.includes(fieldValue);
+        return (
+          Array.isArray(conditionValue) && conditionValue.includes(fieldValue)
+        );
       case 'not_in':
-        return Array.isArray(conditionValue) && !conditionValue.includes(fieldValue);
+        return (
+          Array.isArray(conditionValue) && !conditionValue.includes(fieldValue)
+        );
       case 'contains':
-        return typeof fieldValue === 'string' && fieldValue.toLowerCase().includes(conditionValue.toLowerCase());
+        return (
+          typeof fieldValue === 'string' &&
+          fieldValue.toLowerCase().includes(conditionValue.toLowerCase())
+        );
       case 'starts_with':
-        return typeof fieldValue === 'string' && fieldValue.toLowerCase().startsWith(conditionValue.toLowerCase());
+        return (
+          typeof fieldValue === 'string' &&
+          fieldValue.toLowerCase().startsWith(conditionValue.toLowerCase())
+        );
       default:
         this.logger.warn(`Unknown operator: ${condition.operator}`);
         return false;
@@ -306,7 +370,10 @@ export class ApprovalRulesEngine {
   /**
    * Process rule actions to generate approval requirements
    */
-  private processActions(rule: ApprovalRule, actions: ApprovalAction[]): ApprovalRequirement[] {
+  private processActions(
+    rule: ApprovalRule,
+    actions: ApprovalAction[]
+  ): ApprovalRequirement[] {
     const requirements: ApprovalRequirement[] = [];
 
     for (const action of actions) {
@@ -343,7 +410,9 @@ export class ApprovalRulesEngine {
         },
       });
     } catch (error) {
-      this.logger.warn(`Failed to update rule stats for ${ruleId}: ${error.message}`);
+      this.logger.warn(
+        `Failed to update rule stats for ${ruleId}: ${error.message}`
+      );
     }
   }
 
@@ -365,8 +434,14 @@ export class ApprovalRulesEngine {
 
     // Validate conditions
     for (const condition of ruleDefinition.conditions) {
-      if (!condition.field || !condition.operator || condition.value === undefined) {
-        throw new Error('Invalid condition: field, operator, and value are required');
+      if (
+        !condition.field ||
+        !condition.operator ||
+        condition.value === undefined
+      ) {
+        throw new Error(
+          'Invalid condition: field, operator, and value are required'
+        );
       }
     }
 
@@ -377,9 +452,13 @@ export class ApprovalRulesEngine {
       }
 
       if (action.type === 'require_approval') {
-        if ((!action.approverRoles || action.approverRoles.length === 0) &&
-            (!action.approverUsers || action.approverUsers.length === 0)) {
-          throw new Error('Approval action requires at least one approver role or user');
+        if (
+          (!action.approverRoles || action.approverRoles.length === 0) &&
+          (!action.approverUsers || action.approverUsers.length === 0)
+        ) {
+          throw new Error(
+            'Approval action requires at least one approver role or user'
+          );
         }
       }
     }

@@ -14,10 +14,13 @@ export class TransactionSchedulerService {
   constructor(
     private readonly queueService: QueueService,
     private readonly prisma: PrismaService,
-    private readonly configService: ConfigService,
+    private readonly configService: ConfigService
   ) {
-    this.isSchedulerEnabled = this.configService.get<boolean>('SYNC_SCHEDULER_ENABLED', true);
-    
+    this.isSchedulerEnabled = this.configService.get<boolean>(
+      'SYNC_SCHEDULER_ENABLED',
+      true
+    );
+
     if (!this.isSchedulerEnabled) {
       this.logger.warn('Transaction sync scheduler is disabled');
     }
@@ -43,11 +46,16 @@ export class TransactionSchedulerService {
       let totalAccountsScheduled = 0;
 
       for (const org of organizations) {
-        const accountsScheduled = await this.scheduleOrganizationSync(org.id, false);
+        const accountsScheduled = await this.scheduleOrganizationSync(
+          org.id,
+          false
+        );
         totalAccountsScheduled += accountsScheduled;
       }
 
-      this.logger.log(`Hourly sync scheduled for ${totalAccountsScheduled} accounts across ${organizations.length} organizations`);
+      this.logger.log(
+        `Hourly sync scheduled for ${totalAccountsScheduled} accounts across ${organizations.length} organizations`
+      );
     } catch (error) {
       this.logger.error('Failed to schedule hourly sync:', error);
     }
@@ -70,11 +78,14 @@ export class TransactionSchedulerService {
 
     try {
       // Schedule comprehensive sync for all organizations
-      const job = await this.queueService.addSyncAllAccountsJob({
-        isManual: false,
-      }, {
-        priority: 20, // Lower priority for scheduled jobs
-      });
+      const job = await this.queueService.addSyncAllAccountsJob(
+        {
+          isManual: false,
+        },
+        {
+          priority: 20, // Lower priority for scheduled jobs
+        }
+      );
 
       this.logger.log(`Daily comprehensive sync scheduled (Job: ${job.id})`);
     } catch (error) {
@@ -103,20 +114,28 @@ export class TransactionSchedulerService {
 
       for (const account of accounts) {
         try {
-          await this.queueService.addUpdateBalanceJob({
-            accountId: account.id,
-            organizationId: account.organizationId,
-          }, {
-            priority: 10,
-          });
+          await this.queueService.addUpdateBalanceJob(
+            {
+              accountId: account.id,
+              organizationId: account.organizationId,
+            },
+            {
+              priority: 10,
+            }
+          );
 
           balanceUpdatesScheduled++;
         } catch (error) {
-          this.logger.error(`Failed to schedule balance update for account ${account.id}:`, error);
+          this.logger.error(
+            `Failed to schedule balance update for account ${account.id}:`,
+            error
+          );
         }
       }
 
-      this.logger.log(`Balance updates scheduled for ${balanceUpdatesScheduled} accounts`);
+      this.logger.log(
+        `Balance updates scheduled for ${balanceUpdatesScheduled} accounts`
+      );
     } catch (error) {
       this.logger.error('Failed to schedule balance updates:', error);
     }
@@ -139,15 +158,12 @@ export class TransactionSchedulerService {
 
     try {
       const staleThreshold = new Date(Date.now() - 6 * 60 * 60 * 1000); // 6 hours ago
-      
+
       const staleAccounts = await this.prisma.mobileMoneyAccount.findMany({
         where: {
           isLinked: true,
           provider: MobileMoneyProvider.AIRTEL_MONEY,
-          OR: [
-            { lastSyncAt: null },
-            { lastSyncAt: { lt: staleThreshold } },
-          ],
+          OR: [{ lastSyncAt: null }, { lastSyncAt: { lt: staleThreshold } }],
         },
         select: {
           id: true,
@@ -161,21 +177,29 @@ export class TransactionSchedulerService {
 
       for (const account of staleAccounts) {
         try {
-          await this.queueService.addSyncAccountJob({
-            accountId: account.id,
-            organizationId: account.organizationId,
-            isManual: false,
-          }, {
-            priority: 15, // Medium priority for stale accounts
-          });
+          await this.queueService.addSyncAccountJob(
+            {
+              accountId: account.id,
+              organizationId: account.organizationId,
+              isManual: false,
+            },
+            {
+              priority: 15, // Medium priority for stale accounts
+            }
+          );
 
           staleAccountsScheduled++;
         } catch (error) {
-          this.logger.error(`Failed to schedule sync for stale account ${account.id}:`, error);
+          this.logger.error(
+            `Failed to schedule sync for stale account ${account.id}:`,
+            error
+          );
         }
       }
 
-      this.logger.log(`Sync scheduled for ${staleAccountsScheduled} stale accounts`);
+      this.logger.log(
+        `Sync scheduled for ${staleAccountsScheduled} stale accounts`
+      );
     } catch (error) {
       this.logger.error('Failed to schedule stale account sync:', error);
     }
@@ -199,7 +223,7 @@ export class TransactionSchedulerService {
     try {
       // Clean up old sync jobs from database
       const cutoffDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // 30 days ago
-      
+
       const deletedJobs = await this.prisma.syncJob.deleteMany({
         where: {
           completedAt: {
@@ -211,7 +235,9 @@ export class TransactionSchedulerService {
         },
       });
 
-      this.logger.log(`Cleaned up ${deletedJobs.count} old sync jobs from database`);
+      this.logger.log(
+        `Cleaned up ${deletedJobs.count} old sync jobs from database`
+      );
 
       // Queue cleanup is handled by QueueService.cleanupOldJobs()
       this.logger.log('Queue maintenance completed');
@@ -223,7 +249,10 @@ export class TransactionSchedulerService {
   /**
    * Schedule sync for a specific organization
    */
-  async scheduleOrganizationSync(organizationId: string, isManual: boolean = false): Promise<number> {
+  async scheduleOrganizationSync(
+    organizationId: string,
+    isManual: boolean = false
+  ): Promise<number> {
     try {
       const accounts = await this.prisma.mobileMoneyAccount.findMany({
         where: {
@@ -245,28 +274,38 @@ export class TransactionSchedulerService {
           // unless this is a manual sync
           if (!isManual && account.lastSyncAt) {
             const timeSinceLastSync = Date.now() - account.lastSyncAt.getTime();
-            if (timeSinceLastSync < 30 * 60 * 1000) { // 30 minutes
+            if (timeSinceLastSync < 30 * 60 * 1000) {
+              // 30 minutes
               continue;
             }
           }
 
-          await this.queueService.addSyncAccountJob({
-            accountId: account.id,
-            organizationId,
-            isManual,
-          }, {
-            priority: isManual ? 1 : 10,
-          });
+          await this.queueService.addSyncAccountJob(
+            {
+              accountId: account.id,
+              organizationId,
+              isManual,
+            },
+            {
+              priority: isManual ? 1 : 10,
+            }
+          );
 
           accountsScheduled++;
         } catch (error) {
-          this.logger.error(`Failed to schedule sync for account ${account.id}:`, error);
+          this.logger.error(
+            `Failed to schedule sync for account ${account.id}:`,
+            error
+          );
         }
       }
 
       return accountsScheduled;
     } catch (error) {
-      this.logger.error(`Failed to schedule organization sync for ${organizationId}:`, error);
+      this.logger.error(
+        `Failed to schedule organization sync for ${organizationId}:`,
+        error
+      );
       return 0;
     }
   }

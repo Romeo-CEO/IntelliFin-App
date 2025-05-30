@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Prisma, Payment, PaymentMethod } from '@prisma/client';
+import { Payment, PaymentMethod, Prisma } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
 
 export interface CreatePaymentData {
@@ -122,9 +122,12 @@ export class PaymentRepository {
   /**
    * Find payment by ID with relations
    */
-  async findById(id: string, organizationId: string): Promise<PaymentWithRelations | null> {
+  async findById(
+    id: string,
+    organizationId: string
+  ): Promise<PaymentWithRelations | null> {
     try {
-      return await this.prisma.payment.findFirst({
+      return (await this.prisma.payment.findFirst({
         where: {
           id,
           organizationId,
@@ -165,9 +168,12 @@ export class PaymentRepository {
             },
           },
         },
-      }) as PaymentWithRelations;
+      })) as PaymentWithRelations;
     } catch (error) {
-      this.logger.error(`Failed to find payment by ID: ${error.message}`, error);
+      this.logger.error(
+        `Failed to find payment by ID: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -179,12 +185,12 @@ export class PaymentRepository {
     filters: PaymentFilters,
     orderBy: Prisma.PaymentOrderByWithRelationInput = { paymentDate: 'desc' },
     skip?: number,
-    take?: number,
+    take?: number
   ): Promise<PaymentWithRelations[]> {
     try {
       const where = this.buildWhereClause(filters);
 
-      return await this.prisma.payment.findMany({
+      return (await this.prisma.payment.findMany({
         where,
         include: {
           customer: {
@@ -215,7 +221,7 @@ export class PaymentRepository {
         orderBy,
         skip,
         take,
-      }) as PaymentWithRelations[];
+      })) as PaymentWithRelations[];
     } catch (error) {
       this.logger.error(`Failed to find payments: ${error.message}`, error);
       throw error;
@@ -238,7 +244,11 @@ export class PaymentRepository {
   /**
    * Update payment
    */
-  async update(id: string, organizationId: string, data: UpdatePaymentData): Promise<PaymentWithRelations> {
+  async update(
+    id: string,
+    organizationId: string,
+    data: UpdatePaymentData
+  ): Promise<PaymentWithRelations> {
     try {
       const updatedPayment = await this.prisma.payment.update({
         where: {
@@ -352,9 +362,11 @@ export class PaymentRepository {
   /**
    * Find payments for reconciliation
    */
-  async findUnreconciledPayments(organizationId: string): Promise<PaymentWithRelations[]> {
+  async findUnreconciledPayments(
+    organizationId: string
+  ): Promise<PaymentWithRelations[]> {
     try {
-      return await this.prisma.payment.findMany({
+      return (await this.prisma.payment.findMany({
         where: {
           organizationId,
           transactionId: null, // Payments not linked to transactions
@@ -386,9 +398,12 @@ export class PaymentRepository {
           },
         },
         orderBy: { paymentDate: 'desc' },
-      }) as PaymentWithRelations[];
+      })) as PaymentWithRelations[];
     } catch (error) {
-      this.logger.error(`Failed to find unreconciled payments: ${error.message}`, error);
+      this.logger.error(
+        `Failed to find unreconciled payments: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -396,9 +411,12 @@ export class PaymentRepository {
   /**
    * Find payments by invoice ID
    */
-  async findByInvoiceId(invoiceId: string, organizationId: string): Promise<PaymentWithRelations[]> {
+  async findByInvoiceId(
+    invoiceId: string,
+    organizationId: string
+  ): Promise<PaymentWithRelations[]> {
     try {
-      return await this.prisma.payment.findMany({
+      return (await this.prisma.payment.findMany({
         where: {
           invoiceId,
           organizationId,
@@ -430,9 +448,12 @@ export class PaymentRepository {
           },
         },
         orderBy: { paymentDate: 'desc' },
-      }) as PaymentWithRelations[];
+      })) as PaymentWithRelations[];
     } catch (error) {
-      this.logger.error(`Failed to find payments by invoice ID: ${error.message}`, error);
+      this.logger.error(
+        `Failed to find payments by invoice ID: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -481,8 +502,14 @@ export class PaymentRepository {
       where.OR = [
         { reference: { contains: filters.search, mode: 'insensitive' } },
         { notes: { contains: filters.search, mode: 'insensitive' } },
-        { customer: { name: { contains: filters.search, mode: 'insensitive' } } },
-        { invoice: { invoiceNumber: { contains: filters.search, mode: 'insensitive' } } },
+        {
+          customer: { name: { contains: filters.search, mode: 'insensitive' } },
+        },
+        {
+          invoice: {
+            invoiceNumber: { contains: filters.search, mode: 'insensitive' },
+          },
+        },
       ];
     }
 

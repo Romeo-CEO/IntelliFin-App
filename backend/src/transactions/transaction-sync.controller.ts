@@ -1,22 +1,22 @@
 import {
-  Controller,
-  Post,
-  Get,
-  Param,
-  Query,
   Body,
-  UseGuards,
-  ParseUUIDPipe,
+  Controller,
+  Get,
   HttpStatus,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Query,
+  UseGuards,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
   ApiBearerAuth,
+  ApiBody,
+  ApiOperation,
   ApiParam,
   ApiQuery,
-  ApiBody,
+  ApiResponse,
+  ApiTags,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 
@@ -60,14 +60,15 @@ export class TransactionSyncController {
   constructor(
     private readonly queueService: QueueService,
     private readonly transactionSyncService: TransactionSyncService,
-    private readonly prisma: PrismaService,
+    private readonly prisma: PrismaService
   ) {}
 
   @Post('manual')
   @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 requests per minute
   @ApiOperation({
     summary: 'Trigger manual transaction sync',
-    description: 'Manually trigger transaction synchronization for specific accounts or all accounts',
+    description:
+      'Manually trigger transaction synchronization for specific accounts or all accounts',
   })
   @ApiBody({
     description: 'Manual sync configuration',
@@ -77,7 +78,8 @@ export class TransactionSyncController {
         accountIds: {
           type: 'array',
           items: { type: 'string', format: 'uuid' },
-          description: 'Specific account IDs to sync (optional - if not provided, syncs all accounts)',
+          description:
+            'Specific account IDs to sync (optional - if not provided, syncs all accounts)',
         },
         startDate: {
           type: 'string',
@@ -119,7 +121,7 @@ export class TransactionSyncController {
   })
   async triggerManualSync(
     @CurrentUser() user: AuthenticatedUser,
-    @Body() syncDto: ManualSyncDto,
+    @Body() syncDto: ManualSyncDto
   ) {
     const jobIds: string[] = [];
     let accountsScheduled = 0;
@@ -141,7 +143,9 @@ export class TransactionSyncController {
             const job = await this.queueService.addSyncAccountJob({
               accountId,
               organizationId: user.organizationId,
-              startDate: syncDto.startDate ? new Date(syncDto.startDate) : undefined,
+              startDate: syncDto.startDate
+                ? new Date(syncDto.startDate)
+                : undefined,
               endDate: syncDto.endDate ? new Date(syncDto.endDate) : undefined,
               isManual: true,
               userId: user.userId,
@@ -160,7 +164,7 @@ export class TransactionSyncController {
         });
 
         jobIds.push(job.id.toString());
-        
+
         // Count linked accounts
         const accountCount = await this.prisma.mobileMoneyAccount.count({
           where: {
@@ -168,7 +172,7 @@ export class TransactionSyncController {
             isLinked: true,
           },
         });
-        
+
         accountsScheduled = accountCount;
       }
 
@@ -178,10 +182,10 @@ export class TransactionSyncController {
         jobIds,
         accountsScheduled,
       };
-    } catch (error) {
+    } catch (error: any) {
       return {
         success: false,
-        message: error.message || 'Failed to schedule sync',
+        message: (error as any).message || 'Failed to schedule sync',
         jobIds: [],
         accountsScheduled: 0,
       };
@@ -191,7 +195,8 @@ export class TransactionSyncController {
   @Get('status')
   @ApiOperation({
     summary: 'Get sync status for all accounts',
-    description: 'Retrieve synchronization status for all linked accounts in the organization',
+    description:
+      'Retrieve synchronization status for all linked accounts in the organization',
   })
   @ApiResponse({
     status: 200,
@@ -207,9 +212,16 @@ export class TransactionSyncController {
               accountId: { type: 'string', format: 'uuid' },
               accountName: { type: 'string' },
               isLinked: { type: 'boolean' },
-              lastSyncAt: { type: 'string', format: 'date-time', nullable: true },
+              lastSyncAt: {
+                type: 'string',
+                format: 'date-time',
+                nullable: true,
+              },
               currentBalance: { type: 'number', nullable: true },
-              syncStatus: { type: 'string', enum: ['idle', 'syncing', 'failed', 'completed'] },
+              syncStatus: {
+                type: 'string',
+                enum: ['idle', 'syncing', 'failed', 'completed'],
+              },
               activeJobs: { type: 'number' },
             },
           },
@@ -220,7 +232,11 @@ export class TransactionSyncController {
             totalAccounts: { type: 'number' },
             linkedAccounts: { type: 'number' },
             activeSyncs: { type: 'number' },
-            lastGlobalSync: { type: 'string', format: 'date-time', nullable: true },
+            lastGlobalSync: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+            },
           },
         },
       },
@@ -233,6 +249,16 @@ export class TransactionSyncController {
       },
       include: {
         syncJobs: {
+          select: {
+            id: true,
+            status: true,
+            isManual: true,
+            startedAt: true,
+            completedAt: true,
+            transactionsProcessed: true,
+            newTransactions: true,
+            errorMessage: true,
+          },
           orderBy: { startedAt: 'desc' },
           take: 1,
         },
@@ -243,9 +269,11 @@ export class TransactionSyncController {
     let totalActiveSyncs = 0;
 
     for (const account of accounts) {
-      const activeJobs = await this.queueService.getActiveJobsForAccount(account.id);
+      const activeJobs = await this.queueService.getActiveJobsForAccount(
+        account.id
+      );
       const activeJobCount = activeJobs.length;
-      
+
       if (activeJobCount > 0) {
         totalActiveSyncs++;
       }
@@ -256,7 +284,8 @@ export class TransactionSyncController {
       if (activeJobCount > 0) {
         syncStatus = 'syncing';
       } else if (lastSyncJob) {
-        syncStatus = lastSyncJob.status === 'COMPLETED' ? 'completed' : 'failed';
+        syncStatus =
+          lastSyncJob.status === 'COMPLETED' ? 'completed' : 'failed';
       }
 
       accountStatuses.push({
@@ -264,17 +293,25 @@ export class TransactionSyncController {
         accountName: account.accountName || account.accountNumber,
         isLinked: account.isLinked,
         lastSyncAt: account.lastSyncAt,
-        currentBalance: account.currentBalance ? parseFloat(account.currentBalance.toString()) : null,
+        currentBalance: account.currentBalance
+          ? parseFloat(account.currentBalance.toString())
+          : null,
         syncStatus,
-        lastSyncResult: lastSyncJob ? {
-          success: lastSyncJob.status === 'COMPLETED',
-          newTransactions: lastSyncJob.newTransactions || 0,
-          totalProcessed: lastSyncJob.transactionsProcessed || 0,
-          syncDuration: lastSyncJob.completedAt && lastSyncJob.startedAt 
-            ? lastSyncJob.completedAt.getTime() - lastSyncJob.startedAt.getTime()
-            : 0,
-          errors: lastSyncJob.errorMessage ? [lastSyncJob.errorMessage] : [],
-        } : undefined,
+        lastSyncResult: lastSyncJob
+          ? {
+              success: lastSyncJob.status === 'COMPLETED',
+              newTransactions: lastSyncJob.newTransactions || 0,
+              totalProcessed: lastSyncJob.transactionsProcessed || 0,
+              syncDuration:
+                lastSyncJob.completedAt && lastSyncJob.startedAt
+                  ? lastSyncJob.completedAt.getTime() -
+                    lastSyncJob.startedAt.getTime()
+                  : 0,
+              errors: lastSyncJob.errorMessage
+                ? [lastSyncJob.errorMessage]
+                : [],
+            }
+          : undefined,
         activeJobs: activeJobCount,
       });
     }
@@ -303,7 +340,8 @@ export class TransactionSyncController {
   @Get('status/:accountId')
   @ApiOperation({
     summary: 'Get sync status for specific account',
-    description: 'Retrieve detailed synchronization status for a specific account',
+    description:
+      'Retrieve detailed synchronization status for a specific account',
   })
   @ApiParam({
     name: 'accountId',
@@ -321,7 +359,7 @@ export class TransactionSyncController {
   })
   async getAccountSyncStatus(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('accountId', ParseUUIDPipe) accountId: string,
+    @Param('accountId', ParseUUIDPipe) accountId: string
   ) {
     const account = await this.prisma.mobileMoneyAccount.findFirst({
       where: {
@@ -330,6 +368,16 @@ export class TransactionSyncController {
       },
       include: {
         syncJobs: {
+          select: {
+            id: true,
+            status: true,
+            isManual: true,
+            startedAt: true,
+            completedAt: true,
+            transactionsProcessed: true,
+            newTransactions: true,
+            errorMessage: true,
+          },
           orderBy: { startedAt: 'desc' },
           take: 10,
         },
@@ -343,7 +391,8 @@ export class TransactionSyncController {
       };
     }
 
-    const activeJobs = await this.queueService.getActiveJobsForAccount(accountId);
+    const activeJobs =
+      await this.queueService.getActiveJobsForAccount(accountId);
 
     return {
       account: {
@@ -353,7 +402,9 @@ export class TransactionSyncController {
         provider: account.provider,
         isLinked: account.isLinked,
         lastSyncAt: account.lastSyncAt,
-        currentBalance: account.currentBalance ? parseFloat(account.currentBalance.toString()) : null,
+        currentBalance: account.currentBalance
+          ? parseFloat(account.currentBalance.toString())
+          : null,
         balanceUpdatedAt: account.balanceUpdatedAt,
       },
       syncStatus: {
@@ -377,7 +428,8 @@ export class TransactionSyncController {
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 requests per minute
   @ApiOperation({
     summary: 'Cancel active sync jobs for account',
-    description: 'Cancel all active and pending sync jobs for a specific account',
+    description:
+      'Cancel all active and pending sync jobs for a specific account',
   })
   @ApiParam({
     name: 'accountId',
@@ -395,7 +447,7 @@ export class TransactionSyncController {
   })
   async cancelAccountSync(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('accountId', ParseUUIDPipe) accountId: string,
+    @Param('accountId', ParseUUIDPipe) accountId: string
   ) {
     // Verify account belongs to user's organization
     const account = await this.prisma.mobileMoneyAccount.findFirst({
@@ -419,10 +471,10 @@ export class TransactionSyncController {
         success: true,
         message: 'Sync jobs cancelled successfully',
       };
-    } catch (error) {
+    } catch (error: any) {
       return {
         success: false,
-        message: error.message || 'Failed to cancel sync jobs',
+        message: (error as any).message || 'Failed to cancel sync jobs',
       };
     }
   }

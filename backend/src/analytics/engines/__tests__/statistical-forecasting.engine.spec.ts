@@ -1,10 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { StatisticalForecastingEngine } from '../statistical/statistical-forecasting.engine';
 import {
-  TimeSeriesData,
-  ForecastingOptions,
   ForecastResult,
-  ModelValidation
+  ForecastingOptions,
+  ModelValidation,
+  TimeSeriesData,
 } from '../../interfaces/analytics-engine.interface';
 
 describe('StatisticalForecastingEngine', () => {
@@ -15,7 +15,9 @@ describe('StatisticalForecastingEngine', () => {
       providers: [StatisticalForecastingEngine],
     }).compile();
 
-    engine = module.get<StatisticalForecastingEngine>(StatisticalForecastingEngine);
+    engine = module.get<StatisticalForecastingEngine>(
+      StatisticalForecastingEngine
+    );
   });
 
   describe('Engine Properties', () => {
@@ -38,9 +40,17 @@ describe('StatisticalForecastingEngine', () => {
       metadata: {
         organizationId: 'test-org',
         dataType: 'REVENUE',
-        dateRange: { startDate: new Date('2024-01-01'), endDate: new Date('2024-12-31') },
-        quality: { completeness: 1.0, accuracy: 0.9, consistency: 0.8, timeliness: 1.0 }
-      }
+        dateRange: {
+          startDate: new Date('2024-01-01'),
+          endDate: new Date('2024-12-31'),
+        },
+        quality: {
+          completeness: 1.0,
+          accuracy: 0.9,
+          consistency: 0.8,
+          timeliness: 1.0,
+        },
+      },
     };
 
     const defaultOptions: ForecastingOptions = {
@@ -48,11 +58,14 @@ describe('StatisticalForecastingEngine', () => {
       periods: 6,
       confidence: 0.95,
       includeSeasonality: false,
-      zambianContext: false
+      zambianContext: false,
     };
 
     it('should generate linear forecast successfully', async () => {
-      const result = await engine.generateForecast(mockTimeSeriesData, defaultOptions);
+      const result = await engine.generateForecast(
+        mockTimeSeriesData,
+        defaultOptions
+      );
 
       expect(result).toBeDefined();
       expect(result.predictions).toHaveLength(6);
@@ -79,7 +92,10 @@ describe('StatisticalForecastingEngine', () => {
     });
 
     it('should generate exponential smoothing forecast', async () => {
-      const options: ForecastingOptions = { ...defaultOptions, method: 'exponential' };
+      const options: ForecastingOptions = {
+        ...defaultOptions,
+        method: 'exponential',
+      };
       const result = await engine.generateForecast(mockTimeSeriesData, options);
 
       expect(result).toBeDefined();
@@ -91,7 +107,7 @@ describe('StatisticalForecastingEngine', () => {
       const options: ForecastingOptions = {
         ...defaultOptions,
         method: 'seasonal',
-        includeSeasonality: true
+        includeSeasonality: true,
       };
       const result = await engine.generateForecast(mockTimeSeriesData, options);
 
@@ -111,23 +127,28 @@ describe('StatisticalForecastingEngine', () => {
     it('should include Zambian context when enabled', async () => {
       const options: ForecastingOptions = {
         ...defaultOptions,
-        zambianContext: true
+        zambianContext: true,
       };
       const result = await engine.generateForecast(mockTimeSeriesData, options);
 
-      expect(result.insights.some(insight =>
-        insight.includes('agricultural') || insight.includes('mobile money')
-      )).toBe(true);
-      expect(result.recommendations.some(rec =>
-        rec.includes('ZRA') || rec.includes('seasonal')
-      )).toBe(true);
+      expect(
+        result.insights.some(
+          insight =>
+            insight.includes('agricultural') || insight.includes('mobile money')
+        )
+      ).toBe(true);
+      expect(
+        result.recommendations.some(
+          rec => rec.includes('ZRA') || rec.includes('seasonal')
+        )
+      ).toBe(true);
     });
 
     it('should handle insufficient data gracefully', async () => {
       const insufficientData: TimeSeriesData = {
         ...mockTimeSeriesData,
         values: [100, 110],
-        timestamps: [new Date('2024-01-01'), new Date('2024-02-01')]
+        timestamps: [new Date('2024-01-01'), new Date('2024-02-01')],
       };
 
       await expect(
@@ -138,7 +159,7 @@ describe('StatisticalForecastingEngine', () => {
     it('should handle invalid data values', async () => {
       const invalidData: TimeSeriesData = {
         ...mockTimeSeriesData,
-        values: [100, NaN, -50, 120]
+        values: [100, NaN, -50, 120],
       };
 
       await expect(
@@ -155,10 +176,13 @@ describe('StatisticalForecastingEngine', () => {
           date.setMonth(i);
           return date;
         }),
-        metadata: mockTimeSeriesData.metadata
+        metadata: mockTimeSeriesData.metadata,
       };
 
-      const result = await engine.generateForecast(trendingData, defaultOptions);
+      const result = await engine.generateForecast(
+        trendingData,
+        defaultOptions
+      );
 
       // For strongly trending data, we should achieve high accuracy
       expect(result.accuracy.confidence).toBeGreaterThan(0.8);
@@ -177,9 +201,17 @@ describe('StatisticalForecastingEngine', () => {
       metadata: {
         organizationId: 'test-org',
         dataType: 'REVENUE',
-        dateRange: { startDate: new Date('2024-01-01'), endDate: new Date('2024-10-31') },
-        quality: { completeness: 1.0, accuracy: 0.9, consistency: 0.8, timeliness: 1.0 }
-      }
+        dateRange: {
+          startDate: new Date('2024-01-01'),
+          endDate: new Date('2024-10-31'),
+        },
+        quality: {
+          completeness: 1.0,
+          accuracy: 0.9,
+          consistency: 0.8,
+          timeliness: 1.0,
+        },
+      },
     };
 
     it('should validate model successfully with good data', async () => {
@@ -202,16 +234,18 @@ describe('StatisticalForecastingEngine', () => {
           date.setMonth(i);
           return date;
         }),
-        metadata: mockTimeSeriesData.metadata
+        metadata: mockTimeSeriesData.metadata,
       };
 
       const validation = await engine.validateModel(poorData);
 
       expect(validation.recommendations.length).toBeGreaterThan(0);
       if (!validation.isValid) {
-        expect(validation.recommendations.some(rec =>
-          rec.includes('data quality') || rec.includes('volatility')
-        )).toBe(true);
+        expect(
+          validation.recommendations.some(
+            rec => rec.includes('data quality') || rec.includes('volatility')
+          )
+        ).toBe(true);
       }
     });
   });
@@ -243,7 +277,10 @@ describe('StatisticalForecastingEngine', () => {
   describe('Performance Requirements', () => {
     it('should complete forecast generation within 2 seconds', async () => {
       const largeDataset: TimeSeriesData = {
-        values: Array.from({ length: 100 }, (_, i) => 100 + Math.sin(i * 0.1) * 20 + i * 2),
+        values: Array.from(
+          { length: 100 },
+          (_, i) => 100 + Math.sin(i * 0.1) * 20 + i * 2
+        ),
         timestamps: Array.from({ length: 100 }, (_, i) => {
           const date = new Date('2020-01-01');
           date.setMonth(i);
@@ -252,9 +289,17 @@ describe('StatisticalForecastingEngine', () => {
         metadata: {
           organizationId: 'test-org',
           dataType: 'REVENUE',
-          dateRange: { startDate: new Date('2020-01-01'), endDate: new Date('2028-04-30') },
-          quality: { completeness: 1.0, accuracy: 0.9, consistency: 0.8, timeliness: 1.0 }
-        }
+          dateRange: {
+            startDate: new Date('2020-01-01'),
+            endDate: new Date('2028-04-30'),
+          },
+          quality: {
+            completeness: 1.0,
+            accuracy: 0.9,
+            consistency: 0.8,
+            timeliness: 1.0,
+          },
+        },
       };
 
       const options: ForecastingOptions = {
@@ -262,7 +307,7 @@ describe('StatisticalForecastingEngine', () => {
         periods: 12,
         confidence: 0.95,
         includeSeasonality: true,
-        zambianContext: true
+        zambianContext: true,
       };
 
       const startTime = Date.now();
@@ -286,9 +331,17 @@ describe('StatisticalForecastingEngine', () => {
         metadata: {
           organizationId: 'test-org',
           dataType: 'REVENUE',
-          dateRange: { startDate: new Date('2024-01-01'), endDate: new Date('2024-08-31') },
-          quality: { completeness: 1.0, accuracy: 0.9, consistency: 0.8, timeliness: 1.0 }
-        }
+          dateRange: {
+            startDate: new Date('2024-01-01'),
+            endDate: new Date('2024-08-31'),
+          },
+          quality: {
+            completeness: 1.0,
+            accuracy: 0.9,
+            consistency: 0.8,
+            timeliness: 1.0,
+          },
+        },
       };
 
       const options: ForecastingOptions = {
@@ -296,7 +349,7 @@ describe('StatisticalForecastingEngine', () => {
         periods: 6,
         confidence: 0.95,
         includeSeasonality: false,
-        zambianContext: false
+        zambianContext: false,
       };
 
       const startTime = Date.now();
@@ -330,9 +383,17 @@ describe('StatisticalForecastingEngine', () => {
         metadata: {
           organizationId: 'test-org',
           dataType: 'REVENUE',
-          dateRange: { startDate: new Date('2024-01-01'), endDate: new Date('2024-03-31') },
-          quality: { completeness: 1.0, accuracy: 0.9, consistency: 0.8, timeliness: 1.0 }
-        }
+          dateRange: {
+            startDate: new Date('2024-01-01'),
+            endDate: new Date('2024-03-31'),
+          },
+          quality: {
+            completeness: 1.0,
+            accuracy: 0.9,
+            consistency: 0.8,
+            timeliness: 1.0,
+          },
+        },
       };
 
       const options: ForecastingOptions = {
@@ -340,12 +401,14 @@ describe('StatisticalForecastingEngine', () => {
         periods: 3,
         confidence: 0.95,
         includeSeasonality: false,
-        zambianContext: false
+        zambianContext: false,
       };
 
       await expect(
         engine.generateForecast(malformedData, options)
-      ).rejects.toThrow('Timestamps and values arrays must have the same length');
+      ).rejects.toThrow(
+        'Timestamps and values arrays must have the same length'
+      );
     });
 
     it('should provide meaningful error messages', async () => {
@@ -355,9 +418,17 @@ describe('StatisticalForecastingEngine', () => {
         metadata: {
           organizationId: 'test-org',
           dataType: 'REVENUE',
-          dateRange: { startDate: new Date('2024-01-01'), endDate: new Date('2024-12-31') },
-          quality: { completeness: 0, accuracy: 0, consistency: 0, timeliness: 0 }
-        }
+          dateRange: {
+            startDate: new Date('2024-01-01'),
+            endDate: new Date('2024-12-31'),
+          },
+          quality: {
+            completeness: 0,
+            accuracy: 0,
+            consistency: 0,
+            timeliness: 0,
+          },
+        },
       };
 
       const options: ForecastingOptions = {
@@ -365,12 +436,12 @@ describe('StatisticalForecastingEngine', () => {
         periods: 6,
         confidence: 0.95,
         includeSeasonality: false,
-        zambianContext: false
+        zambianContext: false,
       };
 
-      await expect(
-        engine.generateForecast(emptyData, options)
-      ).rejects.toThrow('Insufficient data points for forecasting');
+      await expect(engine.generateForecast(emptyData, options)).rejects.toThrow(
+        'Insufficient data points for forecasting'
+      );
     });
   });
 });

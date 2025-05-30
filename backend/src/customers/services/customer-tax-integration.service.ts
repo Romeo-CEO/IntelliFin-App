@@ -1,4 +1,4 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
@@ -34,7 +34,11 @@ export interface TaxComplianceCheck {
   complianceScore: number;
   lastChecked: Date;
   issues: Array<{
-    type: 'TIN_INVALID' | 'VAT_MISMATCH' | 'EXEMPTION_EXPIRED' | 'DOCUMENTATION_MISSING';
+    type:
+      | 'TIN_INVALID'
+      | 'VAT_MISMATCH'
+      | 'EXEMPTION_EXPIRED'
+      | 'DOCUMENTATION_MISSING';
     severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
     description: string;
     recommendation: string;
@@ -49,7 +53,7 @@ export class CustomerTaxIntegrationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly httpService: HttpService,
-    private readonly configService: ConfigService,
+    private readonly configService: ConfigService
   ) {}
 
   /**
@@ -69,10 +73,15 @@ export class CustomerTaxIntegrationService {
       // For now, simulate validation based on TIN patterns
       const mockValidation = this.simulateTINValidation(tinNumber);
 
-      this.logger.log(`TIN validation result for ${tinNumber}: ${mockValidation.isValid}`);
+      this.logger.log(
+        `TIN validation result for ${tinNumber}: ${mockValidation.isValid}`
+      );
       return mockValidation;
     } catch (error) {
-      this.logger.error(`Failed to validate TIN ${tinNumber}: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to validate TIN ${tinNumber}: ${error.message}`,
+        error.stack
+      );
       return {
         isValid: false,
         tinNumber,
@@ -87,7 +96,7 @@ export class CustomerTaxIntegrationService {
   async createCustomerTaxProfile(
     organizationId: string,
     customerId: string,
-    profileData: Partial<CustomerTaxProfile>,
+    profileData: Partial<CustomerTaxProfile>
   ): Promise<CustomerTaxProfile> {
     try {
       this.logger.log(`Creating tax profile for customer: ${customerId}`);
@@ -140,10 +149,15 @@ export class CustomerTaxIntegrationService {
         },
       });
 
-      this.logger.log(`Tax profile created/updated for customer: ${customerId}`);
+      this.logger.log(
+        `Tax profile created/updated for customer: ${customerId}`
+      );
       return taxProfile as CustomerTaxProfile;
     } catch (error) {
-      this.logger.error(`Failed to create customer tax profile: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to create customer tax profile: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -151,7 +165,9 @@ export class CustomerTaxIntegrationService {
   /**
    * Get customer tax profile
    */
-  async getCustomerTaxProfile(customerId: string): Promise<CustomerTaxProfile | null> {
+  async getCustomerTaxProfile(
+    customerId: string
+  ): Promise<CustomerTaxProfile | null> {
     try {
       const profile = await this.prisma.customerTaxProfile.findUnique({
         where: { customerId },
@@ -159,7 +175,10 @@ export class CustomerTaxIntegrationService {
 
       return profile as CustomerTaxProfile | null;
     } catch (error) {
-      this.logger.error(`Failed to get customer tax profile: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to get customer tax profile: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -167,7 +186,9 @@ export class CustomerTaxIntegrationService {
   /**
    * Check customer tax compliance
    */
-  async checkCustomerTaxCompliance(customerId: string): Promise<TaxComplianceCheck> {
+  async checkCustomerTaxCompliance(
+    customerId: string
+  ): Promise<TaxComplianceCheck> {
     try {
       this.logger.log(`Checking tax compliance for customer: ${customerId}`);
 
@@ -180,7 +201,8 @@ export class CustomerTaxIntegrationService {
           type: 'DOCUMENTATION_MISSING',
           severity: 'HIGH',
           description: 'Customer tax profile not found',
-          recommendation: 'Create customer tax profile with TIN and tax information',
+          recommendation:
+            'Create customer tax profile with TIN and tax information',
         });
         complianceScore -= 40;
       } else {
@@ -213,7 +235,8 @@ export class CustomerTaxIntegrationService {
               type: 'EXEMPTION_EXPIRED',
               severity: 'CRITICAL',
               description: 'Withholding tax exemption has expired',
-              recommendation: 'Renew exemption certificate or remove exemption status',
+              recommendation:
+                'Renew exemption certificate or remove exemption status',
             });
             complianceScore -= 50;
           }
@@ -228,10 +251,15 @@ export class CustomerTaxIntegrationService {
         nextCheckDue: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
       };
 
-      this.logger.log(`Tax compliance check completed for customer ${customerId}: ${complianceScore}%`);
+      this.logger.log(
+        `Tax compliance check completed for customer ${customerId}: ${complianceScore}%`
+      );
       return complianceCheck;
     } catch (error) {
-      this.logger.error(`Failed to check customer tax compliance: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to check customer tax compliance: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -241,14 +269,21 @@ export class CustomerTaxIntegrationService {
    */
   async bulkValidateCustomerTINs(
     organizationId: string,
-    customerIds?: string[],
+    customerIds?: string[]
   ): Promise<{
     validated: number;
     failed: number;
-    results: Array<{ customerId: string; tinNumber?: string; isValid: boolean; errors?: string[] }>;
+    results: Array<{
+      customerId: string;
+      tinNumber?: string;
+      isValid: boolean;
+      errors?: string[];
+    }>;
   }> {
     try {
-      this.logger.log(`Starting bulk TIN validation for organization: ${organizationId}`);
+      this.logger.log(
+        `Starting bulk TIN validation for organization: ${organizationId}`
+      );
 
       const whereClause: any = { organizationId };
       if (customerIds) {
@@ -269,8 +304,10 @@ export class CustomerTaxIntegrationService {
       for (const customer of customers) {
         if (customer.taxProfile?.tinNumber) {
           try {
-            const validationResult = await this.validateTIN(customer.taxProfile.tinNumber);
-            
+            const validationResult = await this.validateTIN(
+              customer.taxProfile.tinNumber
+            );
+
             if (validationResult.isValid) {
               // Update validation status
               await this.prisma.customerTaxProfile.update({
@@ -303,10 +340,15 @@ export class CustomerTaxIntegrationService {
         }
       }
 
-      this.logger.log(`Bulk TIN validation completed: ${validated} validated, ${failed} failed`);
+      this.logger.log(
+        `Bulk TIN validation completed: ${validated} validated, ${failed} failed`
+      );
       return { validated, failed, results };
     } catch (error) {
-      this.logger.error(`Failed to bulk validate TINs: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to bulk validate TINs: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -354,7 +396,7 @@ export class CustomerTaxIntegrationService {
 
     // Simulate some valid TINs for testing
     const validTINs = ['1000000001', '1000000002', '2000000001', '3000000001'];
-    
+
     if (validTINs.includes(cleanTIN)) {
       return {
         isValid: true,

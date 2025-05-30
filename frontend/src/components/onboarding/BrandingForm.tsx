@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+
 import { useOnboarding } from '../../contexts/OnboardingContext';
 
 // Predefined color schemes inspired by IntelliFin design

@@ -1,6 +1,5 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
 import { 
   X, 
   Edit, 
@@ -19,6 +18,8 @@ import {
   Receipt,
   TrendingUp
 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+
 import { Customer, customerService } from '../../services/customer.service';
 
 interface CustomerDetailProps {

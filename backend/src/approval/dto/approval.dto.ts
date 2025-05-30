@@ -1,25 +1,23 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type, Transform } from 'class-transformer';
+import { Type } from 'class-transformer';
 import {
-  IsString,
-  IsNotEmpty,
-  IsOptional,
-  IsUUID,
-  IsEnum,
-  IsBoolean,
-  IsNumber,
   IsArray,
-  ValidateNested,
-  Min,
-  Max,
+  IsBoolean,
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
   Length,
+  Max,
+  Min,
+  ValidateNested,
 } from 'class-validator';
-import { 
-  ApprovalRequestStatus, 
-  ApprovalTaskStatus, 
-  ApprovalDecision, 
+import {
+  ApprovalDecision,
   ApprovalPriority,
-  ApprovalAction,
+  ApprovalRequestStatus,
   UserRole,
 } from '@prisma/client';
 
@@ -88,7 +86,10 @@ export class BulkApprovalDto {
   @ApiProperty({
     description: 'Array of approval task IDs',
     type: [String],
-    example: ['123e4567-e89b-12d3-a456-426614174000', '987fcdeb-51a2-43d1-b789-123456789abc'],
+    example: [
+      '123e4567-e89b-12d3-a456-426614174000',
+      '987fcdeb-51a2-43d1-b789-123456789abc',
+    ],
   })
   @IsArray()
   @IsUUID(4, { each: true })
@@ -192,7 +193,8 @@ export class ApprovalRequestQueryDto {
   dateTo?: string;
 
   @ApiPropertyOptional({
-    description: 'Search term for expense description, vendor, or requester name',
+    description:
+      'Search term for expense description, vendor, or requester name',
     example: 'office supplies',
     maxLength: 100,
   })
@@ -223,7 +225,14 @@ export class ApprovalRequestQueryDto {
 export class ApprovalConditionDto {
   @ApiProperty({
     description: 'Field to evaluate',
-    enum: ['amount', 'category', 'submitter_role', 'date', 'vendor', 'payment_method'],
+    enum: [
+      'amount',
+      'category',
+      'submitter_role',
+      'date',
+      'vendor',
+      'payment_method',
+    ],
     example: 'amount',
   })
   @IsString()
@@ -232,7 +241,18 @@ export class ApprovalConditionDto {
 
   @ApiProperty({
     description: 'Comparison operator',
-    enum: ['gt', 'gte', 'lt', 'lte', 'eq', 'ne', 'in', 'not_in', 'contains', 'starts_with'],
+    enum: [
+      'gt',
+      'gte',
+      'lt',
+      'lte',
+      'eq',
+      'ne',
+      'in',
+      'not_in',
+      'contains',
+      'starts_with',
+    ],
     example: 'gt',
   })
   @IsString()

@@ -10,7 +10,8 @@ export const azureConfig = registerAs('azure', () => ({
   storage: {
     accountName: process.env.AZURE_STORAGE_ACCOUNT_NAME,
     accountKey: process.env.AZURE_STORAGE_ACCOUNT_KEY,
-    containerName: process.env.AZURE_STORAGE_CONTAINER_NAME || 'intellifin-files',
+    containerName:
+      process.env.AZURE_STORAGE_CONTAINER_NAME || 'intellifin-files',
     connectionString: process.env.AZURE_STORAGE_CONNECTION_STRING,
   },
   serviceBus: {
@@ -18,7 +19,8 @@ export const azureConfig = registerAs('azure', () => ({
     queueName: process.env.AZURE_SERVICE_BUS_QUEUE_NAME || 'intellifin-queue',
   },
   applicationInsights: {
-    instrumentationKey: process.env.AZURE_APPLICATION_INSIGHTS_INSTRUMENTATION_KEY,
+    instrumentationKey:
+      process.env.AZURE_APPLICATION_INSIGHTS_INSTRUMENTATION_KEY,
     connectionString: process.env.AZURE_APPLICATION_INSIGHTS_CONNECTION_STRING,
   },
 }));

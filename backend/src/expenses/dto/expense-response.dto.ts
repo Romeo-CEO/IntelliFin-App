@@ -1,5 +1,9 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { ExpenseStatus, PaymentMethod, RecurrencePattern } from '@prisma/client';
+import {
+  ExpenseStatus,
+  PaymentMethod,
+  RecurrencePattern,
+} from '@prisma/client';
 
 export class CategoryResponseDto {
   @ApiProperty({
@@ -106,7 +110,7 @@ export class TransactionResponseDto {
 
   @ApiProperty({
     description: 'Transaction amount',
-    example: 150.50,
+    example: 150.5,
   })
   amount: number;
 
@@ -162,7 +166,7 @@ export class ExpenseResponseDto {
 
   @ApiProperty({
     description: 'Expense amount',
-    example: 150.50,
+    example: 150.5,
   })
   amount: number;
 
@@ -325,13 +329,13 @@ export class ExpenseStatsResponseDto {
 
   @ApiProperty({
     description: 'Total amount of all expenses',
-    example: 15750.50,
+    example: 15750.5,
   })
   totalAmount: number;
 
   @ApiProperty({
     description: 'Average expense amount',
-    example: 105.00,
+    example: 105.0,
   })
   averageAmount: number;
 
@@ -364,7 +368,7 @@ export class ExpenseStatsResponseDto {
         categoryId: '123e4567-e89b-12d3-a456-426614174000',
         categoryName: 'Office Supplies',
         count: 45,
-        totalAmount: 4500.00,
+        totalAmount: 4500.0,
       },
     ],
   })

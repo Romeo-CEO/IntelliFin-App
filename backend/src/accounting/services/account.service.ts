@@ -1,7 +1,26 @@
-import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
-import { AccountRepository, CreateAccountDto, UpdateAccountDto, AccountQueryDto, AccountWithChildren } from '../repositories/account.repository';
-import { ChartOfAccountsService, ZambianAccountCode } from '../chart-of-accounts.service';
-import { Account, AccountType, AccountSubType, NormalBalance } from '@prisma/client';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  AccountQueryDto,
+  AccountRepository,
+  AccountWithChildren,
+  CreateAccountDto,
+  UpdateAccountDto,
+} from '../repositories/account.repository';
+import {
+  ChartOfAccountsService,
+  ZambianAccountCode,
+} from '../chart-of-accounts.service';
+import {
+  Account,
+  AccountSubType,
+  AccountType,
+  NormalBalance,
+} from '@prisma/client';
 
 export interface InitializeChartOfAccountsDto {
   organizationId: string;
@@ -22,21 +41,26 @@ export class AccountService {
 
   constructor(
     private readonly accountRepository: AccountRepository,
-    private readonly chartOfAccountsService: ChartOfAccountsService,
+    private readonly chartOfAccountsService: ChartOfAccountsService
   ) {}
 
   /**
    * Initialize chart of accounts for a new organization
    */
-  async initializeChartOfAccounts(data: InitializeChartOfAccountsDto): Promise<Account[]> {
+  async initializeChartOfAccounts(
+    data: InitializeChartOfAccountsDto
+  ): Promise<Account[]> {
     try {
-      this.logger.log(`Initializing chart of accounts for organization: ${data.organizationId}`);
+      this.logger.log(
+        `Initializing chart of accounts for organization: ${data.organizationId}`
+      );
 
       if (!data.includeDefaultAccounts) {
         return [];
       }
 
-      const zambianAccounts = this.chartOfAccountsService.getZambianChartOfAccounts();
+      const zambianAccounts =
+        this.chartOfAccountsService.getZambianChartOfAccounts();
       const createdAccounts: Account[] = [];
 
       // Create accounts in order (parents first)
@@ -57,9 +81,13 @@ export class AccountService {
             accountCode: zambianAccount.code,
             accountName: zambianAccount.name,
             accountType: zambianAccount.category as AccountType,
-            accountSubType: this.mapSubcategoryToAccountSubType(zambianAccount.subcategory),
+            accountSubType: this.mapSubcategoryToAccountSubType(
+              zambianAccount.subcategory
+            ),
             parentAccountId,
-            normalBalance: this.determineNormalBalance(zambianAccount.category as AccountType),
+            normalBalance: this.determineNormalBalance(
+              zambianAccount.category as AccountType
+            ),
             isSystem: true, // Default accounts are system accounts
             isBankAccount: this.isBankAccount(zambianAccount),
             isTaxAccount: this.isTaxAccount(zambianAccount),
@@ -67,20 +95,32 @@ export class AccountService {
             taxCode: this.getTaxCode(zambianAccount),
           };
 
-          const createdAccount = await this.accountRepository.create(data.organizationId, accountData);
+          const createdAccount = await this.accountRepository.create(
+            data.organizationId,
+            accountData
+          );
           createdAccounts.push(createdAccount);
 
-          this.logger.debug(`Created account: ${createdAccount.accountCode} - ${createdAccount.accountName}`);
+          this.logger.debug(
+            `Created account: ${createdAccount.accountCode} - ${createdAccount.accountName}`
+          );
         } catch (error) {
-          this.logger.warn(`Failed to create account ${zambianAccount.code}: ${error.message}`);
+          this.logger.warn(
+            `Failed to create account ${zambianAccount.code}: ${error.message}`
+          );
           // Continue with other accounts
         }
       }
 
-      this.logger.log(`Successfully initialized ${createdAccounts.length} accounts for organization: ${data.organizationId}`);
+      this.logger.log(
+        `Successfully initialized ${createdAccounts.length} accounts for organization: ${data.organizationId}`
+      );
       return createdAccounts;
     } catch (error) {
-      this.logger.error(`Failed to initialize chart of accounts: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to initialize chart of accounts: ${error.message}`,
+        error.stack
+      );
       throw new BadRequestException('Failed to initialize chart of accounts');
     }
   }
@@ -88,27 +128,43 @@ export class AccountService {
   /**
    * Create a new account
    */
-  async createAccount(organizationId: string, data: CreateAccountDto): Promise<Account> {
+  async createAccount(
+    organizationId: string,
+    data: CreateAccountDto
+  ): Promise<Account> {
     try {
       // Validate account code format
       this.validateAccountCode(data.accountCode);
 
       // Validate parent account if specified
       if (data.parentAccountId) {
-        const parentAccount = await this.accountRepository.findById(organizationId, data.parentAccountId);
+        const parentAccount = await this.accountRepository.findById(
+          organizationId,
+          data.parentAccountId
+        );
         if (!parentAccount) {
           throw new BadRequestException('Parent account not found');
         }
 
         // Ensure parent account is of compatible type
-        if (!this.isCompatibleAccountType(data.accountType, parentAccount.accountType)) {
-          throw new BadRequestException('Incompatible account type with parent account');
+        if (
+          !this.isCompatibleAccountType(
+            data.accountType,
+            parentAccount.accountType
+          )
+        ) {
+          throw new BadRequestException(
+            'Incompatible account type with parent account'
+          );
         }
       }
 
       return await this.accountRepository.create(organizationId, data);
     } catch (error) {
-      this.logger.error(`Failed to create account: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to create account: ${error.message}`,
+        error.stack
+      );
       if (error instanceof BadRequestException) {
         throw error;
       }
@@ -119,7 +175,10 @@ export class AccountService {
   /**
    * Get account by ID
    */
-  async getAccountById(organizationId: string, id: string): Promise<AccountWithChildren> {
+  async getAccountById(
+    organizationId: string,
+    id: string
+  ): Promise<AccountWithChildren> {
     try {
       const account = await this.accountRepository.findById(organizationId, id);
       if (!account) {
@@ -138,15 +197,24 @@ export class AccountService {
   /**
    * Get account by code
    */
-  async getAccountByCode(organizationId: string, accountCode: string): Promise<Account> {
+  async getAccountByCode(
+    organizationId: string,
+    accountCode: string
+  ): Promise<Account> {
     try {
-      const account = await this.accountRepository.findByCode(organizationId, accountCode);
+      const account = await this.accountRepository.findByCode(
+        organizationId,
+        accountCode
+      );
       if (!account) {
         throw new NotFoundException('Account not found');
       }
       return account;
     } catch (error) {
-      this.logger.error(`Failed to get account by code: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to get account by code: ${error.message}`,
+        error.stack
+      );
       if (error instanceof NotFoundException) {
         throw error;
       }
@@ -161,7 +229,10 @@ export class AccountService {
     try {
       return await this.accountRepository.findMany(organizationId, query);
     } catch (error) {
-      this.logger.error(`Failed to get accounts: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to get accounts: ${error.message}`,
+        error.stack
+      );
       throw new BadRequestException('Failed to get accounts');
     }
   }
@@ -169,11 +240,20 @@ export class AccountService {
   /**
    * Get account hierarchy
    */
-  async getAccountHierarchy(organizationId: string, accountType?: AccountType): Promise<AccountWithChildren[]> {
+  async getAccountHierarchy(
+    organizationId: string,
+    accountType?: AccountType
+  ): Promise<AccountWithChildren[]> {
     try {
-      return await this.accountRepository.getAccountHierarchy(organizationId, accountType);
+      return await this.accountRepository.getAccountHierarchy(
+        organizationId,
+        accountType
+      );
     } catch (error) {
-      this.logger.error(`Failed to get account hierarchy: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to get account hierarchy: ${error.message}`,
+        error.stack
+      );
       throw new BadRequestException('Failed to get account hierarchy');
     }
   }
@@ -181,25 +261,46 @@ export class AccountService {
   /**
    * Update account
    */
-  async updateAccount(organizationId: string, id: string, data: UpdateAccountDto): Promise<Account> {
+  async updateAccount(
+    organizationId: string,
+    id: string,
+    data: UpdateAccountDto
+  ): Promise<Account> {
     try {
       // Validate parent account if being changed
       if (data.parentAccountId) {
-        const parentAccount = await this.accountRepository.findById(organizationId, data.parentAccountId);
+        const parentAccount = await this.accountRepository.findById(
+          organizationId,
+          data.parentAccountId
+        );
         if (!parentAccount) {
           throw new BadRequestException('Parent account not found');
         }
 
         // Prevent circular references
-        if (await this.wouldCreateCircularReference(organizationId, id, data.parentAccountId)) {
-          throw new BadRequestException('Cannot create circular reference in account hierarchy');
+        if (
+          await this.wouldCreateCircularReference(
+            organizationId,
+            id,
+            data.parentAccountId
+          )
+        ) {
+          throw new BadRequestException(
+            'Cannot create circular reference in account hierarchy'
+          );
         }
       }
 
       return await this.accountRepository.update(organizationId, id, data);
     } catch (error) {
-      this.logger.error(`Failed to update account: ${error.message}`, error.stack);
-      if (error instanceof BadRequestException || error instanceof NotFoundException) {
+      this.logger.error(
+        `Failed to update account: ${error.message}`,
+        error.stack
+      );
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException
+      ) {
         throw error;
       }
       throw new BadRequestException('Failed to update account');
@@ -213,7 +314,10 @@ export class AccountService {
     try {
       return await this.accountRepository.delete(organizationId, id);
     } catch (error) {
-      this.logger.error(`Failed to delete account: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to delete account: ${error.message}`,
+        error.stack
+      );
       if (error instanceof NotFoundException) {
         throw error;
       }
@@ -224,11 +328,20 @@ export class AccountService {
   /**
    * Get accounts by type
    */
-  async getAccountsByType(organizationId: string, accountType: AccountType): Promise<Account[]> {
+  async getAccountsByType(
+    organizationId: string,
+    accountType: AccountType
+  ): Promise<Account[]> {
     try {
-      return await this.accountRepository.findByType(organizationId, accountType);
+      return await this.accountRepository.findByType(
+        organizationId,
+        accountType
+      );
     } catch (error) {
-      this.logger.error(`Failed to get accounts by type: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to get accounts by type: ${error.message}`,
+        error.stack
+      );
       throw new BadRequestException('Failed to get accounts by type');
     }
   }
@@ -240,7 +353,10 @@ export class AccountService {
     try {
       return await this.accountRepository.getBankAccounts(organizationId);
     } catch (error) {
-      this.logger.error(`Failed to get bank accounts: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to get bank accounts: ${error.message}`,
+        error.stack
+      );
       throw new BadRequestException('Failed to get bank accounts');
     }
   }
@@ -252,7 +368,10 @@ export class AccountService {
     try {
       return await this.accountRepository.getTaxAccounts(organizationId);
     } catch (error) {
-      this.logger.error(`Failed to get tax accounts: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to get tax accounts: ${error.message}`,
+        error.stack
+      );
       throw new BadRequestException('Failed to get tax accounts');
     }
   }
@@ -262,8 +381,11 @@ export class AccountService {
    */
   async getAccountSummary(organizationId: string): Promise<AccountSummaryDto> {
     try {
-      const allAccounts = await this.accountRepository.findMany(organizationId, { limit: 1000 });
-      
+      const allAccounts = await this.accountRepository.findMany(
+        organizationId,
+        { limit: 1000 }
+      );
+
       const summary: AccountSummaryDto = {
         totalAccounts: allAccounts.total,
         accountsByType: {
@@ -287,25 +409,33 @@ export class AccountService {
 
       return summary;
     } catch (error) {
-      this.logger.error(`Failed to get account summary: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to get account summary: ${error.message}`,
+        error.stack
+      );
       throw new BadRequestException('Failed to get account summary');
     }
   }
 
   // Private helper methods
 
-  private sortAccountsByHierarchy(accounts: ZambianAccountCode[]): ZambianAccountCode[] {
+  private sortAccountsByHierarchy(
+    accounts: ZambianAccountCode[]
+  ): ZambianAccountCode[] {
     const sorted: ZambianAccountCode[] = [];
     const remaining = [...accounts];
 
     while (remaining.length > 0) {
       const beforeLength = remaining.length;
-      
+
       for (let i = remaining.length - 1; i >= 0; i--) {
         const account = remaining[i];
-        
+
         // If no parent or parent already exists in sorted, add this account
-        if (!account.parentCode || sorted.some(s => s.code === account.parentCode)) {
+        if (
+          !account.parentCode ||
+          sorted.some(s => s.code === account.parentCode)
+        ) {
           sorted.push(account);
           remaining.splice(i, 1);
         }
@@ -322,12 +452,14 @@ export class AccountService {
     return sorted;
   }
 
-  private mapSubcategoryToAccountSubType(subcategory: string): AccountSubType | undefined {
+  private mapSubcategoryToAccountSubType(
+    subcategory: string
+  ): AccountSubType | undefined {
     const mapping: Record<string, AccountSubType> = {
       'Current Assets': 'CURRENT_ASSET',
       'Fixed Assets': 'FIXED_ASSET',
       'Current Liabilities': 'CURRENT_LIABILITY',
-      'Equity': 'OWNER_EQUITY',
+      Equity: 'OWNER_EQUITY',
       'Operating Revenue': 'OPERATING_REVENUE',
       'Other Revenue': 'NON_OPERATING_REVENUE',
       'Cost of Sales': 'COST_OF_GOODS_SOLD',
@@ -355,17 +487,21 @@ export class AccountService {
   }
 
   private isBankAccount(account: ZambianAccountCode): boolean {
-    return account.name.toLowerCase().includes('bank') || 
-           account.name.toLowerCase().includes('mobile money') ||
-           account.code.startsWith('112') || // Bank Accounts
-           account.code.startsWith('113'); // Mobile Money Accounts
+    return (
+      account.name.toLowerCase().includes('bank') ||
+      account.name.toLowerCase().includes('mobile money') ||
+      account.code.startsWith('112') || // Bank Accounts
+      account.code.startsWith('113')
+    ); // Mobile Money Accounts
   }
 
   private isTaxAccount(account: ZambianAccountCode): boolean {
-    return account.name.toLowerCase().includes('vat') ||
-           account.name.toLowerCase().includes('paye') ||
-           account.name.toLowerCase().includes('withholding') ||
-           account.name.toLowerCase().includes('tax');
+    return (
+      account.name.toLowerCase().includes('vat') ||
+      account.name.toLowerCase().includes('paye') ||
+      account.name.toLowerCase().includes('withholding') ||
+      account.name.toLowerCase().includes('tax')
+    );
   }
 
   private getTaxCode(account: ZambianAccountCode): string | undefined {
@@ -381,7 +517,10 @@ export class AccountService {
     }
   }
 
-  private isCompatibleAccountType(childType: AccountType, parentType: AccountType): boolean {
+  private isCompatibleAccountType(
+    childType: AccountType,
+    parentType: AccountType
+  ): boolean {
     return childType === parentType;
   }
 
@@ -391,16 +530,19 @@ export class AccountService {
     newParentId: string
   ): Promise<boolean> {
     let currentParentId = newParentId;
-    
+
     while (currentParentId) {
       if (currentParentId === accountId) {
         return true;
       }
-      
-      const parentAccount = await this.accountRepository.findById(organizationId, currentParentId);
+
+      const parentAccount = await this.accountRepository.findById(
+        organizationId,
+        currentParentId
+      );
       currentParentId = parentAccount?.parentAccountId || null;
     }
-    
+
     return false;
   }
 }

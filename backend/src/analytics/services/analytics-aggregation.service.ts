@@ -1,13 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
-import { DateRange, AnalyticsDataSource, FinancialSummary } from '../interfaces/analytics-data.interface';
+import {
+  AnalyticsDataSource,
+  DateRange,
+  FinancialSummary,
+} from '../interfaces/analytics-data.interface';
 
 /**
  * Analytics Aggregation Service
- * 
+ *
  * Aggregates financial data from all modules for analytics processing.
  * Optimized for Zambian SMEs with multi-tenant isolation and low-bandwidth considerations.
- * 
+ *
  * Features:
  * - Efficient data aggregation from customers, invoices, payments, expenses, taxes
  * - Multi-tenant data isolation
@@ -28,7 +32,9 @@ export class AnalyticsAggregationService {
     dateRange: DateRange
   ): Promise<AnalyticsDataSource> {
     try {
-      this.logger.log(`Aggregating financial data for organization ${organizationId}`);
+      this.logger.log(
+        `Aggregating financial data for organization ${organizationId}`
+      );
 
       const [
         customerData,
@@ -36,14 +42,14 @@ export class AnalyticsAggregationService {
         paymentData,
         expenseData,
         taxData,
-        accountData
+        accountData,
       ] = await Promise.all([
         this.aggregateCustomerData(organizationId, dateRange),
         this.aggregateInvoiceData(organizationId, dateRange),
         this.aggregatePaymentData(organizationId, dateRange),
         this.aggregateExpenseData(organizationId, dateRange),
         this.aggregateTaxData(organizationId, dateRange),
-        this.aggregateAccountData(organizationId, dateRange)
+        this.aggregateAccountData(organizationId, dateRange),
       ]);
 
       return {
@@ -55,10 +61,13 @@ export class AnalyticsAggregationService {
         accounts: accountData,
         dateRange,
         organizationId,
-        aggregatedAt: new Date()
+        aggregatedAt: new Date(),
       };
     } catch (error) {
-      this.logger.error(`Failed to aggregate financial data: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to aggregate financial data: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -75,7 +84,7 @@ export class AnalyticsAggregationService {
         this.getTotalRevenue(organizationId, dateRange),
         this.getTotalExpenses(organizationId, dateRange),
         this.getTotalPayments(organizationId, dateRange),
-        this.getAccountsReceivable(organizationId, dateRange.endDate)
+        this.getAccountsReceivable(organizationId, dateRange.endDate),
       ]);
 
       const grossProfit = revenue - expenses;
@@ -90,10 +99,13 @@ export class AnalyticsAggregationService {
         accountsReceivable: receivables,
         profitMargin: revenue > 0 ? (netProfit / revenue) * 100 : 0,
         period: dateRange,
-        currency: 'ZMW'
+        currency: 'ZMW',
       };
     } catch (error) {
-      this.logger.error(`Failed to get financial summary: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to get financial summary: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -101,67 +113,83 @@ export class AnalyticsAggregationService {
   /**
    * Aggregate customer analytics data
    */
-  private async aggregateCustomerData(organizationId: string, dateRange: DateRange) {
+  private async aggregateCustomerData(
+    organizationId: string,
+    dateRange: DateRange
+  ) {
     const customers = await this.databaseService.customer.findMany({
       where: {
         organizationId,
         createdAt: {
           gte: dateRange.startDate,
-          lte: dateRange.endDate
-        }
+          lte: dateRange.endDate,
+        },
       },
       include: {
         invoices: {
           where: {
             issueDate: {
               gte: dateRange.startDate,
-              lte: dateRange.endDate
-            }
-          }
+              lte: dateRange.endDate,
+            },
+          },
         },
         payments: {
           where: {
             paymentDate: {
               gte: dateRange.startDate,
-              lte: dateRange.endDate
-            }
-          }
-        }
-      }
+              lte: dateRange.endDate,
+            },
+          },
+        },
+      },
     });
 
     return customers.map(customer => ({
       id: customer.id,
       name: customer.name,
-      totalRevenue: customer.invoices.reduce((sum, invoice) => sum + Number(invoice.totalAmount), 0),
-      totalPayments: customer.payments.reduce((sum, payment) => sum + Number(payment.amount), 0),
+      totalRevenue: customer.invoices.reduce(
+        (sum, invoice) => sum + Number(invoice.totalAmount),
+        0
+      ),
+      totalPayments: customer.payments.reduce(
+        (sum, payment) => sum + Number(payment.amount),
+        0
+      ),
       invoiceCount: customer.invoices.length,
       paymentCount: customer.payments.length,
-      averageInvoiceValue: customer.invoices.length > 0 
-        ? customer.invoices.reduce((sum, invoice) => sum + Number(invoice.totalAmount), 0) / customer.invoices.length 
-        : 0,
+      averageInvoiceValue:
+        customer.invoices.length > 0
+          ? customer.invoices.reduce(
+              (sum, invoice) => sum + Number(invoice.totalAmount),
+              0
+            ) / customer.invoices.length
+          : 0,
       paymentTerms: customer.paymentTerms,
-      isActive: customer.isActive
+      isActive: customer.isActive,
     }));
   }
 
   /**
    * Aggregate invoice analytics data
    */
-  private async aggregateInvoiceData(organizationId: string, dateRange: DateRange) {
+  private async aggregateInvoiceData(
+    organizationId: string,
+    dateRange: DateRange
+  ) {
     const invoices = await this.databaseService.invoice.findMany({
       where: {
         organizationId,
         issueDate: {
           gte: dateRange.startDate,
-          lte: dateRange.endDate
-        }
+          lte: dateRange.endDate,
+        },
       },
       include: {
         customer: true,
         items: true,
-        payments: true
-      }
+        payments: true,
+      },
     });
 
     return invoices.map(invoice => ({
@@ -178,28 +206,35 @@ export class AnalyticsAggregationService {
       status: invoice.status,
       itemCount: invoice.items.length,
       paymentCount: invoice.payments.length,
-      daysOverdue: invoice.status === 'OVERDUE' 
-        ? Math.floor((new Date().getTime() - invoice.dueDate.getTime()) / (1000 * 60 * 60 * 24))
-        : 0
+      daysOverdue:
+        invoice.status === 'OVERDUE'
+          ? Math.floor(
+              (new Date().getTime() - invoice.dueDate.getTime()) /
+                (1000 * 60 * 60 * 24)
+            )
+          : 0,
     }));
   }
 
   /**
    * Aggregate payment analytics data
    */
-  private async aggregatePaymentData(organizationId: string, dateRange: DateRange) {
+  private async aggregatePaymentData(
+    organizationId: string,
+    dateRange: DateRange
+  ) {
     const payments = await this.databaseService.payment.findMany({
       where: {
         organizationId,
         paymentDate: {
           gte: dateRange.startDate,
-          lte: dateRange.endDate
-        }
+          lte: dateRange.endDate,
+        },
       },
       include: {
         customer: true,
-        invoice: true
-      }
+        invoice: true,
+      },
     });
 
     return payments.map(payment => ({
@@ -212,26 +247,29 @@ export class AnalyticsAggregationService {
       paymentMethod: payment.paymentMethod,
       status: payment.status,
       withholdingTaxAmount: Number(payment.withholdingTaxAmount || 0),
-      grossAmount: Number(payment.grossAmount || payment.amount)
+      grossAmount: Number(payment.grossAmount || payment.amount),
     }));
   }
 
   /**
    * Aggregate expense analytics data
    */
-  private async aggregateExpenseData(organizationId: string, dateRange: DateRange) {
+  private async aggregateExpenseData(
+    organizationId: string,
+    dateRange: DateRange
+  ) {
     const expenses = await this.databaseService.expense.findMany({
       where: {
         organizationId,
         expenseDate: {
           gte: dateRange.startDate,
-          lte: dateRange.endDate
-        }
+          lte: dateRange.endDate,
+        },
       },
       include: {
         category: true,
-        tags: true
-      }
+        tags: true,
+      },
     });
 
     return expenses.map(expense => ({
@@ -245,7 +283,7 @@ export class AnalyticsAggregationService {
       isRecurring: expense.isRecurring,
       tags: expense.tags.map(tag => tag.name),
       vatAmount: Number(expense.vatAmount || 0),
-      isTaxDeductible: expense.isTaxDeductible
+      isTaxDeductible: expense.isTaxDeductible,
     }));
   }
 
@@ -259,9 +297,9 @@ export class AnalyticsAggregationService {
         organizationId,
         dueDate: {
           gte: dateRange.startDate,
-          lte: dateRange.endDate
-        }
-      }
+          lte: dateRange.endDate,
+        },
+      },
     });
 
     const taxPeriods = await this.databaseService.taxPeriod.findMany({
@@ -269,9 +307,9 @@ export class AnalyticsAggregationService {
         organizationId,
         periodStart: {
           gte: dateRange.startDate,
-          lte: dateRange.endDate
-        }
-      }
+          lte: dateRange.endDate,
+        },
+      },
     });
 
     return {
@@ -281,7 +319,7 @@ export class AnalyticsAggregationService {
         amount: Number(obligation.amount),
         dueDate: obligation.dueDate,
         status: obligation.status,
-        penaltyAmount: Number(obligation.penaltyAmount || 0)
+        penaltyAmount: Number(obligation.penaltyAmount || 0),
       })),
       periods: taxPeriods.map(period => ({
         id: period.id,
@@ -290,29 +328,32 @@ export class AnalyticsAggregationService {
         periodEnd: period.periodEnd,
         filingDeadline: period.filingDeadline,
         paymentDeadline: period.paymentDeadline,
-        status: period.status
-      }))
+        status: period.status,
+      })),
     };
   }
 
   /**
    * Aggregate chart of accounts data
    */
-  private async aggregateAccountData(organizationId: string, dateRange: DateRange) {
+  private async aggregateAccountData(
+    organizationId: string,
+    dateRange: DateRange
+  ) {
     const accounts = await this.databaseService.account.findMany({
       where: {
-        organizationId
+        organizationId,
       },
       include: {
         journalEntries: {
           where: {
             transactionDate: {
               gte: dateRange.startDate,
-              lte: dateRange.endDate
-            }
-          }
-        }
-      }
+              lte: dateRange.endDate,
+            },
+          },
+        },
+      },
     });
 
     return accounts.map(account => ({
@@ -327,86 +368,98 @@ export class AnalyticsAggregationService {
         .reduce((sum, entry) => sum + Number(entry.amount), 0),
       totalCredits: account.journalEntries
         .filter(entry => entry.type === 'CREDIT')
-        .reduce((sum, entry) => sum + Number(entry.amount), 0)
+        .reduce((sum, entry) => sum + Number(entry.amount), 0),
     }));
   }
 
   /**
    * Helper methods for financial calculations
    */
-  private async getTotalRevenue(organizationId: string, dateRange: DateRange): Promise<number> {
+  private async getTotalRevenue(
+    organizationId: string,
+    dateRange: DateRange
+  ): Promise<number> {
     const result = await this.databaseService.invoice.aggregate({
       where: {
         organizationId,
         issueDate: {
           gte: dateRange.startDate,
-          lte: dateRange.endDate
+          lte: dateRange.endDate,
         },
         status: {
-          in: ['SENT', 'PAID', 'PARTIALLY_PAID']
-        }
+          in: ['SENT', 'PAID', 'PARTIALLY_PAID'],
+        },
       },
       _sum: {
-        totalAmount: true
-      }
+        totalAmount: true,
+      },
     });
 
     return Number(result._sum.totalAmount || 0);
   }
 
-  private async getTotalExpenses(organizationId: string, dateRange: DateRange): Promise<number> {
+  private async getTotalExpenses(
+    organizationId: string,
+    dateRange: DateRange
+  ): Promise<number> {
     const result = await this.databaseService.expense.aggregate({
       where: {
         organizationId,
         expenseDate: {
           gte: dateRange.startDate,
-          lte: dateRange.endDate
+          lte: dateRange.endDate,
         },
         status: {
-          in: ['APPROVED', 'PAID']
-        }
+          in: ['APPROVED', 'PAID'],
+        },
       },
       _sum: {
-        amount: true
-      }
+        amount: true,
+      },
     });
 
     return Number(result._sum.amount || 0);
   }
 
-  private async getTotalPayments(organizationId: string, dateRange: DateRange): Promise<number> {
+  private async getTotalPayments(
+    organizationId: string,
+    dateRange: DateRange
+  ): Promise<number> {
     const result = await this.databaseService.payment.aggregate({
       where: {
         organizationId,
         paymentDate: {
           gte: dateRange.startDate,
-          lte: dateRange.endDate
+          lte: dateRange.endDate,
         },
-        status: 'COMPLETED'
+        status: 'COMPLETED',
       },
       _sum: {
-        amount: true
-      }
+        amount: true,
+      },
     });
 
     return Number(result._sum.amount || 0);
   }
 
-  private async getAccountsReceivable(organizationId: string, asOfDate: Date): Promise<number> {
+  private async getAccountsReceivable(
+    organizationId: string,
+    asOfDate: Date
+  ): Promise<number> {
     const result = await this.databaseService.invoice.aggregate({
       where: {
         organizationId,
         issueDate: {
-          lte: asOfDate
+          lte: asOfDate,
         },
         status: {
-          in: ['SENT', 'PARTIALLY_PAID', 'OVERDUE']
-        }
+          in: ['SENT', 'PARTIALLY_PAID', 'OVERDUE'],
+        },
       },
       _sum: {
         totalAmount: true,
-        paidAmount: true
-      }
+        paidAmount: true,
+      },
     });
 
     const totalInvoiced = Number(result._sum.totalAmount || 0);

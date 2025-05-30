@@ -63,13 +63,15 @@ describe('DashboardCacheService', () => {
     it('should return parsed data when cache hit', async () => {
       const testData = { value: 100, name: 'test' };
       const serializedData = JSON.stringify(testData);
-      
+
       mockRedis.get.mockResolvedValue(serializedData);
 
       const result = await service.get('test-key');
 
       expect(result).toEqual(testData);
-      expect(mockRedis.get).toHaveBeenCalledWith('intellifin:dashboard:test-key');
+      expect(mockRedis.get).toHaveBeenCalledWith(
+        'intellifin:dashboard:test-key'
+      );
     });
 
     it('should return null when cache miss', async () => {
@@ -78,7 +80,9 @@ describe('DashboardCacheService', () => {
       const result = await service.get('test-key');
 
       expect(result).toBeNull();
-      expect(mockRedis.get).toHaveBeenCalledWith('intellifin:dashboard:test-key');
+      expect(mockRedis.get).toHaveBeenCalledWith(
+        'intellifin:dashboard:test-key'
+      );
     });
 
     it('should return null when Redis throws error', async () => {
@@ -101,7 +105,7 @@ describe('DashboardCacheService', () => {
   describe('set', () => {
     it('should cache data with default TTL', async () => {
       const testData = { value: 100, name: 'test' };
-      
+
       mockRedis.setex.mockResolvedValue('OK');
 
       await service.set('test-key', testData);
@@ -116,7 +120,7 @@ describe('DashboardCacheService', () => {
     it('should cache data with custom TTL', async () => {
       const testData = { value: 100, name: 'test' };
       const customTtl = 600;
-      
+
       mockRedis.setex.mockResolvedValue('OK');
 
       await service.set('test-key', testData, customTtl);
@@ -130,7 +134,7 @@ describe('DashboardCacheService', () => {
 
     it('should handle Redis errors gracefully', async () => {
       const testData = { value: 100, name: 'test' };
-      
+
       mockRedis.setex.mockRejectedValue(new Error('Redis connection failed'));
 
       // Should not throw error
@@ -144,7 +148,9 @@ describe('DashboardCacheService', () => {
 
       await service.delete('test-key');
 
-      expect(mockRedis.del).toHaveBeenCalledWith('intellifin:dashboard:test-key');
+      expect(mockRedis.del).toHaveBeenCalledWith(
+        'intellifin:dashboard:test-key'
+      );
     });
 
     it('should handle Redis errors gracefully', async () => {
@@ -161,13 +167,15 @@ describe('DashboardCacheService', () => {
         'intellifin:dashboard:org-123-data',
         'intellifin:dashboard:org-123-kpis',
       ];
-      
+
       mockRedis.keys.mockResolvedValue(matchingKeys);
       mockRedis.del.mockResolvedValue(2);
 
       await service.deletePattern('org-123*');
 
-      expect(mockRedis.keys).toHaveBeenCalledWith('intellifin:dashboard:org-123*');
+      expect(mockRedis.keys).toHaveBeenCalledWith(
+        'intellifin:dashboard:org-123*'
+      );
       expect(mockRedis.del).toHaveBeenCalledWith(...matchingKeys);
     });
 
@@ -176,7 +184,9 @@ describe('DashboardCacheService', () => {
 
       await service.deletePattern('non-existent*');
 
-      expect(mockRedis.keys).toHaveBeenCalledWith('intellifin:dashboard:non-existent*');
+      expect(mockRedis.keys).toHaveBeenCalledWith(
+        'intellifin:dashboard:non-existent*'
+      );
       expect(mockRedis.del).not.toHaveBeenCalled();
     });
   });
@@ -188,13 +198,15 @@ describe('DashboardCacheService', () => {
         'intellifin:dashboard:dashboard_overview_org-123_month_true',
         'intellifin:dashboard:kpi_metrics_org-123_all',
       ];
-      
+
       mockRedis.keys.mockResolvedValue(matchingKeys);
       mockRedis.del.mockResolvedValue(2);
 
       await service.invalidateOrganizationCache(organizationId);
 
-      expect(mockRedis.keys).toHaveBeenCalledWith('intellifin:dashboard:*org-123*');
+      expect(mockRedis.keys).toHaveBeenCalledWith(
+        'intellifin:dashboard:*org-123*'
+      );
       expect(mockRedis.del).toHaveBeenCalledWith(...matchingKeys);
     });
   });
@@ -202,12 +214,14 @@ describe('DashboardCacheService', () => {
   describe('invalidateWidgetCache', () => {
     it('should invalidate cache for specific widget', async () => {
       const widgetId = 'widget-456';
-      
+
       mockRedis.del.mockResolvedValue(1);
 
       await service.invalidateWidgetCache(widgetId);
 
-      expect(mockRedis.del).toHaveBeenCalledWith('intellifin:dashboard:widget_data_widget-456');
+      expect(mockRedis.del).toHaveBeenCalledWith(
+        'intellifin:dashboard:widget_data_widget-456'
+      );
     });
   });
 
@@ -215,7 +229,7 @@ describe('DashboardCacheService', () => {
     it('should return cache statistics', async () => {
       const mockInfo = 'used_memory_human:2.5M\nother_info:value';
       const mockKeyCount = 150;
-      
+
       mockRedis.info.mockResolvedValue(mockInfo);
       mockRedis.dbsize.mockResolvedValue(mockKeyCount);
 
@@ -265,7 +279,7 @@ describe('DashboardCacheService', () => {
     it('should return cached value when available', async () => {
       const cachedData = { value: 100 };
       const computeFn = jest.fn().mockResolvedValue({ value: 200 });
-      
+
       mockRedis.get.mockResolvedValue(JSON.stringify(cachedData));
 
       const result = await service.getOrSet('test-key', computeFn, 600);
@@ -278,7 +292,7 @@ describe('DashboardCacheService', () => {
     it('should compute and cache value when not in cache', async () => {
       const computedData = { value: 200 };
       const computeFn = jest.fn().mockResolvedValue(computedData);
-      
+
       mockRedis.get.mockResolvedValue(null);
       mockRedis.setex.mockResolvedValue('OK');
 
@@ -296,7 +310,7 @@ describe('DashboardCacheService', () => {
     it('should return computed value even if caching fails', async () => {
       const computedData = { value: 200 };
       const computeFn = jest.fn().mockResolvedValue(computedData);
-      
+
       mockRedis.get.mockResolvedValue(null);
       mockRedis.setex.mockRejectedValue(new Error('Cache write failed'));
 
@@ -315,16 +329,12 @@ describe('DashboardCacheService', () => {
         JSON.stringify({ value: 2 }),
         null,
       ];
-      
+
       mockRedis.mget.mockResolvedValue(values);
 
       const result = await service.mget(keys);
 
-      expect(result).toEqual([
-        { value: 1 },
-        { value: 2 },
-        null,
-      ]);
+      expect(result).toEqual([{ value: 1 }, { value: 2 }, null]);
       expect(mockRedis.mget).toHaveBeenCalledWith(
         'intellifin:dashboard:key1',
         'intellifin:dashboard:key2',
@@ -334,7 +344,7 @@ describe('DashboardCacheService', () => {
 
     it('should handle Redis errors in mget', async () => {
       const keys = ['key1', 'key2'];
-      
+
       mockRedis.mget.mockRejectedValue(new Error('Redis error'));
 
       const result = await service.mget(keys);
@@ -349,12 +359,12 @@ describe('DashboardCacheService', () => {
         { key: 'key1', value: { data: 1 }, ttl: 300 },
         { key: 'key2', value: { data: 2 }, ttl: 600 },
       ];
-      
+
       const mockPipeline = {
         setex: jest.fn(),
         exec: jest.fn().mockResolvedValue([]),
       };
-      
+
       mockRedis.pipeline.mockReturnValue(mockPipeline as any);
 
       await service.mset(keyValuePairs);
@@ -377,13 +387,13 @@ describe('DashboardCacheService', () => {
   describe('getCacheKey', () => {
     it('should generate cache key with type and organization', () => {
       const key = service.getCacheKey('dashboard', 'org-123', 'month', 'true');
-      
+
       expect(key).toBe('dashboard_org-123_month_true');
     });
 
     it('should generate cache key with minimal parameters', () => {
       const key = service.getCacheKey('kpis', 'org-456');
-      
+
       expect(key).toBe('kpis_org-456');
     });
   });

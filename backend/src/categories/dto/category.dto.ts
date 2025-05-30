@@ -1,4 +1,12 @@
-import { IsString, IsEnum, IsOptional, IsBoolean, IsUUID, Length, Matches } from 'class-validator';
+import {
+  IsBoolean,
+  IsEnum,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Length,
+  Matches,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { CategoryType } from '@prisma/client';
 
@@ -260,7 +268,7 @@ export class CategoryWithStatsDto extends CategoryResponseDto {
 
   @ApiProperty({
     description: 'Total amount of transactions in this category',
-    example: 1500.50,
+    example: 1500.5,
   })
   totalAmount: number;
 

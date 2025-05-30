@@ -1,20 +1,23 @@
-import { 
-  IsString, 
-  IsEmail, 
-  IsOptional, 
-  IsUrl, 
-  IsPhoneNumber,
+import {
+  IsEmail,
   IsEnum,
   IsHexColor,
   IsInt,
-  Min,
-  Max,
+  IsOptional,
+  IsPhoneNumber,
+  IsString,
+  IsUrl,
   Length,
-  Matches
+  Matches,
+  Max,
+  Min,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsValidZraTin, IsCompanyZraTin } from '../validators/zra-tin.validator';
+import {
+  IsCompanyZraTin,
+  IsValidZraTin,
+} from '../validators/zra-tin.validator';
 
 // Zambian business types based on Companies Act
 export enum ZambianBusinessType {
@@ -55,7 +58,9 @@ export class CreateOrganizationDto {
     maxLength: 255,
   })
   @IsString()
-  @Length(2, 255, { message: 'Organization name must be between 2 and 255 characters' })
+  @Length(2, 255, {
+    message: 'Organization name must be between 2 and 255 characters',
+  })
   @Transform(({ value }) => value?.trim())
   name: string;
 
@@ -64,8 +69,8 @@ export class CreateOrganizationDto {
     enum: ZambianBusinessType,
     example: ZambianBusinessType.LIMITED_LIABILITY_COMPANY,
   })
-  @IsEnum(ZambianBusinessType, { 
-    message: 'Business type must be a valid Zambian business type' 
+  @IsEnum(ZambianBusinessType, {
+    message: 'Business type must be a valid Zambian business type',
   })
   businessType: ZambianBusinessType;
 
@@ -115,7 +120,9 @@ export class CreateOrganizationDto {
     example: '+260977123456',
   })
   @IsOptional()
-  @IsPhoneNumber('ZM', { message: 'Phone number must be a valid Zambian phone number' })
+  @IsPhoneNumber('ZM', {
+    message: 'Phone number must be a valid Zambian phone number',
+  })
   phone?: string;
 
   @ApiPropertyOptional({
@@ -141,8 +148,8 @@ export class CreateOrganizationDto {
     example: ZambianIndustry.WHOLESALE_RETAIL,
   })
   @IsOptional()
-  @IsEnum(ZambianIndustry, { 
-    message: 'Industry must be a valid industry type' 
+  @IsEnum(ZambianIndustry, {
+    message: 'Industry must be a valid industry type',
   })
   industry?: ZambianIndustry;
 
@@ -164,9 +171,12 @@ export class CreateOrganizationDto {
   })
   @IsOptional()
   @IsString()
-  @Length(0, 50, { message: 'Bank account number must not exceed 50 characters' })
-  @Matches(/^[0-9A-Za-z\-\s]*$/, { 
-    message: 'Bank account number can only contain letters, numbers, hyphens, and spaces' 
+  @Length(0, 50, {
+    message: 'Bank account number must not exceed 50 characters',
+  })
+  @Matches(/^[0-9A-Za-z\-\s]*$/, {
+    message:
+      'Bank account number can only contain letters, numbers, hyphens, and spaces',
   })
   @Transform(({ value }) => value?.trim())
   bankAccountNumber?: string;
@@ -190,7 +200,9 @@ export class CreateOrganizationDto {
   @IsOptional()
   @IsString()
   @Length(3, 3, { message: 'Currency must be a 3-letter ISO code' })
-  @Matches(/^[A-Z]{3}$/, { message: 'Currency must be a valid 3-letter ISO code' })
+  @Matches(/^[A-Z]{3}$/, {
+    message: 'Currency must be a valid 3-letter ISO code',
+  })
   @Transform(({ value }) => value?.toUpperCase() || 'ZMW')
   defaultCurrency?: string = 'ZMW';
 
@@ -234,7 +246,9 @@ export class UpdateOrganizationDto {
   })
   @IsOptional()
   @IsString()
-  @Length(2, 255, { message: 'Organization name must be between 2 and 255 characters' })
+  @Length(2, 255, {
+    message: 'Organization name must be between 2 and 255 characters',
+  })
   @Transform(({ value }) => value?.trim())
   name?: string;
 
@@ -244,14 +258,14 @@ export class UpdateOrganizationDto {
     example: ZambianBusinessType.LIMITED_LIABILITY_COMPANY,
   })
   @IsOptional()
-  @IsEnum(ZambianBusinessType, { 
-    message: 'Business type must be a valid Zambian business type' 
+  @IsEnum(ZambianBusinessType, {
+    message: 'Business type must be a valid Zambian business type',
   })
   businessType?: ZambianBusinessType;
 
   // Include other optional fields from CreateOrganizationDto
   // (excluding zraTin as it shouldn't be updated after creation)
-  
+
   @ApiPropertyOptional({
     description: 'Business address',
     example: 'Plot 123, Cairo Road, Lusaka',
@@ -278,7 +292,9 @@ export class UpdateOrganizationDto {
     example: '+260977123456',
   })
   @IsOptional()
-  @IsPhoneNumber('ZM', { message: 'Phone number must be a valid Zambian phone number' })
+  @IsPhoneNumber('ZM', {
+    message: 'Phone number must be a valid Zambian phone number',
+  })
   phone?: string;
 
   @ApiPropertyOptional({
@@ -304,8 +320,8 @@ export class UpdateOrganizationDto {
     example: ZambianIndustry.WHOLESALE_RETAIL,
   })
   @IsOptional()
-  @IsEnum(ZambianIndustry, { 
-    message: 'Industry must be a valid industry type' 
+  @IsEnum(ZambianIndustry, {
+    message: 'Industry must be a valid industry type',
   })
   industry?: ZambianIndustry;
 }

@@ -8,14 +8,7 @@ import { DatabaseModule } from '../database/database.module';
 @Module({
   imports: [DatabaseModule],
   controllers: [OrganizationController],
-  providers: [
-    OrganizationService,
-    OrganizationRepository,
-    ZraTinValidator,
-  ],
-  exports: [
-    OrganizationService,
-    OrganizationRepository,
-  ],
+  providers: [OrganizationService, OrganizationRepository, ZraTinValidator],
+  exports: [OrganizationService, OrganizationRepository],
 })
 export class OrganizationModule {}

@@ -54,7 +54,11 @@ export class RetryStrategy {
   /**
    * Determine if a job should be retried based on error and attempt count
    */
-  shouldRetryJob(job: Job, error: Error, config?: Partial<RetryConfig>): RetryDecision {
+  shouldRetryJob(
+    job: Job,
+    error: Error,
+    config?: Partial<RetryConfig>
+  ): RetryDecision {
     const finalConfig = { ...this.defaultConfig, ...config };
     const attemptsMade = job.attemptsMade || 0;
 
@@ -78,8 +82,9 @@ export class RetryStrategy {
     }
 
     // Check if error is explicitly retryable or if it's an unknown error
-    const isRetryable = finalConfig.retryableErrors.includes(errorType) || 
-                       !finalConfig.nonRetryableErrors.includes(errorType);
+    const isRetryable =
+      finalConfig.retryableErrors.includes(errorType) ||
+      !finalConfig.nonRetryableErrors.includes(errorType);
 
     if (!isRetryable) {
       return {
@@ -94,7 +99,7 @@ export class RetryStrategy {
 
     this.logger.debug(
       `Job ${job.id} will be retried (attempt ${attemptsMade + 1}/${finalConfig.maxAttempts}) ` +
-      `after ${delay}ms delay. Error: ${errorType}`
+        `after ${delay}ms delay. Error: ${errorType}`
     );
 
     return {
@@ -109,7 +114,8 @@ export class RetryStrategy {
    */
   calculateRetryDelay(attemptNumber: number, config: RetryConfig): number {
     // Exponential backoff: baseDelay * (backoffMultiplier ^ attemptNumber)
-    let delay = config.baseDelay * Math.pow(config.backoffMultiplier, attemptNumber);
+    let delay =
+      config.baseDelay * Math.pow(config.backoffMultiplier, attemptNumber);
 
     // Cap at maximum delay
     delay = Math.min(delay, config.maxDelay);
@@ -175,13 +181,19 @@ export class RetryStrategy {
     }
 
     // Application-specific errors
-    if (message.includes('invalid token') || message.includes('token expired')) {
+    if (
+      message.includes('invalid token') ||
+      message.includes('token expired')
+    ) {
       return 'INVALID_TOKEN';
     }
     if (message.includes('invalid credentials')) {
       return 'INVALID_CREDENTIALS';
     }
-    if (message.includes('account suspended') || message.includes('account blocked')) {
+    if (
+      message.includes('account suspended') ||
+      message.includes('account blocked')
+    ) {
       return 'ACCOUNT_SUSPENDED';
     }
     if (message.includes('validation') || message.includes('invalid input')) {
@@ -203,28 +215,28 @@ export class RetryStrategy {
           baseDelay: 5000,
           maxDelay: 600000, // 10 minutes for transaction sync
         };
-      
+
       case 'update-account-balance':
         return {
           maxAttempts: 3,
           baseDelay: 2000,
           maxDelay: 60000, // 1 minute for balance updates
         };
-      
+
       case 'retry-failed-sync':
         return {
           maxAttempts: 3,
           baseDelay: 10000,
           maxDelay: 300000, // 5 minutes for retry operations
         };
-      
+
       case 'send-sync-notification':
         return {
           maxAttempts: 2,
           baseDelay: 1000,
           maxDelay: 30000, // 30 seconds for notifications
         };
-      
+
       default:
         return {};
     }

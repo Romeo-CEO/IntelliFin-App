@@ -69,7 +69,8 @@ export const securityConfig = registerAs('security', () => ({
 
   // Session Configuration
   session: {
-    secret: process.env.SESSION_SECRET || 'your-session-secret-change-in-production',
+    secret:
+      process.env.SESSION_SECRET || 'your-session-secret-change-in-production',
     resave: false,
     saveUninitialized: false,
     cookie: {
@@ -83,7 +84,8 @@ export const securityConfig = registerAs('security', () => ({
 
   // Cookie Configuration
   cookies: {
-    secret: process.env.COOKIE_SECRET || 'your-cookie-secret-change-in-production',
+    secret:
+      process.env.COOKIE_SECRET || 'your-cookie-secret-change-in-production',
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict' as const,
@@ -139,7 +141,8 @@ export const securityConfig = registerAs('security', () => ({
   // Encryption
   encryption: {
     algorithm: 'aes-256-gcm',
-    key: process.env.ENCRYPTION_KEY || 'your-encryption-key-change-in-production',
+    key:
+      process.env.ENCRYPTION_KEY || 'your-encryption-key-change-in-production',
     ivLength: 16,
     tagLength: 16,
   },
@@ -161,13 +164,19 @@ export const securityConfig = registerAs('security', () => ({
   // Account Security
   account: {
     maxLoginAttempts: parseInt(process.env.MAX_LOGIN_ATTEMPTS || '5', 10),
-    lockoutDuration: parseInt(process.env.LOCKOUT_DURATION || '30', 10) * 60 * 1000, // Convert to milliseconds
+    lockoutDuration:
+      parseInt(process.env.LOCKOUT_DURATION || '30', 10) * 60 * 1000, // Convert to milliseconds
     unlockAfterSuccess: process.env.UNLOCK_AFTER_SUCCESS !== 'false',
-    requireEmailVerification: process.env.EMAIL_VERIFICATION_ENABLED !== 'false',
+    requireEmailVerification:
+      process.env.EMAIL_VERIFICATION_ENABLED !== 'false',
     requirePhoneVerification: process.env.PHONE_VERIFICATION_ENABLED === 'true',
     enableTwoFactor: process.env.TWO_FACTOR_AUTH_ENABLED === 'true',
-    sessionTimeout: parseInt(process.env.SESSION_TIMEOUT || '60', 10) * 60 * 1000, // Convert to milliseconds
-    maxConcurrentSessions: parseInt(process.env.MAX_CONCURRENT_SESSIONS || '5', 10),
+    sessionTimeout:
+      parseInt(process.env.SESSION_TIMEOUT || '60', 10) * 60 * 1000, // Convert to milliseconds
+    maxConcurrentSessions: parseInt(
+      process.env.MAX_CONCURRENT_SESSIONS || '5',
+      10
+    ),
   },
 
   // Audit and Logging

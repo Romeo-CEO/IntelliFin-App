@@ -1,4 +1,4 @@
-import { Injectable, Scope, Inject } from '@nestjs/common';
+import { Inject, Injectable, Scope } from '@nestjs/common';
 import { Request } from 'express';
 import { PrismaClient } from '@prisma/client';
 
@@ -10,7 +10,7 @@ export class TenantDatabaseProvider {
 
   constructor(
     private readonly prismaService: PrismaService,
-    @Inject('REQUEST') private readonly request: Request,
+    @Inject('REQUEST') private readonly request: Request
   ) {}
 
   /**
@@ -48,7 +48,7 @@ export class TenantDatabaseProvider {
    * Execute a query in the tenant context
    */
   public async executeInTenantContext<T>(
-    operation: (client: PrismaClient) => Promise<T>,
+    operation: (client: PrismaClient) => Promise<T>
   ): Promise<T> {
     const client = this.getTenantClient();
     return operation(client);
@@ -58,10 +58,10 @@ export class TenantDatabaseProvider {
    * Execute a transaction in the tenant context
    */
   public async executeTransaction<T>(
-    operations: (client: PrismaClient) => Promise<T>,
+    operations: (client: PrismaClient) => Promise<T>
   ): Promise<T> {
     const client = this.getTenantClient();
-    return client.$transaction(async (tx) => {
+    return client.$transaction(async tx => {
       return operations(tx as PrismaClient);
     });
   }

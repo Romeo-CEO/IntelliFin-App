@@ -1,6 +1,5 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import {
   Eye,
@@ -18,18 +17,18 @@ import {
   ZoomOut,
   RotateCw,
 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
 
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
 import { useReceipt } from '@/hooks/useReceipts';
-import { receiptService } from '@/services/receipt.service';
 import { formatFileSize, formatCurrency } from '@/lib/utils';
+import { receiptService } from '@/services/receipt.service';
 import { OcrStatus } from '@/types/receipt';
 
 interface ReceiptViewerProps {

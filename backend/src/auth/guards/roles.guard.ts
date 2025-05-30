@@ -1,8 +1,8 @@
 import {
-  Injectable,
   CanActivate,
   ExecutionContext,
   ForbiddenException,
+  Injectable,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { UserRole } from '@prisma/client';
@@ -17,7 +17,7 @@ export class RolesGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const requiredRoles = this.reflector.getAllAndOverride<UserRole[]>(
       ROLES_KEY,
-      [context.getHandler(), context.getClass()],
+      [context.getHandler(), context.getClass()]
     );
 
     if (!requiredRoles) {
@@ -35,14 +35,17 @@ export class RolesGuard implements CanActivate {
 
     if (!hasRole) {
       throw new ForbiddenException(
-        `Access denied. Required roles: ${requiredRoles.join(', ')}`,
+        `Access denied. Required roles: ${requiredRoles.join(', ')}`
       );
     }
 
     return true;
   }
 
-  private checkUserRole(userRole: UserRole, requiredRoles: UserRole[]): boolean {
+  private checkUserRole(
+    userRole: UserRole,
+    requiredRoles: UserRole[]
+  ): boolean {
     // Define role hierarchy (higher roles include permissions of lower roles)
     const roleHierarchy: Record<UserRole, UserRole[]> = {
       [UserRole.SUPER_ADMIN]: [
@@ -73,6 +76,6 @@ export class RolesGuard implements CanActivate {
 
     const userPermissions = roleHierarchy[userRole] || [];
 
-    return requiredRoles.some((role) => userPermissions.includes(role));
+    return requiredRoles.some(role => userPermissions.includes(role));
   }
 }

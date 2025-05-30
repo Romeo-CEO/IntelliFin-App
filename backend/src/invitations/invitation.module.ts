@@ -7,19 +7,9 @@ import { UsersModule } from '../users/users.module';
 import { EmailModule } from '../email/email.module';
 
 @Module({
-  imports: [
-    DatabaseModule,
-    UsersModule,
-    EmailModule,
-  ],
+  imports: [DatabaseModule, UsersModule, EmailModule],
   controllers: [InvitationController],
-  providers: [
-    InvitationService,
-    InvitationRepository,
-  ],
-  exports: [
-    InvitationService,
-    InvitationRepository,
-  ],
+  providers: [InvitationService, InvitationRepository],
+  exports: [InvitationService, InvitationRepository],
 })
 export class InvitationModule {}

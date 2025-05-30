@@ -9,7 +9,7 @@ export class HealthService {
 
   constructor(
     private readonly prismaService: PrismaService,
-    private readonly configService: ConfigService,
+    private readonly configService: ConfigService
   ) {}
 
   public async check() {
@@ -34,7 +34,7 @@ export class HealthService {
 
     // Determine overall status
     const hasFailures = Object.values(results.checks).some(
-      (check) => check.status === 'error',
+      check => check.status === 'error'
     );
 
     if (hasFailures) {
@@ -70,7 +70,10 @@ export class HealthService {
     };
   }
 
-  private async checkDatabase(): Promise<{ status: string; responseTime: number }> {
+  private async checkDatabase(): Promise<{
+    status: string;
+    responseTime: number;
+  }> {
     const start = Date.now();
     try {
       await this.prismaService.$queryRaw`SELECT 1`;
@@ -80,12 +83,16 @@ export class HealthService {
       };
     } catch (error) {
       this.logger.error('Database health check failed', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       throw new Error(`Database check failed: ${errorMessage}`);
     }
   }
 
-  private async checkRedis(): Promise<{ status: string; responseTime: number }> {
+  private async checkRedis(): Promise<{
+    status: string;
+    responseTime: number;
+  }> {
     const start = Date.now();
     try {
       // TODO: Implement Redis health check when Redis service is added
@@ -95,7 +102,8 @@ export class HealthService {
       };
     } catch (error) {
       this.logger.error('Redis health check failed', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       throw new Error(`Redis check failed: ${errorMessage}`);
     }
   }

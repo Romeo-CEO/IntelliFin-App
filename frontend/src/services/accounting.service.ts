@@ -188,19 +188,33 @@ export interface TrialBalance {
   asOfDate: string;
 }
 
+// Interface for summarized account data in financial statements
+export interface FinancialAccountSummary {
+  accountId: string;
+  accountCode: string;
+  accountName: string;
+  accountType: string; // Consider a more specific union type if possible
+  normalBalance: 'DEBIT' | 'CREDIT';
+  debitTotal: number;
+  creditTotal: number;
+  balance: number;
+  runningBalance: number; // Might not be present in all summaries, check API
+  // Potentially include other fields like description, parent account info if needed
+}
+
 export interface BalanceSheet {
   assets: {
-    currentAssets: any[];
-    nonCurrentAssets: any[];
+    currentAssets: FinancialAccountSummary[];
+    nonCurrentAssets: FinancialAccountSummary[];
     totalAssets: number;
   };
   liabilities: {
-    currentLiabilities: any[];
-    nonCurrentLiabilities: any[];
+    currentLiabilities: FinancialAccountSummary[];
+    nonCurrentLiabilities: FinancialAccountSummary[];
     totalLiabilities: number;
   };
   equity: {
-    equityAccounts: any[];
+    equityAccounts: FinancialAccountSummary[];
     totalEquity: number;
   };
   totalLiabilitiesAndEquity: number;
@@ -210,14 +224,14 @@ export interface BalanceSheet {
 
 export interface IncomeStatement {
   revenue: {
-    operatingRevenue: any[];
-    nonOperatingRevenue: any[];
+    operatingRevenue: FinancialAccountSummary[];
+    nonOperatingRevenue: FinancialAccountSummary[];
     totalRevenue: number;
   };
   expenses: {
-    costOfGoodsSold: any[];
-    operatingExpenses: any[];
-    nonOperatingExpenses: any[];
+    costOfGoodsSold: FinancialAccountSummary[];
+    operatingExpenses: FinancialAccountSummary[];
+    nonOperatingExpenses: FinancialAccountSummary[];
     totalExpenses: number;
   };
   grossProfit: number;
@@ -225,6 +239,39 @@ export interface IncomeStatement {
   netIncome: number;
   periodFrom: string;
   periodTo: string;
+}
+
+// Define a query interface for fetching journal entries and general ledger entries
+export interface JournalEntryQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  // Add other potential filters as needed, e.g., entryType, status, accountId
+  entryType?: string;
+  status?: string;
+  accountId?: string;
+}
+
+// Interface for updating a journal entry (making all fields from CreateJournalEntryData optional)
+export interface UpdateJournalEntryData {
+  entryDate?: string;
+  description?: string;
+  reference?: string;
+  entryType?: 'STANDARD' | 'ADJUSTING' | 'CLOSING' | 'REVERSING' | 'OPENING' | 'CORRECTION';
+  sourceType?: 'INVOICE' | 'PAYMENT' | 'EXPENSE' | 'TRANSACTION' | 'MANUAL';
+  sourceId?: string;
+  lines?: {
+    accountCode?: string;
+    accountId?: string;
+    debitAmount?: number;
+    creditAmount?: number;
+    description?: string;
+    reference?: string;
+  }[];
 }
 
 class AccountingService {
@@ -311,7 +358,7 @@ class AccountingService {
   }
 
   // Journal Entry methods
-  async getJournalEntries(query?: any): Promise<{
+  async getJournalEntries(query?: JournalEntryQuery): Promise<{
     entries: JournalEntry[];
     total: number;
     page: number;
@@ -341,7 +388,7 @@ class AccountingService {
     return response.data;
   }
 
-  async updateJournalEntry(id: string, data: any): Promise<JournalEntry> {
+  async updateJournalEntry(id: string, data: UpdateJournalEntryData): Promise<JournalEntry> {
     const response = await apiClient.put(`${this.baseUrl}/journal-entries/${id}`, data);
     return response.data;
   }
@@ -362,7 +409,7 @@ class AccountingService {
   }
 
   // General Ledger methods
-  async getGeneralLedgerEntries(query?: any): Promise<{
+  async getGeneralLedgerEntries(query?: JournalEntryQuery): Promise<{
     entries: GeneralLedgerEntry[];
     total: number;
     page: number;

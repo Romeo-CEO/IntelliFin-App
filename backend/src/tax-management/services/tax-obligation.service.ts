@@ -1,6 +1,16 @@
-import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
-import { TaxObligation, TaxObligationType, TaxObligationStatus, Prisma } from '@prisma/client';
+import {
+  Prisma,
+  TaxObligation,
+  TaxObligationStatus,
+  TaxObligationType,
+} from '@prisma/client';
 
 export interface CreateTaxObligationDto {
   organizationId: string;
@@ -28,14 +38,20 @@ export interface TaxObligationSummary {
   totalOutstanding: number;
   totalOverdue: number;
   overdueAmount: number;
-  byStatus: Record<TaxObligationStatus, {
-    count: number;
-    amount: number;
-  }>;
-  byType: Record<TaxObligationType, {
-    count: number;
-    amount: number;
-  }>;
+  byStatus: Record<
+    TaxObligationStatus,
+    {
+      count: number;
+      amount: number;
+    }
+  >;
+  byType: Record<
+    TaxObligationType,
+    {
+      count: number;
+      amount: number;
+    }
+  >;
 }
 
 export interface PaymentPlan {
@@ -87,8 +103,11 @@ export class TaxObligationService {
 
       this.logger.log(`Tax obligation created: ${obligation.id}`);
       return obligation;
-    } catch (error) {
-      this.logger.error(`Failed to create tax obligation: ${error.message}`, error.stack);
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to create tax obligation: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -104,7 +123,7 @@ export class TaxObligationService {
       status?: TaxObligationStatus;
       overdue?: boolean;
       year?: number;
-    },
+    }
   ): Promise<TaxObligation[]> {
     try {
       const where: any = { organizationId };
@@ -150,8 +169,11 @@ export class TaxObligationService {
       });
 
       return obligations;
-    } catch (error) {
-      this.logger.error(`Failed to get tax obligations: ${error.message}`, error.stack);
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to get tax obligations: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -162,7 +184,7 @@ export class TaxObligationService {
   async updateObligation(
     organizationId: string,
     obligationId: string,
-    dto: UpdateTaxObligationDto,
+    dto: UpdateTaxObligationDto
   ): Promise<TaxObligation> {
     try {
       // Verify obligation exists and belongs to organization
@@ -182,9 +204,12 @@ export class TaxObligationService {
 
       if (dto.amountPaid !== undefined) {
         updateData.amountPaid = new Prisma.Decimal(dto.amountPaid);
-        
+
         // Auto-update status based on payment
-        const totalDue = dto.amountDue !== undefined ? dto.amountDue : existing.amountDue.toNumber();
+        const totalDue =
+          dto.amountDue !== undefined
+            ? dto.amountDue
+            : existing.amountDue.toNumber();
         if (dto.amountPaid >= totalDue) {
           updateData.status = TaxObligationStatus.COMPLETED;
           updateData.paidAt = new Date();
@@ -223,8 +248,11 @@ export class TaxObligationService {
 
       this.logger.log(`Tax obligation updated: ${obligationId}`);
       return updated;
-    } catch (error) {
-      this.logger.error(`Failed to update tax obligation: ${error.message}`, error.stack);
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to update tax obligation: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -237,7 +265,7 @@ export class TaxObligationService {
     obligationId: string,
     amount: number,
     paymentMethod: string,
-    paymentReference?: string,
+    paymentReference?: string
   ): Promise<TaxObligation> {
     try {
       const obligation = await this.prisma.taxObligation.findFirst({
@@ -250,12 +278,15 @@ export class TaxObligationService {
 
       const currentPaid = obligation.amountPaid.toNumber();
       const newPaidAmount = currentPaid + amount;
-      const totalDue = obligation.amountDue.toNumber() + 
-                      obligation.penaltyAmount.toNumber() + 
-                      obligation.interestAmount.toNumber();
+      const totalDue =
+        obligation.amountDue.toNumber() +
+        obligation.penaltyAmount.toNumber() +
+        obligation.interestAmount.toNumber();
 
       if (newPaidAmount > totalDue) {
-        throw new BadRequestException('Payment amount exceeds total amount due');
+        throw new BadRequestException(
+          'Payment amount exceeds total amount due'
+        );
       }
 
       return await this.updateObligation(organizationId, obligationId, {
@@ -263,8 +294,11 @@ export class TaxObligationService {
         paymentMethod,
         paymentReference,
       });
-    } catch (error) {
-      this.logger.error(`Failed to record payment: ${error.message}`, error.stack);
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to record payment: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -274,13 +308,18 @@ export class TaxObligationService {
    */
   async calculatePenaltiesAndInterest(organizationId: string): Promise<void> {
     try {
-      this.logger.log(`Calculating penalties and interest for organization: ${organizationId}`);
+      this.logger.log(
+        `Calculating penalties and interest for organization: ${organizationId}`
+      );
 
-      const overdueObligations = await this.getObligations(organizationId, { overdue: true });
+      const overdueObligations = await this.getObligations(organizationId, {
+        overdue: true,
+      });
 
       for (const obligation of overdueObligations) {
         const daysOverdue = Math.floor(
-          (new Date().getTime() - obligation.dueDate.getTime()) / (1000 * 60 * 60 * 24),
+          (new Date().getTime() - obligation.dueDate.getTime()) /
+            (1000 * 60 * 60 * 24)
         );
 
         if (daysOverdue > 0) {
@@ -290,7 +329,8 @@ export class TaxObligationService {
 
           const penaltyAmount = obligation.amountDue.toNumber() * penaltyRate;
           const monthsOverdue = Math.ceil(daysOverdue / 30);
-          const interestAmount = obligation.amountDue.toNumber() * interestRate * monthsOverdue;
+          const interestAmount =
+            obligation.amountDue.toNumber() * interestRate * monthsOverdue;
 
           await this.updateObligation(organizationId, obligation.id, {
             penaltyAmount,
@@ -300,8 +340,11 @@ export class TaxObligationService {
       }
 
       this.logger.log('Penalties and interest calculation completed');
-    } catch (error) {
-      this.logger.error(`Failed to calculate penalties: ${error.message}`, error.stack);
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to calculate penalties: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -309,7 +352,10 @@ export class TaxObligationService {
   /**
    * Get tax obligation summary
    */
-  async getObligationSummary(organizationId: string, year?: number): Promise<TaxObligationSummary> {
+  async getObligationSummary(
+    organizationId: string,
+    year?: number
+  ): Promise<TaxObligationSummary> {
     try {
       const obligations = await this.getObligations(organizationId, { year });
 
@@ -353,15 +399,21 @@ export class TaxObligationService {
         summary.byType[obligation.obligationType].amount += amountDue;
 
         // Check if overdue
-        if (obligation.dueDate < now && obligation.status !== TaxObligationStatus.COMPLETED) {
+        if (
+          obligation.dueDate < now &&
+          obligation.status !== TaxObligationStatus.COMPLETED
+        ) {
           summary.totalOverdue++;
           summary.overdueAmount += outstanding;
         }
       });
 
       return summary;
-    } catch (error) {
-      this.logger.error(`Failed to get obligation summary: ${error.message}`, error.stack);
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to get obligation summary: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -369,7 +421,9 @@ export class TaxObligationService {
   /**
    * Get upcoming obligations (due in next 30 days)
    */
-  async getUpcomingObligations(organizationId: string): Promise<TaxObligation[]> {
+  async getUpcomingObligations(
+    organizationId: string
+  ): Promise<TaxObligation[]> {
     try {
       const thirtyDaysFromNow = new Date();
       thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
@@ -396,8 +450,11 @@ export class TaxObligationService {
         },
         orderBy: { dueDate: 'asc' },
       });
-    } catch (error) {
-      this.logger.error(`Failed to get upcoming obligations: ${error.message}`, error.stack);
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to get upcoming obligations: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }

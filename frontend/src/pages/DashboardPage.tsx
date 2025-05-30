@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useDashboard } from '../contexts/DashboardContext';
-import { DashboardGrid } from '../components/dashboard/DashboardGrid';
-import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import React, { useEffect, useState } from 'react';
+
 import { ErrorMessage } from '../components/common/ErrorMessage';
+import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import { DashboardGrid } from '../components/dashboard/DashboardGrid';
+import { useDashboard } from '../contexts/DashboardContext';
 
 /**
  * Main dashboard page component

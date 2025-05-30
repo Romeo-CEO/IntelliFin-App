@@ -1,6 +1,5 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
 import { 
   ChevronRight, 
   ChevronDown, 
@@ -13,9 +12,11 @@ import {
   TrendingUp,
   TrendingDown
 } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+
 import { Account } from '../../services/accounting.service';
-import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 
 interface AccountHierarchyTreeProps {

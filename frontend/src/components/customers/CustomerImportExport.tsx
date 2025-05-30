@@ -1,6 +1,5 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
 import { 
   Upload, 
   Download, 
@@ -12,6 +11,8 @@ import {
   Users,
   FileSpreadsheet
 } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+
 import { customerService, ImportResult } from '../../services/customer.service';
 
 interface CustomerImportExportProps {

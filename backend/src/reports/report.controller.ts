@@ -1,17 +1,17 @@
 import {
   Controller,
   Get,
+  HttpStatus,
   Query,
   UseGuards,
   ValidationPipe,
-  HttpStatus,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiQuery,
   ApiBearerAuth,
+  ApiOperation,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -19,19 +19,19 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/auth.interface';
 import { ReportService } from './report.service';
 import {
-  ReportQueryDto,
-  DashboardQueryDto,
+  AccountsReceivableAgingDto,
+  CashFlowDataDto,
   DashboardMetricsDto,
+  DashboardQueryDto,
+  ExpenseBreakdownDto,
+  ExportFormat,
   FinancialMetricsDto,
   PeriodComparisonDto,
-  RevenueBreakdownDto,
-  ExpenseBreakdownDto,
-  AccountsReceivableAgingDto,
-  VatReportDto,
-  CashFlowDataDto,
-  ReportType,
   ReportPeriod,
-  ExportFormat,
+  ReportQueryDto,
+  ReportType,
+  RevenueBreakdownDto,
+  VatReportDto,
 } from './dto/report.dto';
 
 @ApiTags('Reports & Analytics')
@@ -55,16 +55,20 @@ export class ReportController {
   })
   async getDashboardMetrics(
     @CurrentUser() user: AuthenticatedUser,
-    @Query(ValidationPipe) query: DashboardQueryDto,
+    @Query(ValidationPipe) query: DashboardQueryDto
   ) {
-    return await this.reportService.getDashboardMetrics(user.organizationId, query);
+    return await this.reportService.getDashboardMetrics(
+      user.organizationId,
+      query
+    );
   }
 
   @Get('generate')
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 requests per minute
   @ApiOperation({
     summary: 'Generate a financial report',
-    description: 'Generate a specific type of financial report with optional export',
+    description:
+      'Generate a specific type of financial report with optional export',
   })
   @ApiQuery({ type: ReportQueryDto })
   @ApiResponse({
@@ -82,7 +86,10 @@ export class ReportController {
           },
         },
         generatedAt: { type: 'string', format: 'date-time' },
-        data: { type: 'object', description: 'Report data varies by report type' },
+        data: {
+          type: 'object',
+          description: 'Report data varies by report type',
+        },
       },
     },
   })
@@ -92,7 +99,7 @@ export class ReportController {
   })
   async generateReport(
     @CurrentUser() user: AuthenticatedUser,
-    @Query(ValidationPipe) query: ReportQueryDto,
+    @Query(ValidationPipe) query: ReportQueryDto
   ) {
     return await this.reportService.generateReport(user.organizationId, query);
   }
@@ -113,7 +120,10 @@ export class ReportController {
         properties: {
           type: { type: 'string', enum: Object.values(ReportType) },
           name: { type: 'string', example: 'Financial Overview' },
-          description: { type: 'string', example: 'Comprehensive overview of financial performance' },
+          description: {
+            type: 'string',
+            example: 'Comprehensive overview of financial performance',
+          },
         },
       },
     },
@@ -159,9 +169,12 @@ export class ReportController {
   })
   async getFinancialMetrics(
     @CurrentUser() user: AuthenticatedUser,
-    @Query(ValidationPipe) query: DashboardQueryDto,
+    @Query(ValidationPipe) query: DashboardQueryDto
   ) {
-    const dashboard = await this.reportService.getDashboardMetrics(user.organizationId, query);
+    const dashboard = await this.reportService.getDashboardMetrics(
+      user.organizationId,
+      query
+    );
     return dashboard.financialMetrics;
   }
 
@@ -169,7 +182,8 @@ export class ReportController {
   @Throttle({ default: { limit: 20, ttl: 60000 } }) // 20 requests per minute
   @ApiOperation({
     summary: 'Get revenue breakdown',
-    description: 'Get detailed revenue analysis by customer, time, and payment method',
+    description:
+      'Get detailed revenue analysis by customer, time, and payment method',
   })
   @ApiQuery({
     name: 'period',
@@ -196,9 +210,12 @@ export class ReportController {
   })
   async getRevenueBreakdown(
     @CurrentUser() user: AuthenticatedUser,
-    @Query(ValidationPipe) query: DashboardQueryDto,
+    @Query(ValidationPipe) query: DashboardQueryDto
   ) {
-    const dashboard = await this.reportService.getDashboardMetrics(user.organizationId, query);
+    const dashboard = await this.reportService.getDashboardMetrics(
+      user.organizationId,
+      query
+    );
     return dashboard.revenueBreakdown;
   }
 
@@ -206,7 +223,8 @@ export class ReportController {
   @Throttle({ default: { limit: 20, ttl: 60000 } }) // 20 requests per minute
   @ApiOperation({
     summary: 'Get expense breakdown',
-    description: 'Get detailed expense analysis by category, time, and payment method',
+    description:
+      'Get detailed expense analysis by category, time, and payment method',
   })
   @ApiQuery({
     name: 'period',
@@ -234,7 +252,7 @@ export class ReportController {
   async getExpenseBreakdown(
     @CurrentUser() user: AuthenticatedUser,
     @Query('type') type: string = ReportType.EXPENSE_BREAKDOWN,
-    @Query(ValidationPipe) query: DashboardQueryDto,
+    @Query(ValidationPipe) query: DashboardQueryDto
   ) {
     const reportQuery: ReportQueryDto = {
       type: ReportType.EXPENSE_BREAKDOWN,
@@ -243,7 +261,10 @@ export class ReportController {
       endDate: query.endDate,
       includeComparison: query.includeComparison,
     };
-    const report = await this.reportService.generateReport(user.organizationId, reportQuery);
+    const report = await this.reportService.generateReport(
+      user.organizationId,
+      reportQuery
+    );
     return report.data;
   }
 
@@ -251,7 +272,8 @@ export class ReportController {
   @Throttle({ default: { limit: 20, ttl: 60000 } }) // 20 requests per minute
   @ApiOperation({
     summary: 'Get cash flow data',
-    description: 'Get cash flow analysis including historical and projected data',
+    description:
+      'Get cash flow analysis including historical and projected data',
   })
   @ApiQuery({
     name: 'period',
@@ -278,9 +300,12 @@ export class ReportController {
   })
   async getCashFlowData(
     @CurrentUser() user: AuthenticatedUser,
-    @Query(ValidationPipe) query: DashboardQueryDto,
+    @Query(ValidationPipe) query: DashboardQueryDto
   ) {
-    const dashboard = await this.reportService.getDashboardMetrics(user.organizationId, query);
+    const dashboard = await this.reportService.getDashboardMetrics(
+      user.organizationId,
+      query
+    );
     return dashboard.cashFlow;
   }
 
@@ -288,7 +313,8 @@ export class ReportController {
   @Throttle({ default: { limit: 20, ttl: 60000 } }) // 20 requests per minute
   @ApiOperation({
     summary: 'Get accounts receivable aging',
-    description: 'Get accounts receivable aging report showing overdue invoices',
+    description:
+      'Get accounts receivable aging report showing overdue invoices',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -297,7 +323,10 @@ export class ReportController {
   })
   async getAccountsReceivableAging(@CurrentUser() user: AuthenticatedUser) {
     const query: DashboardQueryDto = { period: ReportPeriod.THIS_MONTH };
-    const dashboard = await this.reportService.getDashboardMetrics(user.organizationId, query);
+    const dashboard = await this.reportService.getDashboardMetrics(
+      user.organizationId,
+      query
+    );
     return dashboard.accountsReceivable;
   }
 
@@ -332,7 +361,7 @@ export class ReportController {
   })
   async getVatReport(
     @CurrentUser() user: AuthenticatedUser,
-    @Query(ValidationPipe) query: DashboardQueryDto,
+    @Query(ValidationPipe) query: DashboardQueryDto
   ) {
     const reportQuery: ReportQueryDto = {
       type: ReportType.VAT_REPORT,
@@ -340,7 +369,10 @@ export class ReportController {
       startDate: query.startDate,
       endDate: query.endDate,
     };
-    const report = await this.reportService.generateReport(user.organizationId, reportQuery);
+    const report = await this.reportService.generateReport(
+      user.organizationId,
+      reportQuery
+    );
     return report.data;
   }
 
@@ -348,7 +380,8 @@ export class ReportController {
   @Throttle({ default: { limit: 20, ttl: 60000 } }) // 20 requests per minute
   @ApiOperation({
     summary: 'Get period comparison',
-    description: 'Get financial metrics comparison between current and previous period',
+    description:
+      'Get financial metrics comparison between current and previous period',
   })
   @ApiQuery({
     name: 'period',
@@ -375,10 +408,13 @@ export class ReportController {
   })
   async getPeriodComparison(
     @CurrentUser() user: AuthenticatedUser,
-    @Query(ValidationPipe) query: DashboardQueryDto,
+    @Query(ValidationPipe) query: DashboardQueryDto
   ) {
     const queryWithComparison = { ...query, includeComparison: true };
-    const dashboard = await this.reportService.getDashboardMetrics(user.organizationId, queryWithComparison);
+    const dashboard = await this.reportService.getDashboardMetrics(
+      user.organizationId,
+      queryWithComparison
+    );
     return dashboard.periodComparison;
   }
 }

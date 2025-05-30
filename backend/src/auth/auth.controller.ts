@@ -1,35 +1,35 @@
 import {
-  Controller,
-  Post,
-  Get,
   Body,
-  Req,
-  UseGuards,
+  Controller,
+  Get,
   HttpCode,
   HttpStatus,
   Param,
   ParseUUIDPipe,
+  Post,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
   ApiBearerAuth,
   ApiBody,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
 } from '@nestjs/swagger';
 import { Request } from 'express';
 import { Throttle } from '@nestjs/throttler';
 
 import { AuthService } from './auth.service';
 import {
-  LoginDto,
-  RegisterDto,
+  ChangePasswordDto,
   ForgotPasswordDto,
+  LoginDto,
+  RefreshTokenDto,
+  RegisterDto,
+  ResendVerificationDto,
   ResetPasswordDto,
   VerifyEmailDto,
-  RefreshTokenDto,
-  ChangePasswordDto,
-  ResendVerificationDto,
 } from './dto/auth.dto';
 
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
@@ -84,7 +84,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'User logout' })
   @ApiResponse({ status: 200, description: 'Logout successful' })
-  async logout(@CurrentUser() _user: AuthenticatedUser) {
+  async logout() {
     // Note: In a real implementation, you'd extract session ID from the token
     // For now, we'll use a placeholder
     const sessionId = 'current-session-id'; // This should be extracted from JWT or request
@@ -145,7 +145,7 @@ export class AuthController {
   @ApiBody({ type: ChangePasswordDto })
   async changePassword(
     @CurrentUser() user: AuthenticatedUser,
-    @Body() changePasswordDto: ChangePasswordDto,
+    @Body() changePasswordDto: ChangePasswordDto
   ) {
     return this.authService.changePassword(user.id, changePasswordDto);
   }
@@ -168,8 +168,12 @@ export class AuthController {
   @ApiOperation({ summary: 'Resend email verification' })
   @ApiResponse({ status: 200, description: 'Verification email sent' })
   @ApiBody({ type: ResendVerificationDto })
-  async resendVerification(@Body() resendVerificationDto: ResendVerificationDto) {
-    return this.authService.resendEmailVerification(resendVerificationDto.email);
+  async resendVerification(
+    @Body() resendVerificationDto: ResendVerificationDto
+  ) {
+    return this.authService.resendEmailVerification(
+      resendVerificationDto.email
+    );
   }
 
   @Get('me')

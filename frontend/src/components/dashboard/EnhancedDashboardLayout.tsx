@@ -2,15 +2,17 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Responsive, WidthProvider, Layout } from 'react-grid-layout';
-import { Dashboard, DashboardWidget } from '../../types/dashboard.types';
+
 import { useDashboard } from '../../contexts/DashboardContext';
-import { WidgetContainer } from './WidgetContainer';
-import { DashboardToolbar } from './DashboardToolbar';
-import { DashboardSidebar } from './DashboardSidebar';
-import { LoadingSpinner } from '../common/LoadingSpinner';
-import { ErrorBoundary } from '../common/ErrorBoundary';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { usePerformanceMonitor } from '../../hooks/usePerformanceMonitor';
+import { Dashboard, DashboardWidget } from '../../types/dashboard.types';
+import { ErrorBoundary } from '../common/ErrorBoundary';
+import { LoadingSpinner } from '../common/LoadingSpinner';
+
+import { DashboardSidebar } from './DashboardSidebar';
+import { DashboardToolbar } from './DashboardToolbar';
+import { WidgetContainer } from './WidgetContainer';
 
 // Import CSS for react-grid-layout
 import 'react-grid-layout/css/styles.css';

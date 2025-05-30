@@ -8,10 +8,7 @@ import { InvoiceNumberGenerator } from './utils/invoice-number-generator';
 import { ZraInvoiceService } from './services/zra-invoice.service';
 
 @Module({
-  imports: [
-    DatabaseModule,
-    ConfigModule,
-  ],
+  imports: [DatabaseModule, ConfigModule],
   controllers: [InvoiceController],
   providers: [
     InvoiceService,
@@ -19,10 +16,6 @@ import { ZraInvoiceService } from './services/zra-invoice.service';
     InvoiceNumberGenerator,
     ZraInvoiceService,
   ],
-  exports: [
-    InvoiceService,
-    InvoiceRepository,
-    ZraInvoiceService,
-  ],
+  exports: [InvoiceService, InvoiceRepository, ZraInvoiceService],
 })
 export class InvoicesModule {}

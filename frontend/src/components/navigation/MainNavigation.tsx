@@ -1,8 +1,5 @@
 'use client';
 
-import React, { useState } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { 
   LayoutDashboard,
   Users,
@@ -19,6 +16,9 @@ import {
   ChevronDown,
   ChevronRight
 } from 'lucide-react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import React, { useState } from 'react';
 
 interface NavigationItem {
   id: string;

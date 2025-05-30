@@ -10,9 +10,7 @@ import { TenantDatabaseProvider } from '../../modules/tenants/providers/tenant-d
 export class OrganizationResolverService {
   private readonly logger = new Logger(OrganizationResolverService.name);
 
-  constructor(
-    private readonly tenantDb: TenantDatabaseProvider,
-  ) {}
+  constructor(private readonly tenantDb: TenantDatabaseProvider) {}
 
   /**
    * Get the organization ID for the current tenant
@@ -20,7 +18,7 @@ export class OrganizationResolverService {
    */
   async getOrganizationId(): Promise<string> {
     try {
-      return await this.tenantDb.executeInTenantContext(async (prisma) => {
+      return await this.tenantDb.executeInTenantContext(async prisma => {
         // Get the first (and typically only) organization for this tenant
         const organization = await prisma.organization.findFirst({
           select: {
@@ -35,7 +33,10 @@ export class OrganizationResolverService {
         return organization.id;
       });
     } catch (error) {
-      this.logger.error(`Failed to resolve organization ID: ${error.message}`, error);
+      this.logger.error(
+        `Failed to resolve organization ID: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -45,7 +46,7 @@ export class OrganizationResolverService {
    */
   async getOrganization() {
     try {
-      return await this.tenantDb.executeInTenantContext(async (prisma) => {
+      return await this.tenantDb.executeInTenantContext(async prisma => {
         const organization = await prisma.organization.findFirst();
 
         if (!organization) {
@@ -65,7 +66,7 @@ export class OrganizationResolverService {
    */
   async validateOrganizationAccess(organizationId: string): Promise<boolean> {
     try {
-      return await this.tenantDb.executeInTenantContext(async (prisma) => {
+      return await this.tenantDb.executeInTenantContext(async prisma => {
         const organization = await prisma.organization.findFirst({
           where: {
             id: organizationId,
@@ -78,7 +79,10 @@ export class OrganizationResolverService {
         return !!organization;
       });
     } catch (error) {
-      this.logger.error(`Failed to validate organization access: ${error.message}`, error);
+      this.logger.error(
+        `Failed to validate organization access: ${error.message}`,
+        error
+      );
       return false;
     }
   }

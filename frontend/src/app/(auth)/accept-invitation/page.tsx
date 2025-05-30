@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
 
 interface InvitationDetails {
   email: string;

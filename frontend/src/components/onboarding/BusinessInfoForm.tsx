@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+
 import { useOnboarding } from '../../contexts/OnboardingContext';
 import { useOnboarding as useOnboardingHook } from '../../hooks/useOnboarding';
 

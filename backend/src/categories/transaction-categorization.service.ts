@@ -1,11 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { CategorizationRuleRepository } from './categorization-rule.repository';
-import { 
-  Transaction, 
-  CategorizationRule, 
-  CategorizationRuleType, 
-  CategorizationConfidence
+import {
+  CategorizationConfidence,
+  CategorizationRule,
+  CategorizationRuleType,
+  Transaction,
 } from '@prisma/client';
 
 export interface CategorySuggestion {
@@ -39,7 +39,7 @@ export class TransactionCategorizationService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly ruleRepository: CategorizationRuleRepository,
+    private readonly ruleRepository: CategorizationRuleRepository
   ) {}
 
   /**
@@ -62,14 +62,25 @@ export class TransactionCategorizationService {
         throw new Error(`Transaction ${transactionId} not found`);
       }
 
-      const suggestions = await this.generateSuggestions(transaction, organizationId);
+      const suggestions = await this.generateSuggestions(
+        transaction,
+        organizationId
+      );
       const bestSuggestion = this.getBestSuggestion(suggestions);
 
       let isAutoApplied = false;
 
       // Auto-apply if enabled and confidence is high enough
-      if (autoApply && bestSuggestion && bestSuggestion.confidence === CategorizationConfidence.VERY_HIGH) {
-        await this.applyCategory(transactionId, bestSuggestion.categoryId, organizationId);
+      if (
+        autoApply &&
+        bestSuggestion &&
+        bestSuggestion.confidence === CategorizationConfidence.VERY_HIGH
+      ) {
+        await this.applyCategory(
+          transactionId,
+          bestSuggestion.categoryId,
+          organizationId
+        );
         isAutoApplied = true;
       }
 
@@ -83,7 +94,10 @@ export class TransactionCategorizationService {
         isAutoApplied,
       };
     } catch (error) {
-      this.logger.error(`Failed to categorize transaction ${transactionId}:`, error);
+      this.logger.error(
+        `Failed to categorize transaction ${transactionId}:`,
+        error
+      );
       throw error;
     }
   }
@@ -100,10 +114,17 @@ export class TransactionCategorizationService {
 
     for (const transactionId of transactionIds) {
       try {
-        const result = await this.categorizeTransaction(transactionId, organizationId, autoApply);
+        const result = await this.categorizeTransaction(
+          transactionId,
+          organizationId,
+          autoApply
+        );
         results.push(result);
       } catch (error) {
-        this.logger.error(`Failed to categorize transaction ${transactionId}:`, error);
+        this.logger.error(
+          `Failed to categorize transaction ${transactionId}:`,
+          error
+        );
         results.push({
           transactionId,
           suggestions: [],
@@ -118,7 +139,9 @@ export class TransactionCategorizationService {
   /**
    * Bulk categorize uncategorized transactions
    */
-  async bulkCategorizeUncategorized(options: BulkCategorizationOptions): Promise<{
+  async bulkCategorizeUncategorized(
+    options: BulkCategorizationOptions
+  ): Promise<{
     processed: number;
     categorized: number;
     results: CategorizationResult[];
@@ -129,7 +152,9 @@ export class TransactionCategorizationService {
         where: {
           organizationId: options.organizationId,
           categoryId: null,
-          id: options.transactionIds ? { in: options.transactionIds } : undefined,
+          id: options.transactionIds
+            ? { in: options.transactionIds }
+            : undefined,
         },
         take: 100, // Process in batches
         orderBy: { transactionDate: 'desc' },
@@ -191,7 +216,9 @@ export class TransactionCategorizationService {
         });
       }
 
-      this.logger.debug(`Applied category ${categoryId} to transaction ${transactionId}`);
+      this.logger.debug(
+        `Applied category ${categoryId} to transaction ${transactionId}`
+      );
     } catch (error) {
       this.logger.error(`Failed to apply category to transaction:`, error);
       throw error;
@@ -235,7 +262,9 @@ export class TransactionCategorizationService {
         });
       }
 
-      this.logger.debug(`Bulk applied category ${categoryId} to ${result.count} transactions`);
+      this.logger.debug(
+        `Bulk applied category ${categoryId} to ${result.count} transactions`
+      );
       return { updated: result.count };
     } catch (error) {
       this.logger.error('Failed to bulk apply category:', error);
@@ -304,7 +333,7 @@ export class TransactionCategorizationService {
           categoryName = (rule as any).category.name;
         } else if (rule.categoryId) {
           const category = await this.prisma.category.findUnique({
-            where: { id: rule.categoryId }
+            where: { id: rule.categoryId },
           });
           if (category) categoryName = category.name;
         }
@@ -325,7 +354,10 @@ export class TransactionCategorizationService {
     }
 
     // Add machine learning suggestions
-    const mlSuggestions = await this.generateMLSuggestions(transaction, organizationId);
+    const mlSuggestions = await this.generateMLSuggestions(
+      transaction,
+      organizationId
+    );
     suggestions.push(...mlSuggestions);
 
     // Sort by confidence and score
@@ -336,10 +368,11 @@ export class TransactionCategorizationService {
         [CategorizationConfidence.MEDIUM]: 2,
         [CategorizationConfidence.LOW]: 1,
       };
-      
-      const confidenceDiff = confidenceOrder[b.confidence] - confidenceOrder[a.confidence];
+
+      const confidenceDiff =
+        confidenceOrder[b.confidence] - confidenceOrder[a.confidence];
       if (confidenceDiff !== 0) return confidenceDiff;
-      
+
       return b.score - a.score;
     });
   }
@@ -347,7 +380,10 @@ export class TransactionCategorizationService {
   /**
    * Evaluate a rule against a transaction
    */
-  private evaluateRule(rule: CategorizationRule, transaction: Transaction): {
+  private evaluateRule(
+    rule: CategorizationRule,
+    transaction: Transaction
+  ): {
     isMatch: boolean;
     score: number;
     reason: string;
@@ -356,17 +392,25 @@ export class TransactionCategorizationService {
     let result: { isMatch: boolean; score: number; reason: string } = {
       isMatch: false,
       score: 0,
-      reason: 'No matching rule type'
+      reason: 'No matching rule type',
     };
 
     try {
       // Map rule types to their corresponding evaluation methods
-      const ruleHandlers: Record<CategorizationRuleType, () => { isMatch: boolean; score: number; reason: string }> = {
-        KEYWORD_MATCH: () => this.evaluateKeywordRule(conditions as any, transaction),
-        AMOUNT_RANGE: () => this.evaluateAmountRule(conditions as any, transaction),
-        COUNTERPARTY_MATCH: () => this.evaluateCounterpartyRule(conditions as any, transaction),
-        DESCRIPTION_PATTERN: () => this.evaluateDescriptionRule(conditions as any, transaction),
-        COMBINED_RULE: () => this.evaluateCombinedRule(conditions as any, transaction),
+      const ruleHandlers: Record<
+        CategorizationRuleType,
+        () => { isMatch: boolean; score: number; reason: string }
+      > = {
+        KEYWORD_MATCH: () =>
+          this.evaluateKeywordRule(conditions as any, transaction),
+        AMOUNT_RANGE: () =>
+          this.evaluateAmountRule(conditions as any, transaction),
+        COUNTERPARTY_MATCH: () =>
+          this.evaluateCounterpartyRule(conditions as any, transaction),
+        DESCRIPTION_PATTERN: () =>
+          this.evaluateDescriptionRule(conditions as any, transaction),
+        COMBINED_RULE: () =>
+          this.evaluateCombinedRule(conditions as any, transaction),
       };
 
       const handler = ruleHandlers[type as CategorizationRuleType];
@@ -387,19 +431,27 @@ export class TransactionCategorizationService {
   /**
    * Evaluate keyword matching rule
    */
-  private evaluateKeywordRule(conditions: any, transaction: Transaction): {
+  private evaluateKeywordRule(
+    conditions: any,
+    transaction: Transaction
+  ): {
     isMatch: boolean;
     score: number;
     reason: string;
   } {
     const keywords = conditions.keywords || [];
     const excludeKeywords = conditions.excludeKeywords || [];
-    const searchText = `${transaction.description || ''} ${transaction.counterpartyName || ''}`.toLowerCase();
-    
+    const searchText =
+      `${transaction.description || ''} ${transaction.counterpartyName || ''}`.toLowerCase();
+
     // Check exclude keywords first
     for (const excludeKeyword of excludeKeywords) {
       if (searchText.includes(excludeKeyword.toLowerCase())) {
-        return { isMatch: false, score: 0, reason: `Excluded by keyword: ${excludeKeyword}` };
+        return {
+          isMatch: false,
+          score: 0,
+          reason: `Excluded by keyword: ${excludeKeyword}`,
+        };
       }
     }
 
@@ -411,7 +463,10 @@ export class TransactionCategorizationService {
     }
 
     if (matchedKeywords.length > 0) {
-      const score = Math.min(100, (matchedKeywords.length / keywords.length) * 100);
+      const score = Math.min(
+        100,
+        (matchedKeywords.length / keywords.length) * 100
+      );
       return {
         isMatch: true,
         score,
@@ -425,7 +480,10 @@ export class TransactionCategorizationService {
   /**
    * Evaluate amount range rule
    */
-  private evaluateAmountRule(conditions: any, transaction: Transaction): {
+  private evaluateAmountRule(
+    conditions: any,
+    transaction: Transaction
+  ): {
     isMatch: boolean;
     score: number;
     reason: string;
@@ -435,11 +493,19 @@ export class TransactionCategorizationService {
     const maxAmount = conditions.amountMax;
 
     if (minAmount !== undefined && amount < minAmount) {
-      return { isMatch: false, score: 0, reason: `Amount ${amount} below minimum ${minAmount}` };
+      return {
+        isMatch: false,
+        score: 0,
+        reason: `Amount ${amount} below minimum ${minAmount}`,
+      };
     }
 
     if (maxAmount !== undefined && amount > maxAmount) {
-      return { isMatch: false, score: 0, reason: `Amount ${amount} above maximum ${maxAmount}` };
+      return {
+        isMatch: false,
+        score: 0,
+        reason: `Amount ${amount} above maximum ${maxAmount}`,
+      };
     }
 
     return {
@@ -452,7 +518,10 @@ export class TransactionCategorizationService {
   /**
    * Evaluate counterparty matching rule
    */
-  private evaluateCounterpartyRule(conditions: any, transaction: Transaction): {
+  private evaluateCounterpartyRule(
+    conditions: any,
+    transaction: Transaction
+  ): {
     isMatch: boolean;
     score: number;
     reason: string;
@@ -470,13 +539,20 @@ export class TransactionCategorizationService {
       }
     }
 
-    return { isMatch: false, score: 0, reason: 'No counterparty patterns matched' };
+    return {
+      isMatch: false,
+      score: 0,
+      reason: 'No counterparty patterns matched',
+    };
   }
 
   /**
    * Evaluate description pattern rule
    */
-  private evaluateDescriptionRule(conditions: any, transaction: Transaction): {
+  private evaluateDescriptionRule(
+    conditions: any,
+    transaction: Transaction
+  ): {
     isMatch: boolean;
     score: number;
     reason: string;
@@ -494,26 +570,33 @@ export class TransactionCategorizationService {
             reason: `Description matches pattern: ${pattern}`,
           };
         }
-      } catch (error) {
+      } catch (/* error */) {
         // Invalid regex pattern
         continue;
       }
     }
 
-    return { isMatch: false, score: 0, reason: 'No description patterns matched' };
+    return {
+      isMatch: false,
+      score: 0,
+      reason: 'No description patterns matched',
+    };
   }
 
   /**
    * Evaluate combined rule
    */
-  private evaluateCombinedRule(conditions: any, transaction: Transaction): {
+  private evaluateCombinedRule(
+    conditions: any,
+    transaction: Transaction
+  ): {
     isMatch: boolean;
     score: number;
     reason: string;
   } {
     const rules = conditions.rules || [];
     const operator = conditions.operator || 'AND'; // AND or OR
-    
+
     const results = rules.map((ruleCondition: any) => {
       switch (ruleCondition.type) {
         case 'keyword':
@@ -532,20 +615,25 @@ export class TransactionCategorizationService {
     if (operator === 'AND') {
       const allMatch = results.every(r => r.isMatch);
       if (allMatch) {
-        const avgScore = results.reduce((sum, r) => sum + r.score, 0) / results.length;
+        const avgScore =
+          results.reduce((sum, r) => sum + r.score, 0) / results.length;
         const reasons = results.map(r => r.reason).join(' AND ');
         return { isMatch: true, score: avgScore, reason: reasons };
       }
     } else if (operator === 'OR') {
       const anyMatch = results.some(r => r.isMatch);
       if (anyMatch) {
-        const bestResult = results.reduce((best, current) => 
+        const bestResult = results.reduce((best, current) =>
           current.score > best.score ? current : best
         );
         return bestResult;
       }
     }
-    return { isMatch: false, score: 0, reason: 'Combined rule conditions not met' };
+    return {
+      isMatch: false,
+      score: 0,
+      reason: 'Combined rule conditions not met',
+    };
   }
 
   /**
@@ -564,8 +652,13 @@ export class TransactionCategorizationService {
           id: { not: transaction.id },
           categoryId: { not: null },
           OR: [
-            { reference: { contains: transaction.reference || '', mode: 'insensitive' } },
-            { 
+            {
+              reference: {
+                contains: transaction.reference || '',
+                mode: 'insensitive',
+              },
+            },
+            {
               description: {
                 contains: transaction.description?.substring(0, 20) || '',
                 mode: 'insensitive',
@@ -584,11 +677,17 @@ export class TransactionCategorizationService {
         take: 10,
       });
 
-      const categoryFrequency = new Map<string, { count: number; category: any }>();
+      const categoryFrequency = new Map<
+        string,
+        { count: number; category: any }
+      >();
 
       for (const similar of similarTransactions) {
         if (similar.category) {
-          const existing = categoryFrequency.get(similar.categoryId!) || { count: 0, category: similar.category };
+          const existing = categoryFrequency.get(similar.categoryId!) || {
+            count: 0,
+            category: similar.category,
+          };
           categoryFrequency.set(similar.categoryId!, {
             count: existing.count + 1,
             category: similar.category,
@@ -599,11 +698,14 @@ export class TransactionCategorizationService {
       const suggestions: CategorySuggestion[] = [];
       for (const [categoryId, data] of categoryFrequency.entries()) {
         if (!data.category) continue;
-        
-        const confidence = data.count >= 3 ? CategorizationConfidence.HIGH :
-                          data.count >= 2 ? CategorizationConfidence.MEDIUM :
-                          CategorizationConfidence.LOW;
-        
+
+        const confidence =
+          data.count >= 3
+            ? CategorizationConfidence.HIGH
+            : data.count >= 2
+              ? CategorizationConfidence.MEDIUM
+              : CategorizationConfidence.LOW;
+
         suggestions.push({
           categoryId,
           categoryName: data.category.name,
@@ -623,22 +725,25 @@ export class TransactionCategorizationService {
   /**
    * Get the best suggestion from a list of suggestions
    */
-  private getBestSuggestion(suggestions: CategorySuggestion[]): CategorySuggestion | undefined {
+  private getBestSuggestion(
+    suggestions: CategorySuggestion[]
+  ): CategorySuggestion | undefined {
     if (!suggestions.length) return undefined;
-    
+
     const confidenceOrder = {
       [CategorizationConfidence.VERY_HIGH]: 4,
       [CategorizationConfidence.HIGH]: 3,
       [CategorizationConfidence.MEDIUM]: 2,
       [CategorizationConfidence.LOW]: 1,
     };
-    
+
     return suggestions.reduce((best, current) => {
       const currentOrder = confidenceOrder[current.confidence];
       const bestOrder = best ? confidenceOrder[best.confidence] : -1;
-      
+
       if (currentOrder > bestOrder) return current;
-      if (currentOrder === bestOrder && current.score > (best?.score || 0)) return current;
+      if (currentOrder === bestOrder && current.score > (best?.score || 0))
+        return current;
       return best;
     });
   }
@@ -678,7 +783,10 @@ export class TransactionCategorizationService {
   /**
    * Adjust confidence based on score
    */
-  private adjustConfidence(_confidence: CategorizationConfidence, score: number): CategorizationConfidence {
+  private adjustConfidence(
+    _confidence: CategorizationConfidence,
+    score: number
+  ): CategorizationConfidence {
     if (score >= 90) return CategorizationConfidence.VERY_HIGH;
     if (score >= 70) return CategorizationConfidence.HIGH;
     if (score >= 50) return CategorizationConfidence.MEDIUM;

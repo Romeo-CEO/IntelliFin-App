@@ -9,9 +9,7 @@ import { PrismaService } from './prisma.service';
 export class MigrationService {
   private readonly logger = new Logger(MigrationService.name);
 
-  constructor(
-    private readonly prismaService: PrismaService,
-  ) {}
+  constructor(private readonly prismaService: PrismaService) {}
 
   /**
    * Run initial database setup
@@ -43,19 +41,29 @@ export class MigrationService {
    */
   public async createTenantSchemaFromTemplate(tenantId: string): Promise<void> {
     try {
-      this.logger.log(`Creating tenant schema from template for tenant: ${tenantId}`);
+      this.logger.log(
+        `Creating tenant schema from template for tenant: ${tenantId}`
+      );
 
       const schemaName = `tenant_${tenantId.replace(/-/g, '_')}`;
 
       // Read tenant schema template
-      const templatePath = path.join(process.cwd(), 'prisma', 'tenant-schema-template.sql');
+      const templatePath = path.join(
+        process.cwd(),
+        'prisma',
+        'tenant-schema-template.sql'
+      );
       const templateSql = fs.readFileSync(templatePath, 'utf8');
 
       // Create schema
-      await this.prismaService.$executeRawUnsafe(`CREATE SCHEMA IF NOT EXISTS "${schemaName}"`);
+      await this.prismaService.$executeRawUnsafe(
+        `CREATE SCHEMA IF NOT EXISTS "${schemaName}"`
+      );
 
       // Set search path and execute template
-      await this.prismaService.$executeRawUnsafe(`SET search_path TO "${schemaName}"`);
+      await this.prismaService.$executeRawUnsafe(
+        `SET search_path TO "${schemaName}"`
+      );
 
       // Split and execute SQL statements
       const statements = this.splitSqlStatements(templateSql);
@@ -71,9 +79,13 @@ export class MigrationService {
 
       this.logger.log(`✅ Tenant schema created: ${schemaName}`);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`❌ Failed to create tenant schema: ${errorMessage}`, errorStack);
+      this.logger.error(
+        `❌ Failed to create tenant schema: ${errorMessage}`,
+        errorStack
+      );
       throw error;
     }
   }
@@ -85,13 +97,19 @@ export class MigrationService {
     try {
       const schemaName = `tenant_${tenantId.replace(/-/g, '_')}`;
 
-      await this.prismaService.$executeRawUnsafe(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`);
+      await this.prismaService.$executeRawUnsafe(
+        `DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`
+      );
 
       this.logger.log(`✅ Tenant schema dropped: ${schemaName}`);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`❌ Failed to drop tenant schema: ${errorMessage}`, errorStack);
+      this.logger.error(
+        `❌ Failed to drop tenant schema: ${errorMessage}`,
+        errorStack
+      );
       throw error;
     }
   }
@@ -105,7 +123,9 @@ export class MigrationService {
       const backupName = `${schemaName}_backup_${Date.now()}`;
 
       // Create backup schema
-      await this.prismaService.$executeRawUnsafe(`CREATE SCHEMA "${backupName}"`);
+      await this.prismaService.$executeRawUnsafe(
+        `CREATE SCHEMA "${backupName}"`
+      );
 
       // Copy all tables and data
       const tables = await this.getTenantSchemaTables(schemaName);
@@ -119,9 +139,13 @@ export class MigrationService {
       this.logger.log(`✅ Tenant schema backed up: ${backupName}`);
       return backupName;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`❌ Failed to backup tenant schema: ${errorMessage}`, errorStack);
+      this.logger.error(
+        `❌ Failed to backup tenant schema: ${errorMessage}`,
+        errorStack
+      );
       throw error;
     }
   }
@@ -129,7 +153,10 @@ export class MigrationService {
   /**
    * Restore tenant schema from backup
    */
-  public async restoreTenantSchema(tenantId: string, backupName: string): Promise<void> {
+  public async restoreTenantSchema(
+    tenantId: string,
+    backupName: string
+  ): Promise<void> {
     try {
       const schemaName = `tenant_${tenantId.replace(/-/g, '_')}`;
 
@@ -137,7 +164,9 @@ export class MigrationService {
       await this.dropTenantSchema(tenantId);
 
       // Create new schema
-      await this.prismaService.$executeRawUnsafe(`CREATE SCHEMA "${schemaName}"`);
+      await this.prismaService.$executeRawUnsafe(
+        `CREATE SCHEMA "${schemaName}"`
+      );
 
       // Copy all tables and data from backup
       const tables = await this.getTenantSchemaTables(backupName);
@@ -150,9 +179,13 @@ export class MigrationService {
 
       this.logger.log(`✅ Tenant schema restored from backup: ${backupName}`);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`❌ Failed to restore tenant schema: ${errorMessage}`, errorStack);
+      this.logger.error(
+        `❌ Failed to restore tenant schema: ${errorMessage}`,
+        errorStack
+      );
       throw error;
     }
   }
@@ -194,7 +227,12 @@ export class MigrationService {
    * Run database initialization script
    */
   private async runInitializationScript(): Promise<void> {
-    const initScriptPath = path.join(process.cwd(), 'database', 'init', '01-init.sql');
+    const initScriptPath = path.join(
+      process.cwd(),
+      'database',
+      'init',
+      '01-init.sql'
+    );
 
     if (fs.existsSync(initScriptPath)) {
       const initSql = fs.readFileSync(initScriptPath, 'utf8');

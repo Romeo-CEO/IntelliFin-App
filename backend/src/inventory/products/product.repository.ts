@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Product, Prisma } from '@prisma/client';
+import { Prisma, Product } from '@prisma/client';
 import { TenantDatabaseProvider } from '../../modules/tenants/providers/tenant-database.provider';
 
 export interface CreateProductData {
@@ -75,16 +75,14 @@ export interface ProductFilters {
 export class ProductRepository {
   private readonly logger = new Logger(ProductRepository.name);
 
-  constructor(
-    private readonly tenantDb: TenantDatabaseProvider,
-  ) {}
+  constructor(private readonly tenantDb: TenantDatabaseProvider) {}
 
   /**
    * Create a new product
    */
   async create(data: CreateProductData): Promise<Product> {
     try {
-      return await this.tenantDb.executeInTenantContext(async (prisma) => {
+      return await this.tenantDb.executeInTenantContext(async prisma => {
         return await prisma.product.create({
           data: {
             organizationId: data.organizationId,
@@ -126,7 +124,7 @@ export class ProductRepository {
    */
   async findById(id: string, organizationId: string): Promise<Product | null> {
     try {
-      return await this.tenantDb.executeInTenantContext(async (prisma) => {
+      return await this.tenantDb.executeInTenantContext(async prisma => {
         return await prisma.product.findFirst({
           where: {
             id,
@@ -136,7 +134,10 @@ export class ProductRepository {
         });
       });
     } catch (error) {
-      this.logger.error(`Failed to find product by ID: ${error.message}`, error);
+      this.logger.error(
+        `Failed to find product by ID: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -144,9 +145,12 @@ export class ProductRepository {
   /**
    * Find product by SKU
    */
-  async findBySku(sku: string, organizationId: string): Promise<Product | null> {
+  async findBySku(
+    sku: string,
+    organizationId: string
+  ): Promise<Product | null> {
     try {
-      return await this.tenantDb.executeInTenantContext(async (prisma) => {
+      return await this.tenantDb.executeInTenantContext(async prisma => {
         return await prisma.product.findFirst({
           where: {
             sku,
@@ -156,7 +160,10 @@ export class ProductRepository {
         });
       });
     } catch (error) {
-      this.logger.error(`Failed to find product by SKU: ${error.message}`, error);
+      this.logger.error(
+        `Failed to find product by SKU: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -164,9 +171,12 @@ export class ProductRepository {
   /**
    * Find product by barcode
    */
-  async findByBarcode(barcode: string, organizationId: string): Promise<Product | null> {
+  async findByBarcode(
+    barcode: string,
+    organizationId: string
+  ): Promise<Product | null> {
     try {
-      return await this.tenantDb.executeInTenantContext(async (prisma) => {
+      return await this.tenantDb.executeInTenantContext(async prisma => {
         return await prisma.product.findFirst({
           where: {
             barcode,
@@ -176,7 +186,10 @@ export class ProductRepository {
         });
       });
     } catch (error) {
-      this.logger.error(`Failed to find product by barcode: ${error.message}`, error);
+      this.logger.error(
+        `Failed to find product by barcode: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -188,10 +201,10 @@ export class ProductRepository {
     filters: ProductFilters,
     orderBy?: Prisma.ProductOrderByWithRelationInput,
     skip?: number,
-    take?: number,
+    take?: number
   ): Promise<Product[]> {
     try {
-      return await this.tenantDb.executeInTenantContext(async (prisma) => {
+      return await this.tenantDb.executeInTenantContext(async prisma => {
         const where = this.buildWhereClause(filters);
 
         return await prisma.product.findMany({
@@ -212,7 +225,7 @@ export class ProductRepository {
    */
   async count(filters: ProductFilters): Promise<number> {
     try {
-      return await this.tenantDb.executeInTenantContext(async (prisma) => {
+      return await this.tenantDb.executeInTenantContext(async prisma => {
         const where = this.buildWhereClause(filters);
         return await prisma.product.count({ where });
       });
@@ -225,9 +238,13 @@ export class ProductRepository {
   /**
    * Update product
    */
-  async update(id: string, organizationId: string, data: UpdateProductData): Promise<Product> {
+  async update(
+    id: string,
+    organizationId: string,
+    data: UpdateProductData
+  ): Promise<Product> {
     try {
-      return await this.tenantDb.executeInTenantContext(async (prisma) => {
+      return await this.tenantDb.executeInTenantContext(async prisma => {
         return await prisma.product.update({
           where: {
             id,
@@ -245,9 +262,13 @@ export class ProductRepository {
   /**
    * Update stock level
    */
-  async updateStock(id: string, organizationId: string, newStock: number): Promise<Product> {
+  async updateStock(
+    id: string,
+    organizationId: string,
+    newStock: number
+  ): Promise<Product> {
     try {
-      return await this.tenantDb.executeInTenantContext(async (prisma) => {
+      return await this.tenantDb.executeInTenantContext(async prisma => {
         return await prisma.product.update({
           where: {
             id,
@@ -259,7 +280,10 @@ export class ProductRepository {
         });
       });
     } catch (error) {
-      this.logger.error(`Failed to update product stock: ${error.message}`, error);
+      this.logger.error(
+        `Failed to update product stock: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -269,7 +293,7 @@ export class ProductRepository {
    */
   async softDelete(id: string, organizationId: string): Promise<void> {
     try {
-      await this.tenantDb.executeInTenantContext(async (prisma) => {
+      await this.tenantDb.executeInTenantContext(async prisma => {
         await prisma.product.update({
           where: {
             id,
@@ -282,7 +306,10 @@ export class ProductRepository {
         });
       });
     } catch (error) {
-      this.logger.error(`Failed to soft delete product: ${error.message}`, error);
+      this.logger.error(
+        `Failed to soft delete product: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -292,7 +319,7 @@ export class ProductRepository {
    */
   async getProductStats(organizationId: string) {
     try {
-      return await this.tenantDb.executeInTenantContext(async (prisma) => {
+      return await this.tenantDb.executeInTenantContext(async prisma => {
         const [
           totalProducts,
           activeProducts,

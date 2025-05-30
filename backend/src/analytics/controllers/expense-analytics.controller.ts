@@ -1,5 +1,11 @@
-import { Controller, Get, Query, UseGuards, HttpStatus } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { Controller, Get, HttpStatus, Query, UseGuards } from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
@@ -11,10 +17,28 @@ import { AnalyticsCacheService } from '../services/analytics-cache.service';
 import { AnalyticsAggregationService } from '../services/analytics-aggregation.service';
 import { ExpenseTrendAnalysisService } from '../services/expense-trend-analysis.service';
 import {
+  AnalyticsErrorDto,
   AnalyticsQueryDto,
   AnalyticsResponseDto,
-  AnalyticsErrorDto
-} from '../dto/analytics-query.dto';
+  FinancialRatiosDto,
+  FinancialRatiosQueryDto,
+  FinancialRatioTrendsResult,
+  IndustryBenchmarksResult,
+  AnalyticsDataSource,
+  AccountAnalyticsData,
+  BalanceSheetData,
+  ExpenseTrendAnalysisResult,
+  ExpenseCategoryBreakdownResult,
+  ExpenseAnomaly,
+  CostOptimizationRecommendation,
+  ExpenseAnalyticsData,
+  ExpenseTrendPeriod,
+  ExpenseCategoryDetail,
+  ExpensePattern,
+  ExpenseTrendSummary,
+  ExpenseTrendInsights,
+  AnalyticsInsight
+} from '../interfaces/analytics-data.interface';
 import { UserRole } from '@prisma/client';
 
 /**
@@ -26,8 +50,8 @@ import { UserRole } from '@prisma/client';
  * Features:
  * - Expense trend analysis with pattern detection
  * - Category-wise expense breakdown and analysis
- * - Anomaly detection for unusual expense patterns
- * - Cost optimization recommendations
+ * - Anomaly detection for unusual expense patterns (now delegated to service via factory)
+ * - Cost optimization recommendations (now delegated to service)
  * - Seasonal expense pattern recognition
  * - Tax-deductible expense tracking
  */
@@ -52,44 +76,50 @@ export class ExpenseAnalyticsController extends BaseAnalyticsController {
   @Roles(UserRole.ADMIN, UserRole.MANAGER, UserRole.ACCOUNTANT)
   @ApiOperation({
     summary: 'Analyze expense trends',
-    description: 'Provides comprehensive expense trend analysis with pattern detection and seasonal insights'
+    description:
+      'Provides comprehensive expense trend analysis with pattern detection and seasonal insights',
   })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Expense trends analyzed successfully',
-    type: AnalyticsResponseDto
+    type: AnalyticsResponseDto,
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
     description: 'Invalid request parameters or insufficient data',
-    type: AnalyticsErrorDto
+    type: AnalyticsErrorDto,
   })
   @ApiQuery({
     name: 'startDate',
     description: 'Start date for analysis (YYYY-MM-DD)',
-    example: '2024-01-01'
+    example: '2024-01-01',
   })
   @ApiQuery({
     name: 'endDate',
     description: 'End date for analysis (YYYY-MM-DD)',
-    example: '2024-12-31'
+    example: '2024-12-31',
   })
   @ApiQuery({
     name: 'groupBy',
     description: 'Group results by time period',
     required: false,
     enum: ['DAY', 'WEEK', 'MONTH', 'QUARTER'],
-    example: 'MONTH'
+    example: 'MONTH',
   })
   async getExpenseTrends(
     @Query() query: AnalyticsQueryDto,
     @GetCurrentUser('id') userId: string,
     @GetCurrentOrganization('id') organizationId: string
-  ): Promise<AnalyticsResponseDto<any>> {
+  ): Promise<AnalyticsResponseDto<ExpenseTrendAnalysisResult>> {
     try {
       // Log analytics request
-      this.logAnalyticsRequest('EXPENSE_TRENDS', organizationId, userId,
-        this.validateDateRange(query.dateRange), { groupBy: query.groupBy });
+      this.logAnalyticsRequest(
+        'EXPENSE_TRENDS',
+        organizationId,
+        userId,
+        this.validateDateRange(query.dateRange),
+        { groupBy: query.groupBy }
+      );
 
       // Validate organization access
       await this.validateOrganizationAccess(userId, organizationId);
@@ -101,7 +131,11 @@ export class ExpenseAnalyticsController extends BaseAnalyticsController {
       this.validateQuery(query);
 
       // Check data sufficiency
-      await this.checkDataSufficiency(organizationId, dateRange, 'EXPENSE_TRENDS');
+      await this.checkDataSufficiency(
+        organizationId,
+        dateRange,
+        'EXPENSE_TRENDS'
+      );
 
       // Generate cache key
       const cacheKey = this.cacheService.generateCacheKey(
@@ -133,7 +167,6 @@ export class ExpenseAnalyticsController extends BaseAnalyticsController {
         dateRange,
         cacheKey
       );
-
     } catch (error) {
       this.handleAnalyticsError(error, 'EXPENSE_TRENDS', organizationId);
     }
@@ -146,22 +179,27 @@ export class ExpenseAnalyticsController extends BaseAnalyticsController {
   @Roles(UserRole.ADMIN, UserRole.MANAGER, UserRole.ACCOUNTANT)
   @ApiOperation({
     summary: 'Get expense breakdown by category',
-    description: 'Provides detailed expense analysis by category with tax implications and optimization insights'
+    description:
+      'Provides detailed expense analysis by category with tax implications and optimization insights',
   })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Expense category breakdown generated successfully',
-    type: AnalyticsResponseDto
+    type: AnalyticsResponseDto,
   })
   async getExpenseCategoryBreakdown(
     @Query() query: AnalyticsQueryDto,
     @GetCurrentUser('id') userId: string,
     @GetCurrentOrganization('id') organizationId: string
-  ): Promise<AnalyticsResponseDto<any>> {
+  ): Promise<AnalyticsResponseDto<ExpenseCategoryBreakdownResult>> {
     try {
       // Log analytics request
-      this.logAnalyticsRequest('EXPENSE_CATEGORIES', organizationId, userId,
-        this.validateDateRange(query.dateRange));
+      this.logAnalyticsRequest(
+        'EXPENSE_CATEGORIES',
+        organizationId,
+        userId,
+        this.validateDateRange(query.dateRange)
+      );
 
       // Validate organization access
       await this.validateOrganizationAccess(userId, organizationId);
@@ -183,10 +221,11 @@ export class ExpenseAnalyticsController extends BaseAnalyticsController {
         'EXPENSE_ANALYTICS',
         async () => {
           // Get aggregated financial data
-          const financialData = await this.aggregationService.aggregateFinancialData(
-            organizationId,
-            dateRange
-          );
+          const financialData =
+            await this.aggregationService.aggregateFinancialData(
+              organizationId,
+              dateRange
+            );
 
           // Analyze expense categories
           return this.analyzeExpenseCategories(financialData);
@@ -200,35 +239,52 @@ export class ExpenseAnalyticsController extends BaseAnalyticsController {
         dateRange,
         cacheKey
       );
-
     } catch (error) {
       this.handleAnalyticsError(error, 'EXPENSE_CATEGORIES', organizationId);
     }
   }
 
   /**
-   * Detect expense anomalies
+   * Get expense anomalies
    */
   @Get('anomalies')
   @Roles(UserRole.ADMIN, UserRole.MANAGER, UserRole.ACCOUNTANT)
   @ApiOperation({
     summary: 'Detect expense anomalies',
-    description: 'Identifies unusual expense patterns and potential cost optimization opportunities'
+    description:
+      'Identifies unusual expense patterns using statistical analysis',
   })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Expense anomalies detected successfully',
-    type: AnalyticsResponseDto
+    type: AnalyticsResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid request parameters or insufficient data',
+    type: AnalyticsErrorDto,
+  })
+  @ApiQuery({
+    name: 'sensitivityLevel',
+    description: 'Anomaly detection sensitivity level',
+    required: false,
+    enum: ['LOW', 'MEDIUM', 'HIGH'],
+    example: 'MEDIUM',
   })
   async getExpenseAnomalies(
     @Query() query: AnalyticsQueryDto,
     @GetCurrentUser('id') userId: string,
     @GetCurrentOrganization('id') organizationId: string
-  ): Promise<AnalyticsResponseDto<any>> {
+  ): Promise<AnalyticsResponseDto<ExpenseAnomaly[]>> {
     try {
       // Log analytics request
-      this.logAnalyticsRequest('EXPENSE_ANOMALIES', organizationId, userId,
-        this.validateDateRange(query.dateRange));
+      this.logAnalyticsRequest(
+        'EXPENSE_ANOMALIES',
+        organizationId,
+        userId,
+        this.validateDateRange(query.dateRange),
+        { sensitivityLevel: query.sensitivityLevel }
+      );
 
       // Validate organization access
       await this.validateOrganizationAccess(userId, organizationId);
@@ -236,36 +292,40 @@ export class ExpenseAnalyticsController extends BaseAnalyticsController {
       // Validate date range
       const dateRange = this.validateDateRange(query.dateRange);
 
+      // Check data sufficiency (consider if specific data sufficiency check is needed for anomalies)
+      // await this.checkDataSufficiency(organizationId, dateRange, 'EXPENSE_ANOMALIES');
+
       // Generate cache key
       const cacheKey = this.cacheService.generateCacheKey(
         organizationId,
         'EXPENSE_ANOMALIES',
-        dateRange
+        dateRange,
+        { sensitivityLevel: query.sensitivityLevel || 'MEDIUM' }
       );
 
       // Get cached or execute anomaly detection
-      const anomalyData = await this.getCachedOrExecute(
+      const anomaliesData = await this.getCachedOrExecute(
         organizationId,
         cacheKey,
-        'EXPENSE_ANALYTICS',
+        'ANOMALY_DETECTION',
         async () => {
-          // Use enhanced expense anomaly detection service
+          // Use enhanced expense trend analysis service for anomaly detection
           return this.expenseTrendAnalysisService.detectExpenseAnomalies(
             organizationId,
             dateRange,
-            'MEDIUM' // Default sensitivity level
+            query.sensitivityLevel || 'MEDIUM'
           );
         }
       );
 
       // Create response
       return this.createAnalyticsResponse(
-        anomalyData,
+        anomaliesData.anomalies, // Assuming service returns { anomalies, summary, recommendations }
         organizationId,
         dateRange,
-        cacheKey
+        cacheKey,
+        anomaliesData.insights || anomaliesData.recommendations // Include insights/recommendations from service
       );
-
     } catch (error) {
       this.handleAnalyticsError(error, 'EXPENSE_ANOMALIES', organizationId);
     }
@@ -274,32 +334,59 @@ export class ExpenseAnalyticsController extends BaseAnalyticsController {
   /**
    * Get cost optimization recommendations
    */
-  @Get('optimization')
-  @Roles(UserRole.ADMIN, UserRole.MANAGER)
+  @Get('recommendations/cost-optimization')
+  @Roles(UserRole.ADMIN, UserRole.MANAGER, UserRole.ACCOUNTANT)
   @ApiOperation({
     summary: 'Get cost optimization recommendations',
-    description: 'Provides actionable recommendations for cost reduction and expense optimization'
+    description:
+      'Provides actionable recommendations to optimize expenses based on analysis',
   })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Cost optimization recommendations generated successfully',
-    type: AnalyticsResponseDto
+    type: AnalyticsResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid request parameters or insufficient data',
+    type: AnalyticsErrorDto,
+  })
+  @ApiQuery({
+    name: 'startDate',
+    description: 'Start date for analysis (YYYY-MM-DD)',
+    example: '2024-01-01',
+  })
+  @ApiQuery({
+    name: 'endDate',
+    description: 'End date for analysis (YYYY-MM-DD)',
+    example: '2024-12-31',
   })
   async getCostOptimizationRecommendations(
     @Query() query: AnalyticsQueryDto,
     @GetCurrentUser('id') userId: string,
     @GetCurrentOrganization('id') organizationId: string
-  ): Promise<AnalyticsResponseDto<any>> {
+  ): Promise<AnalyticsResponseDto<CostOptimizationRecommendation[]>> {
     try {
       // Log analytics request
-      this.logAnalyticsRequest('COST_OPTIMIZATION', organizationId, userId,
-        this.validateDateRange(query.dateRange));
+      this.logAnalyticsRequest(
+        'COST_OPTIMIZATION_RECOMMENDATIONS',
+        organizationId,
+        userId,
+        this.validateDateRange(query.dateRange)
+      );
 
       // Validate organization access
       await this.validateOrganizationAccess(userId, organizationId);
 
       // Validate date range
       const dateRange = this.validateDateRange(query.dateRange);
+
+      // Check data sufficiency
+      await this.checkDataSufficiency(
+        organizationId,
+        dateRange,
+        'COST_OPTIMIZATION'
+      );
 
       // Generate cache key
       const cacheKey = this.cacheService.generateCacheKey(
@@ -308,13 +395,14 @@ export class ExpenseAnalyticsController extends BaseAnalyticsController {
         dateRange
       );
 
-      // Get cached or execute optimization analysis
-      const optimizationData = await this.getCachedOrExecute(
+      // Get cached or execute recommendations generation
+      const recommendationsData = await this.getCachedOrExecute(
         organizationId,
         cacheKey,
-        'EXPENSE_ANALYTICS',
+        'RECOMMENDATIONS',
         async () => {
-          // Use enhanced cost optimization service
+          // Use enhanced expense trend analysis service for recommendations
+          // This service method will internally use the anomaly detection engine if needed
           return this.expenseTrendAnalysisService.generateCostOptimizationRecommendations(
             organizationId,
             dateRange
@@ -324,21 +412,31 @@ export class ExpenseAnalyticsController extends BaseAnalyticsController {
 
       // Create response
       return this.createAnalyticsResponse(
-        optimizationData,
+        recommendationsData.recommendations, // Assuming service returns { recommendations, potentialSavings, summary }
         organizationId,
         dateRange,
-        cacheKey
+        cacheKey,
+        [
+          ...(recommendationsData.insights || []),
+          `Potential Savings: ${this.baseAnalyticsService.formatZMW(recommendationsData.potentialSavings || 0)}`,
+        ] // Include insights and potential savings
       );
-
     } catch (error) {
-      this.handleAnalyticsError(error, 'COST_OPTIMIZATION', organizationId);
+      this.handleAnalyticsError(
+        error,
+        'COST_OPTIMIZATION_RECOMMENDATIONS',
+        organizationId
+      );
     }
   }
 
   /**
    * Analyze expense trends with pattern detection
    */
-  private async analyzeExpenseTrends(financialData: any, query: AnalyticsQueryDto): Promise<any> {
+  private async analyzeExpenseTrends(
+    financialData: AnalyticsDataSource,
+    query: AnalyticsQueryDto
+  ): Promise<ExpenseTrendAnalysisResult> {
     const groupBy = query.groupBy || 'MONTH';
     const expenses = financialData.expenses;
 
@@ -348,57 +446,41 @@ export class ExpenseAnalyticsController extends BaseAnalyticsController {
       groupBy
     );
 
-    const trends = periods.map(period => {
-      const periodExpenses = expenses.filter((expense: any) =>
-        expense.expenseDate >= period.startDate && expense.expenseDate <= period.endDate
-      );
+    const trends = this.calculateExpenseTrends(
+      expenses,
+      periods
+    );
 
-      const totalExpenses = periodExpenses.reduce((sum: number, expense: any) =>
-        sum + expense.amount, 0
-      );
+    // Detect expense patterns
+    const patterns = this.detectExpensePatterns(
+      expenses,
+      trends
+    );
 
-      const taxDeductibleExpenses = periodExpenses
-        .filter((expense: any) => expense.isTaxDeductible)
-        .reduce((sum: number, expense: any) => sum + expense.amount, 0);
+    // Generate summary statistics
+    const summary = this.generateExpenseSummary(trends, patterns);
 
-      return {
-        period: period.startDate.toISOString().slice(0, 7),
-        totalExpenses,
-        expenseCount: periodExpenses.length,
-        averageExpenseAmount: periodExpenses.length > 0 ? totalExpenses / periodExpenses.length : 0,
-        taxDeductibleExpenses,
-        taxDeductiblePercentage: totalExpenses > 0 ? (taxDeductibleExpenses / totalExpenses) * 100 : 0
-      };
-    });
-
-    // Calculate trend metrics
-    const totalExpenses = trends.reduce((sum, trend) => sum + trend.totalExpenses, 0);
-    const averageMonthlyExpenses = totalExpenses / trends.length;
-    const growthRate = this.calculateExpenseGrowthRate(trends);
+    // Generate actionable insights
+    const insights = this.generateExpenseTrendInsights(trends, patterns, summary, this.calculateExpenseGrowthRate(trends));
 
     return {
       trends,
-      summary: {
-        totalExpenses,
-        averageMonthlyExpenses,
-        growthRate,
-        seasonalPattern: this.detectExpenseSeasonality(trends),
-        totalTaxDeductible: trends.reduce((sum, trend) => sum + trend.taxDeductibleExpenses, 0)
-      },
-      insights: this.generateExpenseTrendInsights(trends, growthRate)
+      patterns,
+      summary,
+      insights,
     };
   }
 
   /**
    * Analyze expenses by category
    */
-  private async analyzeExpenseCategories(financialData: any): Promise<any> {
+  private async analyzeExpenseCategories(financialData: AnalyticsDataSource): Promise<ExpenseCategoryBreakdownResult> {
     const expenses = financialData.expenses;
 
     // Group expenses by category
-    const categoryBreakdown: Record<string, any> = {};
+    const categoryBreakdown: Record<string, ExpenseCategoryDetail> = {};
 
-    expenses.forEach((expense: any) => {
+    expenses.forEach((expense: ExpenseAnalyticsData) => {
       const category = expense.categoryName || 'Uncategorized';
 
       if (!categoryBreakdown[category]) {
@@ -408,7 +490,9 @@ export class ExpenseAnalyticsController extends BaseAnalyticsController {
           expenseCount: 0,
           taxDeductibleAmount: 0,
           averageAmount: 0,
-          expenses: []
+          expenses: [],
+          percentage: 0,
+          taxDeductiblePercentage: 0,
         };
       }
 
@@ -421,13 +505,23 @@ export class ExpenseAnalyticsController extends BaseAnalyticsController {
     });
 
     // Calculate percentages and sort by amount
-    const totalExpenses = expenses.reduce((sum: number, expense: any) => sum + expense.amount, 0);
+    const totalExpenses = expenses.reduce(
+      (sum: number, expense: ExpenseAnalyticsData) => sum + expense.amount,
+      0
+    );
     const categories = Object.values(categoryBreakdown)
-      .map((category: any) => ({
+      .map((category: ExpenseCategoryDetail) => ({
         ...category,
-        percentage: totalExpenses > 0 ? (category.totalAmount / totalExpenses) * 100 : 0,
-        averageAmount: category.expenseCount > 0 ? category.totalAmount / category.expenseCount : 0,
-        taxDeductiblePercentage: category.totalAmount > 0 ? (category.taxDeductibleAmount / category.totalAmount) * 100 : 0
+        percentage:
+          totalExpenses > 0 ? (category.totalAmount / totalExpenses) * 100 : 0,
+        averageAmount:
+          category.expenseCount > 0
+            ? category.totalAmount / category.expenseCount
+            : 0,
+        taxDeductiblePercentage:
+          category.totalAmount > 0
+            ? (category.taxDeductibleAmount / category.totalAmount) * 100
+            : 0,
       }))
       .sort((a, b) => b.totalAmount - a.totalAmount);
 
@@ -438,166 +532,38 @@ export class ExpenseAnalyticsController extends BaseAnalyticsController {
         totalExpenses,
         largestCategory: categories[0]?.categoryName || 'None',
         largestCategoryAmount: categories[0]?.totalAmount || 0,
-        totalTaxDeductible: categories.reduce((sum, cat) => sum + cat.taxDeductibleAmount, 0)
-      }
-    };
-  }
-
-  /**
-   * Detect expense anomalies using statistical analysis
-   */
-  private async detectExpenseAnomalies(financialData: any): Promise<any> {
-    const expenses = financialData.expenses;
-    const anomalies: any[] = [];
-
-    // Group expenses by category for anomaly detection
-    const categoryGroups: Record<string, any[]> = {};
-    expenses.forEach((expense: any) => {
-      const category = expense.categoryName || 'Uncategorized';
-      if (!categoryGroups[category]) {
-        categoryGroups[category] = [];
-      }
-      categoryGroups[category].push(expense);
-    });
-
-    // Detect anomalies in each category
-    Object.entries(categoryGroups).forEach(([category, categoryExpenses]) => {
-      if (categoryExpenses.length < 3) return; // Need at least 3 data points
-
-      const amounts = categoryExpenses.map(e => e.amount);
-      const mean = amounts.reduce((sum, amount) => sum + amount, 0) / amounts.length;
-      const stdDev = this.baseAnalyticsService.calculateStandardDeviation(amounts);
-
-      // Detect outliers (expenses > 2 standard deviations from mean)
-      categoryExpenses.forEach(expense => {
-        const zScore = Math.abs((expense.amount - mean) / stdDev);
-        if (zScore > 2) {
-          anomalies.push({
-            expenseId: expense.id,
-            description: expense.description,
-            amount: expense.amount,
-            expectedAmount: mean,
-            variance: expense.amount - mean,
-            anomalyScore: zScore,
-            category,
-            date: expense.expenseDate,
-            reason: zScore > 3 ? 'Extreme outlier' : 'Significant deviation from normal pattern'
-          });
-        }
-      });
-    });
-
-    // Sort anomalies by severity
-    anomalies.sort((a, b) => b.anomalyScore - a.anomalyScore);
-
-    return {
-      anomalies: anomalies.slice(0, 20), // Return top 20 anomalies
-      summary: {
-        totalAnomalies: anomalies.length,
-        totalAnomalyAmount: anomalies.reduce((sum, anomaly) => sum + Math.abs(anomaly.variance), 0),
-        highSeverityCount: anomalies.filter(a => a.anomalyScore > 3).length,
-        mediumSeverityCount: anomalies.filter(a => a.anomalyScore > 2 && a.anomalyScore <= 3).length
-      }
-    };
-  }
-
-  /**
-   * Generate cost optimization recommendations
-   */
-  private async generateOptimizationRecommendations(financialData: any): Promise<any> {
-    const expenses = financialData.expenses;
-    const recommendations: any[] = [];
-
-    // Analyze expense patterns for optimization opportunities
-    const categoryAnalysis = await this.analyzeExpenseCategories(financialData);
-    const anomalies = await this.detectExpenseAnomalies(financialData);
-
-    // Recommendation 1: High-cost categories
-    const topCategories = categoryAnalysis.categories.slice(0, 3);
-    topCategories.forEach((category: any, index: number) => {
-      if (category.percentage > 20) {
-        recommendations.push({
-          type: 'HIGH_COST_CATEGORY',
-          priority: index === 0 ? 'HIGH' : 'MEDIUM',
-          title: `Optimize ${category.categoryName} expenses`,
-          description: `${category.categoryName} represents ${category.percentage.toFixed(1)}% of total expenses`,
-          potentialSaving: category.totalAmount * 0.1, // Assume 10% potential saving
-          actionItems: [
-            'Review vendor contracts and negotiate better rates',
-            'Implement approval workflows for this category',
-            'Consider alternative suppliers or solutions'
-          ]
-        });
-      }
-    });
-
-    // Recommendation 2: Recurring anomalies
-    if (anomalies.anomalies.length > 5) {
-      recommendations.push({
-        type: 'EXPENSE_CONTROL',
-        priority: 'HIGH',
-        title: 'Implement expense controls',
-        description: `${anomalies.anomalies.length} expense anomalies detected`,
-        potentialSaving: anomalies.summary.totalAnomalyAmount * 0.5,
-        actionItems: [
-          'Set up expense approval workflows',
-          'Implement spending limits by category',
-          'Regular expense audits and reviews'
-        ]
-      });
-    }
-
-    // Recommendation 3: Tax optimization
-    const totalTaxDeductible = expenses
-      .filter((e: any) => e.isTaxDeductible)
-      .reduce((sum: number, e: any) => sum + e.amount, 0);
-    const totalExpenses = expenses.reduce((sum: number, e: any) => sum + e.amount, 0);
-
-    if (totalTaxDeductible / totalExpenses < 0.6) {
-      recommendations.push({
-        type: 'TAX_OPTIMIZATION',
-        priority: 'MEDIUM',
-        title: 'Maximize tax-deductible expenses',
-        description: `Only ${((totalTaxDeductible / totalExpenses) * 100).toFixed(1)}% of expenses are tax-deductible`,
-        potentialSaving: (totalExpenses - totalTaxDeductible) * 0.25 * 0.3, // Assume 25% could be deductible at 30% tax rate
-        actionItems: [
-          'Review expense categorization for tax deductibility',
-          'Ensure proper documentation for tax-deductible expenses',
-          'Consult with tax advisor for optimization strategies'
-        ]
-      });
-    }
-
-    return {
-      recommendations: recommendations.slice(0, 10), // Return top 10 recommendations
-      summary: {
-        totalRecommendations: recommendations.length,
-        totalPotentialSaving: recommendations.reduce((sum, rec) => sum + rec.potentialSaving, 0),
-        highPriorityCount: recommendations.filter(r => r.priority === 'HIGH').length,
-        mediumPriorityCount: recommendations.filter(r => r.priority === 'MEDIUM').length
-      }
+        totalTaxDeductible: categories.reduce(
+          (sum, cat) => sum + cat.taxDeductibleAmount,
+          0
+        ),
+      },
     };
   }
 
   /**
    * Calculate expense growth rate
    */
-  private calculateExpenseGrowthRate(trends: any[]): number {
+  private calculateExpenseGrowthRate(trends: ExpenseTrendPeriod[]): number {
     if (trends.length < 2) return 0;
 
-    const firstPeriod = trends[0].totalExpenses;
-    const lastPeriod = trends[trends.length - 1].totalExpenses;
+    const firstPeriod = trends[0].totalAmount;
+    const lastPeriod = trends[trends.length - 1].totalAmount;
 
-    return firstPeriod > 0 ? ((lastPeriod - firstPeriod) / firstPeriod) * 100 : 0;
+    return firstPeriod > 0
+      ? ((lastPeriod - firstPeriod) / firstPeriod) * 100
+      : 0;
   }
 
   /**
    * Detect expense seasonality patterns
    */
-  private detectExpenseSeasonality(trends: any[]): string {
-    const expenses = trends.map(t => t.totalExpenses);
-    const average = expenses.reduce((sum, exp) => sum + exp, 0) / expenses.length;
-    const variance = expenses.reduce((sum, exp) => sum + Math.pow(exp - average, 2), 0) / expenses.length;
+  private detectExpenseSeasonality(trends: ExpenseTrendPeriod[]): string {
+    const expenses = trends.map(t => t.totalAmount);
+    const average =
+      expenses.reduce((sum, exp) => sum + exp, 0) / expenses.length;
+    const variance =
+      expenses.reduce((sum, exp) => sum + Math.pow(exp - average, 2), 0) /
+      expenses.length;
 
     if (variance / (average * average) > 0.3) {
       return 'HIGH_SEASONALITY';
@@ -611,25 +577,191 @@ export class ExpenseAnalyticsController extends BaseAnalyticsController {
   /**
    * Generate insights from expense trends
    */
-  private generateExpenseTrendInsights(trends: any[], growthRate: number): any[] {
-    const insights: any[] = [];
+  private generateExpenseTrendInsights(
+    trends: ExpenseTrendPeriod[],
+    patterns: ExpensePattern[],
+    summary: ExpenseTrendSummary,
+    growthRate: number
+  ): ExpenseTrendInsights[] {
+    const insights: ExpenseTrendInsights[] = [];
 
     if (growthRate > 20) {
       insights.push({
         type: 'WARNING',
         title: 'High expense growth detected',
         description: `Expenses have grown by ${growthRate.toFixed(1)}% over the period`,
-        recommendation: 'Review expense categories and implement cost controls'
+        recommendation: 'Review expense categories and implement cost controls',
       });
     } else if (growthRate < -10) {
       insights.push({
         type: 'POSITIVE',
         title: 'Expense reduction achieved',
         description: `Expenses have decreased by ${Math.abs(growthRate).toFixed(1)}% over the period`,
-        recommendation: 'Continue current cost management strategies'
+        recommendation: 'Continue current cost management strategies',
       });
     }
 
     return insights;
+  }
+
+  /**
+   * Calculate expense trends for time periods
+   */
+  private calculateExpenseTrends(
+    expenses: ExpenseAnalyticsData[],
+    periods: DateRange[]
+  ): ExpenseTrendPeriod[] {
+    return periods.map(period => {
+      const periodExpenses = expenses.filter(
+        (expense: ExpenseAnalyticsData) =>
+          expense.expenseDate >= period.startDate &&
+          expense.expenseDate <= period.endDate
+      );
+
+      const totalAmount = periodExpenses.reduce(
+        (sum: number, expense: ExpenseAnalyticsData) => sum + expense.amount,
+        0
+      );
+      const taxDeductibleAmount = periodExpenses
+        .filter((expense: ExpenseAnalyticsData) => expense.isTaxDeductible)
+        .reduce((sum, expense) => sum + expense.amount, 0);
+
+      // Category breakdown
+      const categoryBreakdown = this.calculateCategoryBreakdown(periodExpenses);
+
+      // Calculate period-over-period change
+      const previousPeriodIndex = periods.indexOf(period) - 1;
+      let changeFromPrevious = 0;
+      if (previousPeriodIndex >= 0) {
+        const previousPeriodExpenses = expenses.filter(
+          (expense: ExpenseAnalyticsData) =>
+            expense.expenseDate >= periods[previousPeriodIndex].startDate &&
+            expense.expenseDate <= periods[previousPeriodIndex].endDate
+        );
+        const previousTotal = previousPeriodExpenses.reduce(
+          (sum, expense) => sum + expense.amount,
+          0
+        );
+        changeFromPrevious =
+          previousTotal > 0
+            ? ((totalAmount - previousTotal) / previousTotal) * 100
+            : 0;
+      }
+
+      return {
+        period: period.startDate.toISOString().slice(0, 7),
+        startDate: period.startDate,
+        endDate: period.endDate,
+        totalAmount,
+        expenseCount: periodExpenses.length,
+        averageExpenseAmount:
+          periodExpenses.length > 0 ? totalAmount / periodExpenses.length : 0,
+        taxDeductibleAmount,
+        taxDeductiblePercentage:
+          totalAmount > 0 ? (taxDeductibleAmount / totalAmount) * 100 : 0,
+        categoryBreakdown,
+        changeFromPrevious,
+        zambianSeason: this.baseAnalyticsService.getZambianSeason(
+          period.startDate
+        ),
+      };
+    });
+  }
+
+  /**
+   * Detect expense patterns across categories and time
+   */
+  private detectExpensePatterns(
+    expenses: ExpenseAnalyticsData[],
+    trends: ExpenseTrendPeriod[]
+  ): ExpensePattern[] {
+    const patterns: ExpensePattern[] = [];
+
+    // Group expenses by category
+    const categoryGroups: Record<string, ExpenseAnalyticsData[]> = {};
+    expenses.forEach((expense: ExpenseAnalyticsData) => {
+      const category = expense.categoryName || 'Uncategorized';
+      if (!categoryGroups[category]) categoryGroups[category] = [];
+      categoryGroups[category].push(expense);
+    });
+
+    // Analyze patterns for each category
+    Object.entries(categoryGroups).forEach(([category, categoryExpenses]: [string, ExpenseAnalyticsData[]]) => {
+      if (categoryExpenses.length < 3) return; // Need minimum data for pattern detection
+
+      const monthlyAmounts = this.getMonthlyAmounts(categoryExpenses);
+      const pattern = this.analyzePattern(monthlyAmounts);
+      const seasonality = this.detectSeasonality(categoryExpenses);
+
+      patterns.push({
+        category,
+        pattern: pattern.direction,
+        changeRate: pattern.changeRate,
+        confidence: pattern.confidence,
+        recommendations: this.generatePatternRecommendations(
+          category,
+          pattern,
+          seasonality
+        ),
+        seasonalityDetected: seasonality.detected,
+      });
+    });
+
+    return patterns;
+  }
+
+  /**
+   * Get monthly expense amounts for a category
+   */
+  private getMonthlyAmounts(expenses: ExpenseAnalyticsData[]): number[] {
+    const monthlyAmounts: Record<string, number> = {};
+
+    expenses.forEach((expense: ExpenseAnalyticsData) => {
+      const month = expense.expenseDate.toISOString().slice(0, 7);
+      monthlyAmounts[month] = (monthlyAmounts[month] || 0) + expense.amount;
+    });
+
+    return Object.values(monthlyAmounts);
+  }
+
+  /**
+   * Generate expense summary statistics
+   */
+  private generateExpenseSummary(
+    trends: ExpenseTrendPeriod[],
+    patterns: ExpensePattern[]
+  ): ExpenseTrendSummary {
+    const totalExpenses = trends.reduce(
+      (sum, trend) => sum + trend.totalAmount,
+      0
+    );
+    const averageMonthlyExpenses = totalExpenses / trends.length;
+
+    const increasingPatterns = patterns.filter(
+      p => p.pattern === 'INCREASING'
+    ).length;
+    const volatilePatterns = patterns.filter(
+      p => p.pattern === 'VOLATILE'
+    ).length;
+
+    const overallGrowthRate =
+      trends.length > 1
+        ? this.baseAnalyticsService.calculatePercentageChange(
+            trends[trends.length - 1].totalAmount,
+            trends[0].totalAmount
+          )
+        : 0;
+
+    return {
+      totalExpenses,
+      averageMonthlyExpenses,
+      overallGrowthRate,
+      increasingCategories: increasingPatterns,
+      volatileCategories: volatilePatterns,
+      totalCategories: patterns.length,
+      averageTaxDeductiblePercentage:
+        trends.reduce((sum, trend) => sum + trend.taxDeductiblePercentage, 0) /
+        trends.length,
+    };
   }
 }

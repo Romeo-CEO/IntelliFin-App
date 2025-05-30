@@ -9,9 +9,9 @@ import { AirtelMoneyOAuthService } from '../../src/integrations/airtel-money/air
 import { AirtelMoneyTokenRepository } from '../../src/integrations/airtel-money/airtel-money-token.repository';
 import { PrismaService } from '../../src/database/prisma.service';
 import {
-  AirtelTokenResponseDto,
   AirtelAccountProfileDto,
   AirtelBalanceDto,
+  AirtelTokenResponseDto,
   AirtelTransactionsResponseDto,
   GetTransactionsDto,
 } from '../../src/integrations/airtel-money/dto/airtel-money-api.dto';
@@ -55,7 +55,7 @@ describe('Airtel Money Integration', () => {
 
   const mockBalance: AirtelBalanceDto = {
     msisdn: '+260971234567',
-    balance: 1000.50,
+    balance: 1000.5,
     currency: 'ZMW',
   };
 
@@ -85,7 +85,7 @@ describe('Airtel Money Integration', () => {
                 'airtel.timeout': mockConfig.timeout,
                 'airtel.retryAttempts': mockConfig.retryAttempts,
                 'airtel.retryDelay': mockConfig.retryDelay,
-                'ENCRYPTION_KEY': 'test-encryption-key-32-characters-long',
+                ENCRYPTION_KEY: 'test-encryption-key-32-characters-long',
               };
               return configMap[key];
             }),
@@ -109,7 +109,9 @@ describe('Airtel Money Integration', () => {
 
     apiClient = module.get<AirtelMoneyApiClient>(AirtelMoneyApiClient);
     oauthService = module.get<AirtelMoneyOAuthService>(AirtelMoneyOAuthService);
-    tokenRepository = module.get<AirtelMoneyTokenRepository>(AirtelMoneyTokenRepository);
+    tokenRepository = module.get<AirtelMoneyTokenRepository>(
+      AirtelMoneyTokenRepository
+    );
     httpService = module.get<HttpService>(HttpService);
     configService = module.get<ConfigService>(ConfigService);
     prismaService = module.get<PrismaService>(PrismaService);
@@ -122,10 +124,14 @@ describe('Airtel Money Integration', () => {
         const authUrl = apiClient.generateAuthUrl(state);
 
         expect(authUrl).toContain(mockConfig.baseUrl);
-        expect(authUrl).toContain('client_id=' + mockConfig.clientId);
-        expect(authUrl).toContain('redirect_uri=' + encodeURIComponent(mockConfig.redirectUri));
-        expect(authUrl).toContain('scope=' + encodeURIComponent(mockConfig.scopes));
-        expect(authUrl).toContain('state=' + state);
+        expect(authUrl).toContain(`client_id=${  mockConfig.clientId}`);
+        expect(authUrl).toContain(
+          `redirect_uri=${  encodeURIComponent(mockConfig.redirectUri)}`
+        );
+        expect(authUrl).toContain(
+          `scope=${  encodeURIComponent(mockConfig.scopes)}`
+        );
+        expect(authUrl).toContain(`state=${  state}`);
         expect(authUrl).toContain('response_type=code');
       });
     });
@@ -152,7 +158,7 @@ describe('Airtel Money Integration', () => {
             headers: {
               'Content-Type': 'application/x-www-form-urlencoded',
             },
-          }),
+          })
         );
       });
 
@@ -164,9 +170,13 @@ describe('Airtel Money Integration', () => {
           },
         };
 
-        jest.spyOn(httpService, 'request').mockReturnValue(throwError(() => mockError));
+        jest
+          .spyOn(httpService, 'request')
+          .mockReturnValue(throwError(() => mockError));
 
-        await expect(apiClient.exchangeCodeForToken('invalid-code')).rejects.toThrow();
+        await expect(
+          apiClient.exchangeCodeForToken('invalid-code')
+        ).rejects.toThrow();
       });
     });
 
@@ -211,11 +221,11 @@ describe('Airtel Money Integration', () => {
             method: 'GET',
             url: `${mockConfig.baseUrl}/standard/v1/users/profile`,
             headers: expect.objectContaining({
-              'Authorization': 'Bearer test-access-token',
+              Authorization: 'Bearer test-access-token',
               'X-Country': 'ZM',
               'X-Currency': 'ZMW',
             }),
-          }),
+          })
         );
       });
     });
@@ -249,12 +259,12 @@ describe('Airtel Money Integration', () => {
               transaction_id: 'TXN123',
               reference: 'REF123',
               transaction_date: '2023-12-01T10:30:00Z',
-              amount: 500.00,
+              amount: 500.0,
               currency: 'ZMW',
               transaction_type: 'PAYMENT' as any,
               status: 'COMPLETED' as any,
               description: 'Test payment',
-              fees: 10.00,
+              fees: 10.0,
             },
           ],
           pagination: {
@@ -285,7 +295,10 @@ describe('Airtel Money Integration', () => {
           endDate: '2023-12-31',
         };
 
-        const result = await apiClient.getTransactions('test-access-token', params);
+        const result = await apiClient.getTransactions(
+          'test-access-token',
+          params
+        );
 
         expect(result).toEqual(mockTransactions);
         expect(result.transactions).toHaveLength(1);
@@ -302,9 +315,13 @@ describe('Airtel Money Integration', () => {
           },
         };
 
-        jest.spyOn(httpService, 'request').mockReturnValue(throwError(() => mockError));
+        jest
+          .spyOn(httpService, 'request')
+          .mockReturnValue(throwError(() => mockError));
 
-        await expect(apiClient.getAccountProfile('test-token')).rejects.toThrow();
+        await expect(
+          apiClient.getAccountProfile('test-token')
+        ).rejects.toThrow();
       });
 
       it('should handle unauthorized errors', async () => {
@@ -315,27 +332,34 @@ describe('Airtel Money Integration', () => {
           },
         };
 
-        jest.spyOn(httpService, 'request').mockReturnValue(throwError(() => mockError));
+        jest
+          .spyOn(httpService, 'request')
+          .mockReturnValue(throwError(() => mockError));
 
-        await expect(apiClient.getAccountProfile('invalid-token')).rejects.toThrow();
+        await expect(
+          apiClient.getAccountProfile('invalid-token')
+        ).rejects.toThrow();
       });
 
       it('should handle network errors with retry', async () => {
         const networkError = { code: 'ECONNRESET' };
 
-        jest.spyOn(httpService, 'request')
+        jest
+          .spyOn(httpService, 'request')
           .mockReturnValueOnce(throwError(() => networkError))
           .mockReturnValueOnce(throwError(() => networkError))
-          .mockReturnValueOnce(of({
-            data: {
-              status: { code: '200', message: 'Success' },
-              data: mockAccountProfile,
-            },
-            status: 200,
-            statusText: 'OK',
-            headers: {},
-            config: {} as any,
-          }));
+          .mockReturnValueOnce(
+            of({
+              data: {
+                status: { code: '200', message: 'Success' },
+                data: mockAccountProfile,
+              },
+              status: 200,
+              statusText: 'OK',
+              headers: {},
+              config: {} as any,
+            })
+          );
 
         const result = await apiClient.getAccountProfile('test-token');
 
@@ -362,14 +386,18 @@ describe('Airtel Money Integration', () => {
           expiresAt: new Date(Date.now() + 3600000),
         };
 
-        jest.spyOn(prismaService.mobileMoneyAccount, 'update').mockResolvedValue({} as any);
-        jest.spyOn(prismaService.mobileMoneyAccount, 'findUnique').mockResolvedValue({
-          id: accountId,
-          accessToken: 'encrypted-access-token',
-          refreshToken: 'encrypted-refresh-token',
-          tokenExpiresAt: tokenData.expiresAt,
-          isLinked: true,
-        } as any);
+        jest
+          .spyOn(prismaService.mobileMoneyAccount, 'update')
+          .mockResolvedValue({} as any);
+        jest
+          .spyOn(prismaService.mobileMoneyAccount, 'findUnique')
+          .mockResolvedValue({
+            id: accountId,
+            accessToken: 'encrypted-access-token',
+            refreshToken: 'encrypted-refresh-token',
+            tokenExpiresAt: tokenData.expiresAt,
+            isLinked: true,
+          } as any);
 
         await tokenRepository.storeTokens(accountId, tokenData);
 
@@ -391,9 +419,15 @@ describe('Airtel Money Integration', () => {
         const userId = 'test-user-id';
         const connectDto = { phoneNumber: '+260971234567' };
 
-        jest.spyOn(prismaService.mobileMoneyAccount, 'findFirst').mockResolvedValue(null);
+        jest
+          .spyOn(prismaService.mobileMoneyAccount, 'findFirst')
+          .mockResolvedValue(null);
 
-        const result = await oauthService.initiateConnection(organizationId, userId, connectDto);
+        const result = await oauthService.initiateConnection(
+          organizationId,
+          userId,
+          connectDto
+        );
 
         expect(result).toHaveProperty('authUrl');
         expect(result).toHaveProperty('state');
@@ -405,10 +439,12 @@ describe('Airtel Money Integration', () => {
         const userId = 'test-user-id';
         const connectDto = { phoneNumber: '+260971234567' };
 
-        jest.spyOn(prismaService.mobileMoneyAccount, 'findFirst').mockResolvedValue({
-          id: 'existing-account',
-          isLinked: true,
-        } as any);
+        jest
+          .spyOn(prismaService.mobileMoneyAccount, 'findFirst')
+          .mockResolvedValue({
+            id: 'existing-account',
+            isLinked: true,
+          } as any);
 
         await expect(
           oauthService.initiateConnection(organizationId, userId, connectDto)

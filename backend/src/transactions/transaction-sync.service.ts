@@ -1,19 +1,22 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
-import { TransactionRepository, CreateTransactionData } from './transaction.repository';
+import {
+  CreateTransactionData,
+  TransactionRepository,
+} from './transaction.repository';
 import { AirtelMoneyApiClient } from '../integrations/airtel-money/airtel-money-api.client';
 import { AirtelMoneyTokenRepository } from '../integrations/airtel-money/airtel-money-token.repository';
-import { 
-  MobileMoneyAccount, 
-  MobileMoneyProvider, 
-  TransactionType, 
-  TransactionStatus,
+import {
+  MobileMoneyAccount,
+  MobileMoneyProvider,
   SyncJob,
-  SyncStatus 
+  SyncJobStatus,
+  TransactionStatus,
+  TransactionType,
 } from '@prisma/client';
-import { 
-  AirtelTransactionDto, 
-  GetTransactionsDto 
+import {
+  AirtelTransactionDto,
+  GetTransactionsDto,
 } from '../integrations/airtel-money/dto/airtel-money-api.dto';
 
 export interface SyncResult {
@@ -45,7 +48,7 @@ export class TransactionSyncService {
     private readonly prisma: PrismaService,
     private readonly transactionRepository: TransactionRepository,
     private readonly airtelApiClient: AirtelMoneyApiClient,
-    private readonly tokenRepository: AirtelMoneyTokenRepository,
+    private readonly tokenRepository: AirtelMoneyTokenRepository
   ) {}
 
   /**
@@ -95,13 +98,16 @@ export class TransactionSyncService {
         if (!refreshed) {
           throw new Error('Failed to refresh expired token');
         }
-        
+
         const newTokens = await this.tokenRepository.getTokens(accountId);
         accessToken = newTokens?.accessToken || tokens.accessToken;
       }
 
       // Determine sync date range
-      const { startDate, endDate } = await this.determineSyncDateRange(account, options);
+      const { startDate, endDate } = await this.determineSyncDateRange(
+        account,
+        options
+      );
 
       // Perform incremental sync
       const syncData = await this.performIncrementalSync(
@@ -123,7 +129,7 @@ export class TransactionSyncService {
       // Update sync job as completed
       if (syncJob) {
         await this.updateSyncJob(syncJob.id, {
-          status: SyncStatus.COMPLETED,
+          status: SyncJobStatus.COMPLETED,
           transactionsProcessed: syncResult.totalProcessed,
           newTransactions: syncResult.newTransactions,
           completedAt: new Date(),
@@ -132,17 +138,16 @@ export class TransactionSyncService {
 
       this.logger.log(
         `Successfully synced account ${accountId}: ` +
-        `${syncResult.newTransactions} new, ${syncResult.updatedTransactions} updated`
+          `${syncResult.newTransactions} new, ${syncResult.updatedTransactions} updated`
       );
-
-    } catch (error) {
+    } catch (error: any) {
       syncResult.success = false;
       syncResult.errors.push(error.message);
 
       // Update sync job as failed
       if (syncJob) {
         await this.updateSyncJob(syncJob.id, {
-          status: SyncStatus.FAILED,
+          status: SyncJobStatus.FAILED,
           errorMessage: error.message,
           completedAt: new Date(),
         });
@@ -160,7 +165,9 @@ export class TransactionSyncService {
   /**
    * Sync transactions for all linked accounts in an organization
    */
-  async syncAllAccountsForOrganization(organizationId: string): Promise<SyncResult[]> {
+  async syncAllAccountsForOrganization(
+    organizationId: string
+  ): Promise<SyncResult[]> {
     const accounts = await this.prisma.mobileMoneyAccount.findMany({
       where: {
         organizationId,
@@ -212,7 +219,10 @@ export class TransactionSyncService {
     let totalProcessed = 0;
     let latestBalance: number | null = null;
     let offset = 0;
-    const limit = Math.min(options.limit || this.DEFAULT_SYNC_LIMIT, this.MAX_SYNC_LIMIT);
+    const limit = Math.min(
+      options.limit || this.DEFAULT_SYNC_LIMIT,
+      this.MAX_SYNC_LIMIT
+    );
 
     while (true) {
       const params: GetTransactionsDto = {
@@ -222,8 +232,11 @@ export class TransactionSyncService {
         endDate: endDate.toISOString().split('T')[0],
       };
 
-      const response = await this.airtelApiClient.getTransactions(accessToken, params);
-      
+      const response = await this.airtelApiClient.getTransactions(
+        accessToken,
+        params
+      );
+
       if (!response.transactions || response.transactions.length === 0) {
         break;
       }
@@ -247,7 +260,10 @@ export class TransactionSyncService {
       }
 
       // Check if we've reached the end
-      if (!response.pagination.has_more || response.transactions.length < limit) {
+      if (
+        !response.pagination.has_more ||
+        response.transactions.length < limit
+      ) {
         break;
       }
 
@@ -255,7 +271,9 @@ export class TransactionSyncService {
 
       // Safety check to prevent infinite loops
       if (offset > 10000) {
-        this.logger.warn(`Sync reached maximum offset (${offset}) for account ${account.id}`);
+        this.logger.warn(
+          `Sync reached maximum offset (${offset}) for account ${account.id}`
+        );
         break;
       }
     }
@@ -297,20 +315,24 @@ export class TransactionSyncService {
           }
         } else {
           // Prepare new transaction for batch creation
-          const transactionData = this.mapAirtelTransactionToCreateData(account, airtelTx);
+          const transactionData = this.mapAirtelTransactionToCreateData(
+            account,
+            airtelTx
+          );
           transactionsToCreate.push(transactionData);
         }
-      } catch (error) {
+      } catch (error: any) {
         this.logger.error(
-          `Failed to process transaction ${airtelTx.transaction_id}:`,
-          error
+          `[Sync] Failed to process transaction ${airtelTx.transaction_id}:`,
+          error.stack
         );
       }
     }
 
     // Create new transactions in batch
     if (transactionsToCreate.length > 0) {
-      const result = await this.transactionRepository.createMany(transactionsToCreate);
+      const result =
+        await this.transactionRepository.createMany(transactionsToCreate);
       newTransactions = result.count;
     }
 
@@ -391,12 +413,17 @@ export class TransactionSyncService {
   /**
    * Check if transaction has changes that need updating
    */
-  private hasTransactionChanges(existing: any, airtelTx: AirtelTransactionDto): boolean {
+  private hasTransactionChanges(
+    existing: any,
+    airtelTx: AirtelTransactionDto
+  ): boolean {
     return (
       existing.status !== this.mapAirtelTransactionStatus(airtelTx.status) ||
       existing.description !== airtelTx.description ||
       existing.counterpartyName !== airtelTx.counterparty?.name ||
-      (airtelTx.balance_after && parseFloat(existing.balanceAfter?.toString() || '0') !== airtelTx.balance_after)
+      (airtelTx.balance_after &&
+        parseFloat(existing.balanceAfter?.toString() || '0') !==
+          airtelTx.balance_after)
     );
   }
 
@@ -425,12 +452,18 @@ export class TransactionSyncService {
   /**
    * Get account with validation
    */
-  private async getAccountWithValidation(accountId: string): Promise<MobileMoneyAccount | null> {
+  private async getAccountWithValidation(
+    accountId: string
+  ): Promise<MobileMoneyAccount | null> {
     const account = await this.prisma.mobileMoneyAccount.findUnique({
       where: { id: accountId },
     });
 
-    if (!account || !account.isLinked || account.provider !== MobileMoneyProvider.AIRTEL_MONEY) {
+    if (
+      !account ||
+      !account.isLinked ||
+      account.provider !== MobileMoneyProvider.AIRTEL_MONEY
+    ) {
       return null;
     }
 
@@ -450,8 +483,9 @@ export class TransactionSyncService {
     if (!startDate && !options.forceFullSync) {
       // Get last sync date or last transaction date
       const lastSyncDate = account.lastSyncAt;
-      const lastTransactionDate = await this.transactionRepository.getLatestTransactionDate(account.id);
-      
+      const lastTransactionDate =
+        await this.transactionRepository.getLatestTransactionDate(account.id);
+
       if (lastSyncDate) {
         startDate = lastSyncDate;
       } else if (lastTransactionDate) {
@@ -478,7 +512,9 @@ export class TransactionSyncService {
         return false;
       }
 
-      const newTokens = await this.airtelApiClient.refreshToken(tokens.refreshToken);
+      const newTokens = await this.airtelApiClient.refreshToken(
+        tokens.refreshToken
+      );
       const expiresAt = new Date(Date.now() + newTokens.expires_in * 1000);
 
       await this.tokenRepository.updateTokens(accountId, {
@@ -488,8 +524,11 @@ export class TransactionSyncService {
       });
 
       return true;
-    } catch (error) {
-      this.logger.error(`Failed to refresh token for account ${accountId}:`, error);
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to refresh token for account ${accountId}:`,
+        error
+      );
       return false;
     }
   }
@@ -506,7 +545,7 @@ export class TransactionSyncService {
         accountId: account.id,
         organizationId: account.organizationId,
         provider: account.provider,
-        status: SyncStatus.RUNNING,
+        status: SyncJobStatus.RUNNING,
         isManual: options.isManual || false,
         startedAt: new Date(),
       },
@@ -519,7 +558,7 @@ export class TransactionSyncService {
   private async updateSyncJob(
     syncJobId: string,
     data: {
-      status: SyncStatus;
+      status: SyncJobStatus;
       transactionsProcessed?: number;
       newTransactions?: number;
       errorMessage?: string;

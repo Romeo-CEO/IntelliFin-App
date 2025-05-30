@@ -1,11 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InvitationService } from './invitation.service';
 import { InvitationRepository } from './invitation.repository';
 import { UsersService } from '../users/users.service';
 import { EmailService } from '../email/email.service';
-import { UserRole, InvitationStatus } from '@prisma/client';
+import { InvitationStatus, UserRole } from '@prisma/client';
 
 describe('InvitationService', () => {
   let service: InvitationService;
@@ -108,7 +112,11 @@ describe('InvitationService', () => {
       invitationRepository.create.mockResolvedValue(mockInvitation as any);
       emailService.sendInvitationEmail.mockResolvedValue();
 
-      const result = await service.createInvitation(createInvitationDto, inviterId, tenantId);
+      const result = await service.createInvitation(
+        createInvitationDto,
+        inviterId,
+        tenantId
+      );
 
       expect(result).toBeDefined();
       expect(result.email).toBe(createInvitationDto.email);
@@ -133,7 +141,7 @@ describe('InvitationService', () => {
       usersService.findByEmail.mockResolvedValue(existingUser as any);
 
       await expect(
-        service.createInvitation(createInvitationDto, inviterId, tenantId),
+        service.createInvitation(createInvitationDto, inviterId, tenantId)
       ).rejects.toThrow(ConflictException);
     });
 
@@ -152,10 +160,12 @@ describe('InvitationService', () => {
 
       usersService.findById.mockResolvedValue(mockInviter as any);
       usersService.findByEmail.mockResolvedValue(null);
-      invitationRepository.findByEmailAndTenant.mockResolvedValue(existingInvitation as any);
+      invitationRepository.findByEmailAndTenant.mockResolvedValue(
+        existingInvitation as any
+      );
 
       await expect(
-        service.createInvitation(createInvitationDto, inviterId, tenantId),
+        service.createInvitation(createInvitationDto, inviterId, tenantId)
       ).rejects.toThrow(ConflictException);
     });
   });
@@ -215,7 +225,7 @@ describe('InvitationService', () => {
       invitationRepository.findByToken.mockResolvedValue(null);
 
       await expect(
-        service.acceptInvitation(acceptInvitationDto),
+        service.acceptInvitation(acceptInvitationDto)
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -227,14 +237,16 @@ describe('InvitationService', () => {
         expiresAt: new Date(Date.now() - 24 * 60 * 60 * 1000), // Past date
       };
 
-      invitationRepository.findByToken.mockResolvedValue(expiredInvitation as any);
+      invitationRepository.findByToken.mockResolvedValue(
+        expiredInvitation as any
+      );
       invitationRepository.update.mockResolvedValue({
         ...expiredInvitation,
         status: InvitationStatus.EXPIRED,
       } as any);
 
       await expect(
-        service.acceptInvitation(acceptInvitationDto),
+        service.acceptInvitation(acceptInvitationDto)
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -246,10 +258,12 @@ describe('InvitationService', () => {
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
       };
 
-      invitationRepository.findByToken.mockResolvedValue(processedInvitation as any);
+      invitationRepository.findByToken.mockResolvedValue(
+        processedInvitation as any
+      );
 
       await expect(
-        service.acceptInvitation(acceptInvitationDto),
+        service.acceptInvitation(acceptInvitationDto)
       ).rejects.toThrow(BadRequestException);
     });
   });
@@ -272,7 +286,9 @@ describe('InvitationService', () => {
         },
       ];
 
-      invitationRepository.findByTenant.mockResolvedValue(mockInvitations as any);
+      invitationRepository.findByTenant.mockResolvedValue(
+        mockInvitations as any
+      );
       invitationRepository.countByTenant.mockResolvedValue(2);
 
       const result = await service.getInvitationsByTenant(tenantId, 1, 10);

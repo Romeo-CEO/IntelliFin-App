@@ -31,7 +31,7 @@ export class DashboardCacheService {
       this.logger.log('Connected to Redis for dashboard caching');
     });
 
-    this.redis.on('error', (error) => {
+    this.redis.on('error', error => {
       this.logger.error(`Redis connection error: ${error.message}`, error);
     });
   }
@@ -43,17 +43,20 @@ export class DashboardCacheService {
     try {
       const fullKey = this.cachePrefix + key;
       const cached = await this.redis.get(fullKey);
-      
+
       if (cached) {
         const data = JSON.parse(cached);
         this.logger.debug(`Cache hit for key: ${key}`);
         return data;
       }
-      
+
       this.logger.debug(`Cache miss for key: ${key}`);
       return null;
     } catch (error) {
-      this.logger.error(`Failed to get cached data for key ${key}: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get cached data for key ${key}: ${error.message}`,
+        error
+      );
       return null;
     }
   }
@@ -65,11 +68,14 @@ export class DashboardCacheService {
     try {
       const fullKey = this.cachePrefix + key;
       const ttl = ttlSeconds || this.defaultTtl;
-      
+
       await this.redis.setex(fullKey, ttl, JSON.stringify(data));
       this.logger.debug(`Cached data for key: ${key} (TTL: ${ttl}s)`);
     } catch (error) {
-      this.logger.error(`Failed to cache data for key ${key}: ${error.message}`, error);
+      this.logger.error(
+        `Failed to cache data for key ${key}: ${error.message}`,
+        error
+      );
     }
   }
 
@@ -82,7 +88,10 @@ export class DashboardCacheService {
       await this.redis.del(fullKey);
       this.logger.debug(`Deleted cached data for key: ${key}`);
     } catch (error) {
-      this.logger.error(`Failed to delete cached data for key ${key}: ${error.message}`, error);
+      this.logger.error(
+        `Failed to delete cached data for key ${key}: ${error.message}`,
+        error
+      );
     }
   }
 
@@ -93,13 +102,18 @@ export class DashboardCacheService {
     try {
       const fullPattern = this.cachePrefix + pattern;
       const keys = await this.redis.keys(fullPattern);
-      
+
       if (keys.length > 0) {
         await this.redis.del(...keys);
-        this.logger.debug(`Deleted ${keys.length} cached keys matching pattern: ${pattern}`);
+        this.logger.debug(
+          `Deleted ${keys.length} cached keys matching pattern: ${pattern}`
+        );
       }
     } catch (error) {
-      this.logger.error(`Failed to delete cached data for pattern ${pattern}: ${error.message}`, error);
+      this.logger.error(
+        `Failed to delete cached data for pattern ${pattern}: ${error.message}`,
+        error
+      );
     }
   }
 
@@ -111,7 +125,10 @@ export class DashboardCacheService {
       await this.deletePattern(`*${organizationId}*`);
       this.logger.log(`Invalidated cache for organization: ${organizationId}`);
     } catch (error) {
-      this.logger.error(`Failed to invalidate organization cache: ${error.message}`, error);
+      this.logger.error(
+        `Failed to invalidate organization cache: ${error.message}`,
+        error
+      );
     }
   }
 
@@ -123,7 +140,10 @@ export class DashboardCacheService {
       await this.delete(`widget_data_${widgetId}`);
       this.logger.log(`Invalidated cache for widget: ${widgetId}`);
     } catch (error) {
-      this.logger.error(`Failed to invalidate widget cache: ${error.message}`, error);
+      this.logger.error(
+        `Failed to invalidate widget cache: ${error.message}`,
+        error
+      );
     }
   }
 
@@ -135,7 +155,10 @@ export class DashboardCacheService {
       await this.deletePattern(`*dashboard_${dashboardId}*`);
       this.logger.log(`Invalidated cache for dashboard: ${dashboardId}`);
     } catch (error) {
-      this.logger.error(`Failed to invalidate dashboard cache: ${error.message}`, error);
+      this.logger.error(
+        `Failed to invalidate dashboard cache: ${error.message}`,
+        error
+      );
     }
   }
 
@@ -150,11 +173,11 @@ export class DashboardCacheService {
     try {
       const info = await this.redis.info('memory');
       const keyCount = await this.redis.dbsize();
-      
+
       // Parse memory usage from Redis info
       const memoryMatch = info.match(/used_memory_human:(.+)/);
       const memoryUsage = memoryMatch ? memoryMatch[1].trim() : 'Unknown';
-      
+
       return {
         totalKeys: keyCount,
         memoryUsage,
@@ -175,12 +198,16 @@ export class DashboardCacheService {
    */
   async warmUpCache(organizationId: string): Promise<void> {
     try {
-      this.logger.log(`Starting cache warm-up for organization: ${organizationId}`);
-      
+      this.logger.log(
+        `Starting cache warm-up for organization: ${organizationId}`
+      );
+
       // This would pre-load commonly accessed data
       // Implementation would depend on usage patterns
-      
-      this.logger.log(`Cache warm-up completed for organization: ${organizationId}`);
+
+      this.logger.log(
+        `Cache warm-up completed for organization: ${organizationId}`
+      );
     } catch (error) {
       this.logger.error(`Failed to warm up cache: ${error.message}`, error);
     }
@@ -189,32 +216,45 @@ export class DashboardCacheService {
   /**
    * Set cache with compression for large data
    */
-  async setCompressed(key: string, data: any, ttlSeconds?: number): Promise<void> {
+  async setCompressed(
+    key: string,
+    data: any,
+    ttlSeconds?: number
+  ): Promise<void> {
     try {
       const fullKey = this.cachePrefix + key;
       const ttl = ttlSeconds || this.defaultTtl;
-      
+
       // For large data, we could implement compression here
       // For now, using standard JSON serialization
       const serialized = JSON.stringify(data);
-      
+
       // Only compress if data is larger than 1KB
       if (serialized.length > 1024) {
         // Implementation would use compression library like zlib
-        this.logger.debug(`Large data cached for key: ${key} (${serialized.length} bytes)`);
+        this.logger.debug(
+          `Large data cached for key: ${key} (${serialized.length} bytes)`
+        );
       }
-      
+
       await this.redis.setex(fullKey, ttl, serialized);
       this.logger.debug(`Cached data for key: ${key} (TTL: ${ttl}s)`);
     } catch (error) {
-      this.logger.error(`Failed to cache compressed data for key ${key}: ${error.message}`, error);
+      this.logger.error(
+        `Failed to cache compressed data for key ${key}: ${error.message}`,
+        error
+      );
     }
   }
 
   /**
    * Get cache key for specific data type
    */
-  getCacheKey(type: string, organizationId: string, ...params: string[]): string {
+  getCacheKey(
+    type: string,
+    organizationId: string,
+    ...params: string[]
+  ): string {
     const keyParts = [type, organizationId, ...params];
     return keyParts.join('_');
   }
@@ -251,7 +291,7 @@ export class DashboardCacheService {
   async getOrSet<T>(
     key: string,
     computeFn: () => Promise<T>,
-    ttlSeconds?: number,
+    ttlSeconds?: number
   ): Promise<T> {
     try {
       // Try to get from cache first
@@ -262,13 +302,16 @@ export class DashboardCacheService {
 
       // Compute the value
       const computed = await computeFn();
-      
+
       // Cache the computed value
       await this.set(key, computed, ttlSeconds);
-      
+
       return computed;
     } catch (error) {
-      this.logger.error(`Failed to get or set cache for key ${key}: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get or set cache for key ${key}: ${error.message}`,
+        error
+      );
       // If caching fails, still return the computed value
       return computeFn();
     }
@@ -281,7 +324,7 @@ export class DashboardCacheService {
     try {
       const fullKeys = keys.map(key => this.cachePrefix + key);
       const results = await this.redis.mget(...fullKeys);
-      
+
       return results.map(result => {
         if (result) {
           try {
@@ -293,7 +336,10 @@ export class DashboardCacheService {
         return null;
       });
     } catch (error) {
-      this.logger.error(`Failed to batch get cache keys: ${error.message}`, error);
+      this.logger.error(
+        `Failed to batch get cache keys: ${error.message}`,
+        error
+      );
       return keys.map(() => null);
     }
   }
@@ -301,20 +347,25 @@ export class DashboardCacheService {
   /**
    * Batch set multiple keys
    */
-  async mset(keyValuePairs: Array<{ key: string; value: any; ttl?: number }>): Promise<void> {
+  async mset(
+    keyValuePairs: Array<{ key: string; value: any; ttl?: number }>
+  ): Promise<void> {
     try {
       const pipeline = this.redis.pipeline();
-      
+
       keyValuePairs.forEach(({ key, value, ttl }) => {
         const fullKey = this.cachePrefix + key;
         const ttlSeconds = ttl || this.defaultTtl;
         pipeline.setex(fullKey, ttlSeconds, JSON.stringify(value));
       });
-      
+
       await pipeline.exec();
       this.logger.debug(`Batch cached ${keyValuePairs.length} keys`);
     } catch (error) {
-      this.logger.error(`Failed to batch set cache keys: ${error.message}`, error);
+      this.logger.error(
+        `Failed to batch set cache keys: ${error.message}`,
+        error
+      );
     }
   }
 }

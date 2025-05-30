@@ -270,7 +270,7 @@ export class PageHelper {
     // If no toast container found, try looking for any element containing the message
     if (!toastContainer && message) {
       try {
-        await this.page.waitForSelector(`text=${message}`, { timeout: timeout });
+        await this.page.waitForSelector(`text=${message}`, { timeout });
         return;
       } catch (error) {
         // Continue with other approaches
@@ -280,7 +280,7 @@ export class PageHelper {
     // If we found a container but need to check for specific message
     if (toastContainer && message) {
       try {
-        await expect(toastContainer).toContainText(message, { timeout: timeout });
+        await expect(toastContainer).toContainText(message, { timeout });
         return;
       } catch (error) {
         // Try looking for the message anywhere on the page

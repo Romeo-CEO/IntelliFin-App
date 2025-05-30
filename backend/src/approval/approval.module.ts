@@ -8,10 +8,7 @@ import { ApprovalRequestRepository } from './approval-request.repository';
 import { ApprovalTaskRepository } from './approval-task.repository';
 
 @Module({
-  imports: [
-    DatabaseModule,
-    NotificationModule,
-  ],
+  imports: [DatabaseModule, NotificationModule],
   controllers: [ApprovalController],
   providers: [
     ApprovalService,

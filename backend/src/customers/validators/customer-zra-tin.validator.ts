@@ -1,21 +1,21 @@
 import { Injectable } from '@nestjs/common';
-import { 
-  registerDecorator, 
-  ValidationOptions, 
-  ValidatorConstraint, 
+import {
+  ValidationArguments,
+  ValidationOptions,
+  ValidatorConstraint,
   ValidatorConstraintInterface,
-  ValidationArguments 
+  registerDecorator,
 } from 'class-validator';
 
 /**
  * ZRA TIN (Tax Identification Number) Validator for Zambian customers
- * 
+ *
  * ZRA TIN Format Rules:
  * - 10 digits for individuals (TPIN)
  * - 10 digits for companies (TPIN)
  * - Format: XXXXXXXXXX (10 consecutive digits)
  * - No special characters or spaces
- * 
+ *
  * Note: This is a basic validation. In production, you might want to
  * integrate with ZRA's API for real-time validation.
  */
@@ -23,7 +23,6 @@ import {
 @ValidatorConstraint({ name: 'isValidZraTin', async: false })
 @Injectable()
 export class ZraTinValidator implements ValidatorConstraintInterface {
-  
   validate(tin: string, args: ValidationArguments): boolean {
     if (!tin) {
       return true; // Allow empty TIN (optional field)
@@ -50,19 +49,19 @@ export class ZraTinValidator implements ValidatorConstraintInterface {
 
     // Additional validation rules can be added here
     // For example, check digit validation if ZRA provides such rules
-    
+
     return this.validateCheckDigit(cleanTin);
   }
 
   /**
    * Validates check digit (placeholder implementation)
-   * Note: This is a simplified implementation. 
+   * Note: This is a simplified implementation.
    * Real ZRA TIN validation might have specific check digit algorithms.
    */
   private validateCheckDigit(tin: string): boolean {
     // For now, we'll implement a basic validation
     // In production, this should follow ZRA's actual check digit algorithm
-    
+
     // Ensure no repeated digits (basic sanity check)
     if (/^(\d)\1{9}$/.test(tin)) {
       return false; // All same digits (like 0000000000) are invalid
@@ -81,11 +80,11 @@ export class ZraTinValidator implements ValidatorConstraintInterface {
    */
   private isSequential(tin: string): boolean {
     const digits = tin.split('').map(Number);
-    
+
     // Check ascending sequence
     let isAscending = true;
     let isDescending = true;
-    
+
     for (let i = 1; i < digits.length; i++) {
       if (digits[i] !== digits[i - 1] + 1) {
         isAscending = false;
@@ -94,7 +93,7 @@ export class ZraTinValidator implements ValidatorConstraintInterface {
         isDescending = false;
       }
     }
-    
+
     return isAscending || isDescending;
   }
 
@@ -103,13 +102,13 @@ export class ZraTinValidator implements ValidatorConstraintInterface {
    */
   static formatTin(tin: string): string {
     if (!tin) return '';
-    
+
     const cleanTin = tin.replace(/\s/g, '');
     if (cleanTin.length === 10) {
       // Format as: XXXX XXX XXX
       return `${cleanTin.slice(0, 4)} ${cleanTin.slice(4, 7)} ${cleanTin.slice(7)}`;
     }
-    
+
     return cleanTin;
   }
 
@@ -131,13 +130,13 @@ export class ZraTinValidator implements ValidatorConstraintInterface {
     cleaned?: string;
   } {
     const errors: string[] = [];
-    
+
     if (!tin) {
       return { isValid: true, errors: [] }; // Optional field
     }
 
     const cleaned = this.cleanTin(tin);
-    
+
     // Check length
     if (cleaned.length !== 10) {
       errors.push('TIN must be exactly 10 digits');
@@ -160,7 +159,7 @@ export class ZraTinValidator implements ValidatorConstraintInterface {
     }
 
     const isValid = errors.length === 0;
-    
+
     return {
       isValid,
       errors,
@@ -174,10 +173,10 @@ export class ZraTinValidator implements ValidatorConstraintInterface {
  * Custom decorator for ZRA TIN validation
  */
 export function IsValidZraTin(validationOptions?: ValidationOptions) {
-  return function (object: Object, propertyName: string) {
+  return function (object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
-      propertyName: propertyName,
+      propertyName,
       options: validationOptions,
       constraints: [],
       validator: ZraTinValidator,
@@ -201,12 +200,12 @@ export class ZraTinUtils {
       const digit = Math.floor(Math.random() * 10);
       tin += digit.toString();
     }
-    
+
     // Ensure it's not all the same digit or sequential
     if (/^(\d)\1{9}$/.test(tin) || new ZraTinValidator().isSequential(tin)) {
       return this.generateSampleTin(); // Regenerate if invalid pattern
     }
-    
+
     return tin;
   }
 
@@ -215,7 +214,7 @@ export class ZraTinUtils {
    */
   static maskTin(tin: string): string {
     if (!tin || tin.length < 4) return '****';
-    
+
     const cleaned = ZraTinValidator.cleanTin(tin);
     return `${cleaned.slice(0, 2)}****${cleaned.slice(-2)}`;
   }
@@ -226,14 +225,14 @@ export class ZraTinUtils {
    */
   static getTinType(tin: string): 'individual' | 'company' | 'unknown' {
     if (!tin) return 'unknown';
-    
+
     const cleaned = ZraTinValidator.cleanTin(tin);
     if (cleaned.length !== 10) return 'unknown';
-    
+
     // This is a placeholder implementation
     // Real ZRA TIN might have specific prefixes or patterns for different entity types
     const firstDigit = parseInt(cleaned[0]);
-    
+
     // Example rule (not based on actual ZRA specification):
     // Individual TINs might start with 1-5, company TINs with 6-9
     if (firstDigit >= 1 && firstDigit <= 5) {
@@ -241,7 +240,7 @@ export class ZraTinUtils {
     } else if (firstDigit >= 6 && firstDigit <= 9) {
       return 'company';
     }
-    
+
     return 'unknown';
   }
 }

@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { DashboardWidget, Dashboard } from '../../../types/dashboard.types';
+
 import { taxService } from '../../../services/tax.service';
-import { LoadingSpinner } from '../../common/LoadingSpinner';
-import { ErrorMessage } from '../../common/ErrorMessage';
-import { ProgressBar } from '../../common/ProgressBar';
+import { DashboardWidget, Dashboard } from '../../../types/dashboard.types';
 import { Badge } from '../../common/Badge';
+import { ErrorMessage } from '../../common/ErrorMessage';
+import { LoadingSpinner } from '../../common/LoadingSpinner';
+import { ProgressBar } from '../../common/ProgressBar';
 
 interface ZambianComplianceWidgetProps {
   widget: DashboardWidget;

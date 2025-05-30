@@ -2,24 +2,28 @@ import { Injectable, Logger } from '@nestjs/common';
 import { BaseAnalyticsService } from './base-analytics.service';
 import { AnalyticsAggregationService } from './analytics-aggregation.service';
 import { DatabaseService } from '../../database/database.service';
-import { 
-  CustomerProfitability, 
+import {
+  AnalyticsDataSource,
+  CustomerProfitability,
   DateRange,
-  AnalyticsDataSource 
+  ForecastingOptions,
+  TimeSeriesData,
 } from '../interfaces/analytics-data.interface';
+
+import { AnalyticsEngineFactory } from '../engines/analytics-engine.factory';
 
 /**
  * Profitability Analysis Engine Service
- * 
+ *
  * Provides comprehensive profitability analysis for Zambian SMEs including
  * customer profitability, product margins, cost allocation, and optimization insights.
- * 
+ *
  * Features:
  * - Advanced customer profitability analysis with activity-based costing
  * - Product/service margin analysis and optimization
  * - Cost allocation algorithms for accurate profitability calculation
  * - Risk assessment and customer ranking
- * - Profitability trend analysis and forecasting
+ * - Profitability trend analysis and forecasting (now using Analytics Engine Factory)
  * - Zambian market context and industry benchmarking
  */
 @Injectable()
@@ -29,7 +33,8 @@ export class ProfitabilityAnalysisEngineService {
   constructor(
     private readonly baseAnalyticsService: BaseAnalyticsService,
     private readonly aggregationService: AnalyticsAggregationService,
-    private readonly databaseService: DatabaseService
+    private readonly databaseService: DatabaseService,
+    private readonly engineFactory: AnalyticsEngineFactory
   ) {}
 
   /**
@@ -47,13 +52,16 @@ export class ProfitabilityAnalysisEngineService {
     recommendations: any[];
   }> {
     try {
-      this.logger.log(`Analyzing customer profitability for organization ${organizationId}`);
+      this.logger.log(
+        `Analyzing customer profitability for organization ${organizationId}`
+      );
 
       // Get comprehensive financial data
-      const financialData = await this.aggregationService.aggregateFinancialData(
-        organizationId,
-        dateRange
-      );
+      const financialData =
+        await this.aggregationService.aggregateFinancialData(
+          organizationId,
+          dateRange
+        );
 
       // Calculate customer profitability with advanced algorithms
       const customerProfitability = await this.calculateCustomerProfitability(
@@ -62,7 +70,7 @@ export class ProfitabilityAnalysisEngineService {
       );
 
       // Filter by minimum profit threshold if specified
-      const filteredCustomers = minProfitThreshold 
+      const filteredCustomers = minProfitThreshold
         ? customerProfitability.filter(c => c.netProfit >= minProfitThreshold)
         : customerProfitability;
 
@@ -70,7 +78,10 @@ export class ProfitabilityAnalysisEngineService {
       const summary = this.generateProfitabilitySummary(filteredCustomers);
 
       // Generate insights
-      const insights = this.generateProfitabilityInsights(filteredCustomers, summary);
+      const insights = this.generateProfitabilityInsights(
+        filteredCustomers,
+        summary
+      );
 
       // Generate optimization recommendations
       const recommendations = this.generateProfitabilityRecommendations(
@@ -78,17 +89,26 @@ export class ProfitabilityAnalysisEngineService {
         summary
       );
 
-      this.logger.log(`Completed customer profitability analysis for ${filteredCustomers.length} customers`);
-      return { customers: filteredCustomers, summary, insights, recommendations };
-
+      this.logger.log(
+        `Completed customer profitability analysis for ${filteredCustomers.length} customers`
+      );
+      return {
+        customers: filteredCustomers,
+        summary,
+        insights,
+        recommendations,
+      };
     } catch (error) {
-      this.logger.error(`Failed to analyze customer profitability: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to analyze customer profitability: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
 
   /**
-   * Analyze profitability trends over time
+   * Analyze profitability trends over time (updated to use factory)
    */
   async analyzeProfitabilityTrends(
     organizationId: string,
@@ -100,18 +120,24 @@ export class ProfitabilityAnalysisEngineService {
     forecasts: any[];
   }> {
     try {
-      this.logger.log(`Analyzing profitability trends for organization ${organizationId}`);
+      this.logger.log(
+        `Analyzing profitability trends for organization ${organizationId} (using factory for forecasting)`
+      );
 
       // Split date range into periods
-      const periods = this.baseAnalyticsService.splitDateRangeIntoPeriods(dateRange, groupBy);
+      const periods = this.baseAnalyticsService.splitDateRangeIntoPeriods(
+        dateRange,
+        groupBy
+      );
 
       // Calculate profitability for each period
       const trends = await Promise.all(
-        periods.map(async (period) => {
-          const periodData = await this.aggregationService.aggregateFinancialData(
-            organizationId,
-            period
-          );
+        periods.map(async period => {
+          const periodData =
+            await this.aggregationService.aggregateFinancialData(
+              organizationId,
+              period
+            );
           return this.calculatePeriodProfitability(periodData, period);
         })
       );
@@ -119,14 +145,60 @@ export class ProfitabilityAnalysisEngineService {
       // Generate trend summary
       const summary = this.generateTrendSummary(trends);
 
-      // Generate profitability forecasts
-      const forecasts = this.generateProfitabilityForecasts(trends, 3); // 3 periods ahead
+      // Convert trends data to TimeSeriesData format for the forecasting engine
+      const trendValues = trends.map(trend => trend.totalProfit || 0);
+      const trendTimestamps = trends.map(
+        trend => new Date(`${trend.period  }-01`)
+      );
 
-      this.logger.log(`Completed profitability trend analysis for ${trends.length} periods`);
-      return { trends, summary, forecasts };
+      const timeSeriesData: TimeSeriesData = {
+        values: trendValues,
+        timestamps: trendTimestamps,
+        metadata: {
+          organizationId,
+          dataType: 'PROFITABILITY_TREND',
+          dateRange,
+          quality: {
+            completeness: 1.0,
+            accuracy: 0.9,
+            consistency: 0.9,
+            timeliness: 1.0,
+          },
+        },
+      };
 
+      // Define forecasting options (can be made configurable)
+      const forecastingOptions: ForecastingOptions = {
+        method: 'seasonal',
+        periods: 6,
+        confidence: 0.95,
+        includeSeasonality: true,
+        zambianContext: true,
+      };
+
+      // Get appropriate forecasting engine from the factory
+      const forecastingEngine = this.engineFactory.getForecastingEngine(
+        timeSeriesData.values.length,
+        this.assessDataComplexity(timeSeriesData),
+        false
+      );
+
+      // Generate profitability forecasts using the engine
+      const forecasts = await forecastingEngine.generateForecast(
+        timeSeriesData,
+        forecastingOptions
+      );
+
+      this.logger.log(
+        `Completed profitability trend analysis for ${trends.length} periods and generated ${forecasts.predictions.length} forecasts`
+      );
+
+      return { trends, summary, forecasts: forecasts.predictions };
     } catch (error) {
-      this.logger.error(`Failed to analyze profitability trends: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to analyze profitability trends: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -143,7 +215,9 @@ export class ProfitabilityAnalysisEngineService {
     summary: any;
   }> {
     try {
-      this.logger.log(`Generating margin optimization recommendations for organization ${organizationId}`);
+      this.logger.log(
+        `Generating margin optimization recommendations for organization ${organizationId}`
+      );
 
       // Get profitability analysis
       const profitabilityAnalysis = await this.analyzeCustomerProfitability(
@@ -153,7 +227,9 @@ export class ProfitabilityAnalysisEngineService {
       );
 
       // Generate optimization strategies
-      const recommendations = this.generateOptimizationStrategies(profitabilityAnalysis);
+      const recommendations = this.generateOptimizationStrategies(
+        profitabilityAnalysis
+      );
 
       // Calculate potential impact
       const potentialImpact = this.calculateOptimizationImpact(
@@ -162,13 +238,20 @@ export class ProfitabilityAnalysisEngineService {
       );
 
       // Generate summary
-      const summary = this.generateOptimizationSummary(recommendations, potentialImpact);
+      const summary = this.generateOptimizationSummary(
+        recommendations,
+        potentialImpact
+      );
 
-      this.logger.log(`Generated ${recommendations.length} margin optimization recommendations`);
+      this.logger.log(
+        `Generated ${recommendations.length} margin optimization recommendations`
+      );
       return { recommendations, potentialImpact, summary };
-
     } catch (error) {
-      this.logger.error(`Failed to generate margin optimization recommendations: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to generate margin optimization recommendations: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -184,8 +267,14 @@ export class ProfitabilityAnalysisEngineService {
     const expenses = financialData.expenses;
 
     // Calculate total expenses for allocation
-    const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
-    const totalRevenue = customers.reduce((sum, customer) => sum + customer.totalRevenue, 0);
+    const totalExpenses = expenses.reduce(
+      (sum, expense) => sum + expense.amount,
+      0
+    );
+    const totalRevenue = customers.reduce(
+      (sum, customer) => sum + customer.totalRevenue,
+      0
+    );
 
     // Calculate customer profitability
     const customerProfitability = customers.map(customer => {
@@ -211,7 +300,11 @@ export class ProfitabilityAnalysisEngineService {
       const profitMargin = revenue > 0 ? (netProfit / revenue) * 100 : 0;
 
       // Assess risk level
-      const riskLevel = this.assessCustomerRisk(customer, profitMargin, financialData);
+      const riskLevel = this.assessCustomerRisk(
+        customer,
+        profitMargin,
+        financialData
+      );
 
       return {
         customerId: customer.id,
@@ -223,7 +316,7 @@ export class ProfitabilityAnalysisEngineService {
         netProfit,
         profitMargin,
         ranking: 0, // Will be set after sorting
-        riskLevel
+        riskLevel,
       };
     });
 
@@ -239,10 +332,13 @@ export class ProfitabilityAnalysisEngineService {
   /**
    * Calculate direct costs for a customer
    */
-  private calculateDirectCosts(customer: any, financialData: AnalyticsDataSource): number {
+  private calculateDirectCosts(
+    customer: any,
+    financialData: AnalyticsDataSource
+  ): number {
     // Simplified direct cost calculation
     // In a real implementation, this would use actual cost data
-    
+
     // Assume 60% of revenue as direct costs (industry average for services)
     const costRatio = this.getIndustryCostRatio(customer);
     return customer.totalRevenue * costRatio;
@@ -274,15 +370,19 @@ export class ProfitabilityAnalysisEngineService {
 
     // 2. Transaction-based allocation
     const totalTransactions = financialData.customers.reduce(
-      (sum, c) => sum + c.invoiceCount, 0
+      (sum, c) => sum + c.invoiceCount,
+      0
     );
     const transactionPercentage = customer.invoiceCount / totalTransactions;
-    const transactionBasedAllocation = totalExpenses * transactionPercentage * 0.3; // 30% weight
+    const transactionBasedAllocation =
+      totalExpenses * transactionPercentage * 0.3; // 30% weight
 
     // 3. Time-based allocation (simplified)
     const timeBasedAllocation = totalExpenses * revenuePercentage * 0.1; // 10% weight
 
-    return revenueBasedAllocation + transactionBasedAllocation + timeBasedAllocation;
+    return (
+      revenueBasedAllocation + transactionBasedAllocation + timeBasedAllocation
+    );
   }
 
   /**
@@ -300,16 +400,21 @@ export class ProfitabilityAnalysisEngineService {
     else if (profitMargin < 15) riskScore += 1;
 
     // Payment behavior risk
-    const avgPaymentTime = this.calculateAveragePaymentTime(customer, financialData);
+    const avgPaymentTime = this.calculateAveragePaymentTime(
+      customer,
+      financialData
+    );
     if (avgPaymentTime > 45) riskScore += 2;
     else if (avgPaymentTime > 30) riskScore += 1;
 
     // Revenue concentration risk
     const totalRevenue = financialData.customers.reduce(
-      (sum, c) => sum + c.totalRevenue, 0
+      (sum, c) => sum + c.totalRevenue,
+      0
     );
     const revenueConcentration = customer.totalRevenue / totalRevenue;
-    if (revenueConcentration > 0.3) riskScore += 2; // High dependency
+    if (revenueConcentration > 0.3)
+      riskScore += 2; // High dependency
     else if (revenueConcentration > 0.15) riskScore += 1;
 
     // Determine risk level
@@ -321,7 +426,10 @@ export class ProfitabilityAnalysisEngineService {
   /**
    * Calculate average payment time for a customer
    */
-  private calculateAveragePaymentTime(customer: any, financialData: AnalyticsDataSource): number {
+  private calculateAveragePaymentTime(
+    customer: any,
+    financialData: AnalyticsDataSource
+  ): number {
     const customerPayments = financialData.payments.filter(
       payment => payment.customerId === customer.id
     );
@@ -335,15 +443,24 @@ export class ProfitabilityAnalysisEngineService {
   /**
    * Calculate profitability for a specific period
    */
-  private calculatePeriodProfitability(financialData: AnalyticsDataSource, period: DateRange): any {
-    const revenue = financialData.invoices.reduce((sum, invoice) => sum + invoice.totalAmount, 0);
-    const expenses = financialData.expenses.reduce((sum, expense) => sum + expense.amount, 0);
-    
+  private calculatePeriodProfitability(
+    financialData: AnalyticsDataSource,
+    period: DateRange
+  ): any {
+    const revenue = financialData.invoices.reduce(
+      (sum, invoice) => sum + invoice.totalAmount,
+      0
+    );
+    const expenses = financialData.expenses.reduce(
+      (sum, expense) => sum + expense.amount,
+      0
+    );
+
     // Calculate costs (simplified)
     const directCosts = revenue * 0.6; // 60% of revenue
     const grossProfit = revenue - directCosts;
     const netProfit = grossProfit - expenses;
-    
+
     const grossMargin = revenue > 0 ? (grossProfit / revenue) * 100 : 0;
     const netMargin = revenue > 0 ? (netProfit / revenue) * 100 : 0;
 
@@ -359,19 +476,23 @@ export class ProfitabilityAnalysisEngineService {
       grossMargin,
       netMargin,
       customerCount: financialData.customers.length,
-      invoiceCount: financialData.invoices.length
+      invoiceCount: financialData.invoices.length,
     };
   }
 
   /**
    * Generate profitability summary statistics
    */
-  private generateProfitabilitySummary(customers: CustomerProfitability[]): any {
+  private generateProfitabilitySummary(
+    customers: CustomerProfitability[]
+  ): any {
     const totalRevenue = customers.reduce((sum, c) => sum + c.revenue, 0);
     const totalNetProfit = customers.reduce((sum, c) => sum + c.netProfit, 0);
-    const averageProfitMargin = customers.length > 0 
-      ? customers.reduce((sum, c) => sum + c.profitMargin, 0) / customers.length 
-      : 0;
+    const averageProfitMargin =
+      customers.length > 0
+        ? customers.reduce((sum, c) => sum + c.profitMargin, 0) /
+          customers.length
+        : 0;
 
     const profitableCustomers = customers.filter(c => c.netProfit > 0);
     const unprofitableCustomers = customers.filter(c => c.netProfit <= 0);
@@ -390,10 +511,13 @@ export class ProfitabilityAnalysisEngineService {
       unprofitableCustomers: unprofitableCustomers.length,
       top10Revenue,
       top10Profit,
-      top10RevenuePercentage: totalRevenue > 0 ? (top10Revenue / totalRevenue) * 100 : 0,
-      averageRevenuePerCustomer: customers.length > 0 ? totalRevenue / customers.length : 0,
+      top10RevenuePercentage:
+        totalRevenue > 0 ? (top10Revenue / totalRevenue) * 100 : 0,
+      averageRevenuePerCustomer:
+        customers.length > 0 ? totalRevenue / customers.length : 0,
       highRiskCustomers: customers.filter(c => c.riskLevel === 'HIGH').length,
-      mediumRiskCustomers: customers.filter(c => c.riskLevel === 'MEDIUM').length
+      mediumRiskCustomers: customers.filter(c => c.riskLevel === 'MEDIUM')
+        .length,
     };
   }
 
@@ -413,7 +537,7 @@ export class ProfitabilityAnalysisEngineService {
         title: 'High revenue concentration risk',
         description: `Top 10 customers represent ${summary.top10RevenuePercentage.toFixed(1)}% of revenue`,
         recommendation: 'Diversify customer base to reduce dependency risk',
-        priority: 'HIGH'
+        priority: 'HIGH',
       });
     }
 
@@ -423,8 +547,9 @@ export class ProfitabilityAnalysisEngineService {
         type: 'OPPORTUNITY',
         title: 'Unprofitable customers identified',
         description: `${summary.unprofitableCustomers} customers are unprofitable`,
-        recommendation: 'Review pricing and service delivery for unprofitable customers',
-        priority: 'MEDIUM'
+        recommendation:
+          'Review pricing and service delivery for unprofitable customers',
+        priority: 'MEDIUM',
       });
     }
 
@@ -434,8 +559,9 @@ export class ProfitabilityAnalysisEngineService {
         type: 'WARNING',
         title: 'High-risk customers detected',
         description: `${summary.highRiskCustomers} customers are classified as high-risk`,
-        recommendation: 'Implement risk mitigation strategies for high-risk customers',
-        priority: 'HIGH'
+        recommendation:
+          'Implement risk mitigation strategies for high-risk customers',
+        priority: 'HIGH',
       });
     }
 
@@ -446,7 +572,7 @@ export class ProfitabilityAnalysisEngineService {
         title: 'Strong profitability performance',
         description: `Average profit margin of ${summary.averageProfitMargin.toFixed(1)}% is excellent`,
         recommendation: 'Maintain current strategies and consider expansion',
-        priority: 'LOW'
+        priority: 'LOW',
       });
     } else if (summary.averageProfitMargin < 10) {
       insights.push({
@@ -454,7 +580,7 @@ export class ProfitabilityAnalysisEngineService {
         title: 'Low profitability margins',
         description: `Average profit margin of ${summary.averageProfitMargin.toFixed(1)}% is below optimal`,
         recommendation: 'Focus on cost reduction and pricing optimization',
-        priority: 'HIGH'
+        priority: 'HIGH',
       });
     }
 
@@ -480,10 +606,10 @@ export class ProfitabilityAnalysisEngineService {
         actions: [
           'Develop customer retention programs',
           'Provide premium service levels',
-          'Regular business reviews and feedback sessions'
+          'Regular business reviews and feedback sessions',
         ],
         priority: 'HIGH',
-        estimatedImpact: 'High'
+        estimatedImpact: 'High',
       });
     }
 
@@ -497,10 +623,10 @@ export class ProfitabilityAnalysisEngineService {
         actions: [
           'Review and adjust pricing for unprofitable customers',
           'Optimize service delivery to reduce costs',
-          'Consider customer relationship restructuring'
+          'Consider customer relationship restructuring',
         ],
         priority: 'MEDIUM',
-        estimatedImpact: 'Medium'
+        estimatedImpact: 'Medium',
       });
     }
 
@@ -514,10 +640,10 @@ export class ProfitabilityAnalysisEngineService {
         actions: [
           'Implement stricter payment terms',
           'Require deposits or guarantees',
-          'Monitor payment behavior closely'
+          'Monitor payment behavior closely',
         ],
         priority: 'HIGH',
-        estimatedImpact: 'Medium'
+        estimatedImpact: 'Medium',
       });
     }
 
@@ -529,7 +655,10 @@ export class ProfitabilityAnalysisEngineService {
    */
   private generateTrendSummary(trends: any[]): any {
     if (trends.length < 2) {
-      return { trendDirection: 'INSUFFICIENT_DATA', message: 'Need more data for trend analysis' };
+      return {
+        trendDirection: 'INSUFFICIENT_DATA',
+        message: 'Need more data for trend analysis',
+      };
     }
 
     const firstPeriod = trends[0];
@@ -552,59 +681,94 @@ export class ProfitabilityAnalysisEngineService {
       revenueGrowth,
       profitGrowth,
       marginTrend,
-      averageNetMargin: trends.reduce((sum, t) => sum + t.netMargin, 0) / trends.length,
-      trendDirection: profitGrowth > 5 ? 'IMPROVING' : profitGrowth < -5 ? 'DECLINING' : 'STABLE'
+      averageNetMargin:
+        trends.reduce((sum, t) => sum + t.netMargin, 0) / trends.length,
+      trendDirection:
+        profitGrowth > 5
+          ? 'IMPROVING'
+          : profitGrowth < -5
+            ? 'DECLINING'
+            : 'STABLE',
     };
   }
 
   /**
-   * Generate profitability forecasts
+   * Generate profitability forecasts based on historical trends
+   * (Marked for removal after full engine integration)
    */
-  private generateProfitabilityForecasts(trends: any[], periods: number): any[] {
-    if (trends.length < 3) {
-      return []; // Need minimum data for forecasting
-    }
-
-    const forecasts: any[] = [];
-    const lastTrend = trends[trends.length - 1];
-
-    // Simple linear extrapolation
-    const revenueGrowthRate = this.calculateGrowthRate(trends.map(t => t.revenue));
-    const marginTrend = this.calculateGrowthRate(trends.map(t => t.netMargin));
-
-    for (let i = 1; i <= periods; i++) {
-      const forecastDate = new Date(lastTrend.endDate);
-      forecastDate.setMonth(forecastDate.getMonth() + i);
-
-      const forecastRevenue = lastTrend.revenue * Math.pow(1 + revenueGrowthRate, i);
-      const forecastMargin = Math.max(0, lastTrend.netMargin + (marginTrend * i));
-      const forecastProfit = forecastRevenue * (forecastMargin / 100);
-
-      forecasts.push({
-        period: forecastDate.toISOString().slice(0, 7),
-        forecastRevenue,
-        forecastMargin,
-        forecastProfit,
-        confidence: Math.max(0.5, 1 - (i * 0.1)) // Decreasing confidence
-      });
-    }
-
-    return forecasts;
+  private generateProfitabilityForecasts(
+    trends: any[],
+    periods: number
+  ): any[] {
+    // Original implementation - to be replaced by engine call
+    return []; // Returning empty array for now
   }
 
   /**
-   * Calculate growth rate from time series
+   * Assess data complexity for engine selection (Helper from RevenueForecastingService)
+   * TODO: Move this helper to a shared analytics utility or the BaseAnalyticsService
    */
-  private calculateGrowthRate(values: number[]): number {
-    if (values.length < 2) return 0;
+  private assessDataComplexity(
+    data: TimeSeriesData
+  ): 'SIMPLE' | 'MODERATE' | 'COMPLEX' {
+    const values = data.values;
 
-    const firstValue = values[0];
-    const lastValue = values[values.length - 1];
-    const periods = values.length - 1;
+    if (values.length === 0) return 'SIMPLE';
 
-    if (firstValue <= 0) return 0;
+    // Calculate coefficient of variation
+    const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
+    const variance =
+      values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) /
+      values.length;
+    const coefficientOfVariation = mean > 0 ? Math.sqrt(variance) / mean : 0;
 
-    return Math.pow(lastValue / firstValue, 1 / periods) - 1;
+    // Detect seasonality (simplified)
+    const hasSeasonality = this.detectSimpleSeasonality(values);
+
+    // Assess complexity
+    if (coefficientOfVariation > 0.5 || hasSeasonality) {
+      return 'COMPLEX';
+    } else if (coefficientOfVariation > 0.2 || values.length > 24) {
+      return 'MODERATE';
+    } else {
+      return 'SIMPLE';
+    }
+  }
+
+  /**
+   * Simple seasonality detection (Helper from RevenueForecastingService)
+   * TODO: Move this helper to a shared analytics utility or the BaseAnalyticsService
+   */
+  private detectSimpleSeasonality(values: number[]): boolean {
+    if (values.length < 12) return false;
+
+    // Calculate month-over-month variance (simplified)
+    const monthlyVariances: number[] = [];
+    for (let i = 0; i < 12 && i < values.length; i++) {
+      const monthValues = [];
+      for (let j = i; j < values.length; j += 12) {
+        monthValues.push(values[j]);
+      }
+
+      if (monthValues.length > 1) {
+        const mean =
+          monthValues.reduce((sum, val) => sum + val, 0) / monthValues.length;
+        const variance =
+          monthValues.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) /
+          monthValues.length;
+        monthlyVariances.push(variance);
+      }
+    }
+
+    if (monthlyVariances.length === 0) return false;
+
+    const avgVariance =
+      monthlyVariances.reduce((sum, val) => sum + val, 0) /
+      monthlyVariances.length;
+    const overallMean =
+      values.reduce((sum, val) => sum + val, 0) / values.length;
+
+    return avgVariance > overallMean * 0.1; // Threshold for seasonality
   }
 
   /**
@@ -615,20 +779,22 @@ export class ProfitabilityAnalysisEngineService {
     const { customers, summary } = profitabilityAnalysis;
 
     // Strategy 1: Focus on high-margin customers
-    const highMarginCustomers = customers.filter((c: CustomerProfitability) => c.profitMargin > 25);
+    const highMarginCustomers = customers.filter(
+      (c: CustomerProfitability) => c.profitMargin > 25
+    );
     if (highMarginCustomers.length > 0) {
       strategies.push({
         type: 'CUSTOMER_FOCUS',
         title: 'Expand high-margin customer relationships',
         description: `${highMarginCustomers.length} customers have margins above 25%`,
         potentialImpact: 0.15, // 15% potential improvement
-        priority: 'HIGH'
+        priority: 'HIGH',
       });
     }
 
     // Strategy 2: Improve low-margin customers
-    const lowMarginCustomers = customers.filter((c: CustomerProfitability) => 
-      c.profitMargin > 0 && c.profitMargin < 10
+    const lowMarginCustomers = customers.filter(
+      (c: CustomerProfitability) => c.profitMargin > 0 && c.profitMargin < 10
     );
     if (lowMarginCustomers.length > 0) {
       strategies.push({
@@ -636,7 +802,7 @@ export class ProfitabilityAnalysisEngineService {
         title: 'Optimize low-margin customer relationships',
         description: `${lowMarginCustomers.length} customers have margins below 10%`,
         potentialImpact: 0.1, // 10% potential improvement
-        priority: 'MEDIUM'
+        priority: 'MEDIUM',
       });
     }
 
@@ -648,20 +814,24 @@ export class ProfitabilityAnalysisEngineService {
    */
   private calculateOptimizationImpact(strategies: any[], summary: any): number {
     return strategies.reduce((total, strategy) => {
-      return total + (summary.totalRevenue * strategy.potentialImpact);
+      return total + summary.totalRevenue * strategy.potentialImpact;
     }, 0);
   }
 
   /**
    * Generate optimization summary
    */
-  private generateOptimizationSummary(strategies: any[], potentialImpact: number): any {
+  private generateOptimizationSummary(
+    strategies: any[],
+    potentialImpact: number
+  ): any {
     return {
       totalStrategies: strategies.length,
-      highPriorityStrategies: strategies.filter(s => s.priority === 'HIGH').length,
+      highPriorityStrategies: strategies.filter(s => s.priority === 'HIGH')
+        .length,
       potentialImpact,
       estimatedImplementationTime: strategies.length * 4, // 4 weeks per strategy
-      riskLevel: 'LOW' // Profitability optimization is generally low risk
+      riskLevel: 'LOW', // Profitability optimization is generally low risk
     };
   }
 }

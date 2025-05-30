@@ -1,21 +1,20 @@
 import {
-  Controller,
-  Post,
-  Put,
-  Delete,
   Body,
+  Controller,
+  Delete,
   Param,
-  UseGuards,
   ParseUUIDPipe,
+  Post,
+  UseGuards,
   ValidationPipe,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
   ApiBearerAuth,
-  ApiParam,
   ApiBody,
+  ApiOperation,
+  ApiParam,
+  ApiResponse,
+  ApiTags,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 
@@ -24,11 +23,11 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/auth.interface';
 
 import { TransactionCategorizationService } from './transaction-categorization.service';
-import { 
-  CategorizeTransactionDto, 
-  BulkCategorizeDto, 
+import {
   ApplyCategoryDto,
-  BulkApplyCategoryDto 
+  BulkApplyCategoryDto,
+  BulkCategorizeDto,
+  CategorizeTransactionDto,
 } from './dto/transaction-categorization.dto';
 
 @ApiTags('Transaction Categorization')
@@ -37,14 +36,15 @@ import {
 @ApiBearerAuth()
 export class TransactionCategorizationController {
   constructor(
-    private readonly categorizationService: TransactionCategorizationService,
+    private readonly categorizationService: TransactionCategorizationService
   ) {}
 
   @Post('suggest/:transactionId')
   @Throttle({ default: { limit: 30, ttl: 60000 } }) // 30 requests per minute
   @ApiOperation({
     summary: 'Get category suggestions for transaction',
-    description: 'Generate AI-powered category suggestions for a specific transaction',
+    description:
+      'Generate AI-powered category suggestions for a specific transaction',
   })
   @ApiParam({
     name: 'transactionId',
@@ -67,7 +67,10 @@ export class TransactionCategorizationController {
             properties: {
               categoryId: { type: 'string' },
               categoryName: { type: 'string' },
-              confidence: { type: 'string', enum: ['LOW', 'MEDIUM', 'HIGH', 'VERY_HIGH'] },
+              confidence: {
+                type: 'string',
+                enum: ['LOW', 'MEDIUM', 'HIGH', 'VERY_HIGH'],
+              },
               reason: { type: 'string' },
               ruleId: { type: 'string', nullable: true },
               ruleName: { type: 'string', nullable: true },
@@ -97,12 +100,12 @@ export class TransactionCategorizationController {
   async suggestCategories(
     @CurrentUser() user: AuthenticatedUser,
     @Param('transactionId', ParseUUIDPipe) transactionId: string,
-    @Body(ValidationPipe) categorizeDto: CategorizeTransactionDto,
+    @Body(ValidationPipe) categorizeDto: CategorizeTransactionDto
   ) {
     return await this.categorizationService.categorizeTransaction(
       transactionId,
       user.organizationId,
-      categorizeDto.autoApply || false,
+      categorizeDto.autoApply || false
     );
   }
 
@@ -110,7 +113,8 @@ export class TransactionCategorizationController {
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 requests per minute
   @ApiOperation({
     summary: 'Get category suggestions for multiple transactions',
-    description: 'Generate AI-powered category suggestions for multiple transactions',
+    description:
+      'Generate AI-powered category suggestions for multiple transactions',
   })
   @ApiBody({ type: BulkCategorizeDto })
   @ApiResponse({
@@ -119,12 +123,12 @@ export class TransactionCategorizationController {
   })
   async bulkSuggestCategories(
     @CurrentUser() user: AuthenticatedUser,
-    @Body(ValidationPipe) bulkCategorizeDto: BulkCategorizeDto,
+    @Body(ValidationPipe) bulkCategorizeDto: BulkCategorizeDto
   ) {
     return await this.categorizationService.categorizeTransactions(
       bulkCategorizeDto.transactionIds,
       user.organizationId,
-      bulkCategorizeDto.autoApply || false,
+      bulkCategorizeDto.autoApply || false
     );
   }
 
@@ -152,13 +156,13 @@ export class TransactionCategorizationController {
   async applyCategory(
     @CurrentUser() user: AuthenticatedUser,
     @Param('transactionId', ParseUUIDPipe) transactionId: string,
-    @Body(ValidationPipe) applyCategoryDto: ApplyCategoryDto,
+    @Body(ValidationPipe) applyCategoryDto: ApplyCategoryDto
   ) {
     await this.categorizationService.applyCategory(
       transactionId,
       applyCategoryDto.categoryId,
       user.organizationId,
-      user.userId,
+      user.userId
     );
 
     return {
@@ -182,13 +186,13 @@ export class TransactionCategorizationController {
   })
   async bulkApplyCategory(
     @CurrentUser() user: AuthenticatedUser,
-    @Body(ValidationPipe) bulkApplyDto: BulkApplyCategoryDto,
+    @Body(ValidationPipe) bulkApplyDto: BulkApplyCategoryDto
   ) {
     const result = await this.categorizationService.bulkApplyCategory(
       bulkApplyDto.transactionIds,
       bulkApplyDto.categoryId,
       user.organizationId,
-      user.userId,
+      user.userId
     );
 
     return {
@@ -221,12 +225,12 @@ export class TransactionCategorizationController {
   })
   async removeCategory(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('transactionId', ParseUUIDPipe) transactionId: string,
+    @Param('transactionId', ParseUUIDPipe) transactionId: string
   ) {
     await this.categorizationService.removeCategory(
       transactionId,
       user.organizationId,
-      user.userId,
+      user.userId
     );
 
     return {
@@ -240,7 +244,8 @@ export class TransactionCategorizationController {
   @Throttle({ default: { limit: 5, ttl: 300000 } }) // 5 requests per 5 minutes
   @ApiOperation({
     summary: 'Auto-categorize uncategorized transactions',
-    description: 'Automatically categorize all uncategorized transactions using AI and rules',
+    description:
+      'Automatically categorize all uncategorized transactions using AI and rules',
   })
   @ApiBody({
     schema: {
@@ -253,7 +258,8 @@ export class TransactionCategorizationController {
         },
         autoApply: {
           type: 'boolean',
-          description: 'Whether to automatically apply high-confidence suggestions',
+          description:
+            'Whether to automatically apply high-confidence suggestions',
           default: true,
         },
       },
@@ -284,7 +290,7 @@ export class TransactionCategorizationController {
   })
   async autoCategorizeTransactions(
     @CurrentUser() user: AuthenticatedUser,
-    @Body() body: { transactionIds?: string[]; autoApply?: boolean },
+    @Body() body: { transactionIds?: string[]; autoApply?: boolean }
   ) {
     return await this.categorizationService.bulkCategorizeUncategorized({
       organizationId: user.organizationId,

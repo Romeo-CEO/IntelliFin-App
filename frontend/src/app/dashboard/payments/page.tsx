@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Payment } from '../../../services/payment.service';
-import PaymentList from '../../../components/payments/PaymentList';
+
 import PaymentForm from '../../../components/payments/PaymentForm';
+import PaymentList from '../../../components/payments/PaymentList';
 import PaymentReconciliation from '../../../components/payments/PaymentReconciliation';
+import { Payment } from '../../../services/payment.service';
 
 type ModalType = 'form' | 'reconciliation' | null;
 

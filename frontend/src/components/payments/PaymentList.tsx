@@ -1,6 +1,5 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Search, 
   Plus, 
@@ -13,13 +12,13 @@ import {
   DollarSign,
   Calendar,
   AlertTriangle,
-  CheckCircle,
-  Clock,
   CreditCard,
   Building,
   Link,
   Unlink
 } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+
 import { Payment, PaymentQuery, PaymentMethod, paymentService } from '../../services/payment.service';
 
 interface PaymentListProps {

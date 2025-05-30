@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 
-import { JwtPayload, AuthenticatedUser } from '../interfaces/auth.interface';
+import { AuthenticatedUser, JwtPayload } from '../interfaces/auth.interface';
 import { UsersService } from '../../users/users.service';
 import { UserStatus } from '@prisma/client';
 
@@ -11,7 +11,7 @@ import { UserStatus } from '@prisma/client';
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
     configService: ConfigService,
-    private readonly usersService: UsersService,
+    private readonly usersService: UsersService
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -40,7 +40,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     // Check if user is active
     if (user.status !== UserStatus.ACTIVE) {
       throw new UnauthorizedException(
-        `User account is ${user.status.toLowerCase()}`,
+        `User account is ${user.status.toLowerCase()}`
       );
     }
 
@@ -57,10 +57,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     // Check if account is locked
     if (user.lockedUntil && user.lockedUntil > new Date()) {
       const lockTimeRemaining = Math.ceil(
-        (user.lockedUntil.getTime() - Date.now()) / (1000 * 60),
+        (user.lockedUntil.getTime() - Date.now()) / (1000 * 60)
       );
       throw new UnauthorizedException(
-        `Account is locked. Try again in ${lockTimeRemaining} minutes`,
+        `Account is locked. Try again in ${lockTimeRemaining} minutes`
       );
     }
 

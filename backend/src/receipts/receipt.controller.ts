@@ -1,29 +1,29 @@
 import {
-  Controller,
-  Get,
-  Post,
-  Delete,
-  Param,
-  Query,
   Body,
-  UseInterceptors,
-  UploadedFile,
+  Controller,
+  Delete,
+  Get,
   HttpStatus,
-  UseGuards,
-  ValidationPipe,
+  Param,
+  Post,
+  Query,
   Res,
   StreamableFile,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+  ValidationPipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiParam,
-  ApiQuery,
-  ApiConsumes,
   ApiBearerAuth,
   ApiBody,
+  ApiConsumes,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { Response } from 'express';
@@ -31,8 +31,12 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
-import { ReceiptService, ReceiptQueryDto } from './receipt.service';
-import { ReceiptResponseDto, ReceiptListResponseDto, ReceiptStatsResponseDto } from './dto/receipt-response.dto';
+import { ReceiptQueryDto, ReceiptService } from './receipt.service';
+import {
+  ReceiptListResponseDto,
+  ReceiptResponseDto,
+  ReceiptStatsResponseDto,
+} from './dto/receipt-response.dto';
 
 @ApiTags('Receipts')
 @ApiBearerAuth()
@@ -46,7 +50,8 @@ export class ReceiptController {
   @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 uploads per minute
   @ApiOperation({
     summary: 'Upload receipt for expense',
-    description: 'Upload a receipt file (image or PDF) and attach it to an expense',
+    description:
+      'Upload a receipt file (image or PDF) and attach it to an expense',
   })
   @ApiConsumes('multipart/form-data')
   @ApiParam({
@@ -86,21 +91,25 @@ export class ReceiptController {
     @CurrentUser() user: AuthenticatedUser,
     @Param('expenseId') expenseId: string,
     @UploadedFile() file: Express.Multer.File,
-    @Body('generateThumbnail') generateThumbnail?: boolean,
+    @Body('generateThumbnail') generateThumbnail?: boolean
   ) {
     if (!file) {
       throw new Error('No file uploaded');
     }
 
-    return await this.receiptService.createReceipt(user.organizationId, user.id, {
-      expenseId,
-      file: {
-        buffer: file.buffer,
-        originalName: file.originalname,
-        mimetype: file.mimetype,
-      },
-      generateThumbnail: generateThumbnail ?? true,
-    });
+    return await this.receiptService.createReceipt(
+      user.organizationId,
+      user.id,
+      {
+        expenseId,
+        file: {
+          buffer: file.buffer,
+          originalName: file.originalname,
+          mimetype: file.mimetype,
+        },
+        generateThumbnail: generateThumbnail ?? true,
+      }
+    );
   }
 
   @Get()
@@ -117,7 +126,7 @@ export class ReceiptController {
   })
   async getReceipts(
     @CurrentUser() user: AuthenticatedUser,
-    @Query(ValidationPipe) query: ReceiptQueryDto,
+    @Query(ValidationPipe) query: ReceiptQueryDto
   ) {
     return await this.receiptService.getReceipts(user.organizationId, query);
   }
@@ -148,9 +157,13 @@ export class ReceiptController {
   async getReceiptStats(
     @CurrentUser() user: AuthenticatedUser,
     @Query('dateFrom') dateFrom?: string,
-    @Query('dateTo') dateTo?: string,
+    @Query('dateTo') dateTo?: string
   ) {
-    return await this.receiptService.getReceiptStats(user.organizationId, dateFrom, dateTo);
+    return await this.receiptService.getReceiptStats(
+      user.organizationId,
+      dateFrom,
+      dateTo
+    );
   }
 
   @Get('expense/:expenseId')
@@ -171,9 +184,12 @@ export class ReceiptController {
   })
   async getReceiptsByExpense(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('expenseId') expenseId: string,
+    @Param('expenseId') expenseId: string
   ) {
-    return await this.receiptService.getReceiptsByExpenseId(expenseId, user.organizationId);
+    return await this.receiptService.getReceiptsByExpenseId(
+      expenseId,
+      user.organizationId
+    );
   }
 
   @Get(':id')
@@ -198,7 +214,7 @@ export class ReceiptController {
   })
   async getReceiptById(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id') id: string,
+    @Param('id') id: string
   ) {
     return await this.receiptService.getReceiptById(id, user.organizationId);
   }
@@ -229,9 +245,12 @@ export class ReceiptController {
   })
   async getReceiptUrl(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id') id: string,
+    @Param('id') id: string
   ) {
-    const url = await this.receiptService.getReceiptUrl(id, user.organizationId);
+    const url = await this.receiptService.getReceiptUrl(
+      id,
+      user.organizationId
+    );
     return { url };
   }
 
@@ -262,9 +281,12 @@ export class ReceiptController {
   })
   async getReceiptThumbnailUrl(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id') id: string,
+    @Param('id') id: string
   ) {
-    const thumbnailUrl = await this.receiptService.getReceiptThumbnailUrl(id, user.organizationId);
+    const thumbnailUrl = await this.receiptService.getReceiptThumbnailUrl(
+      id,
+      user.organizationId
+    );
     return { thumbnailUrl };
   }
 
@@ -286,12 +308,10 @@ export class ReceiptController {
   async downloadReceipt(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
-    @Res({ passthrough: true }) res: Response,
+    @Res({ passthrough: true }) res: Response
   ) {
-    const { buffer, fileName, contentType } = await this.receiptService.downloadReceipt(
-      id,
-      user.organizationId,
-    );
+    const { buffer, fileName, contentType } =
+      await this.receiptService.downloadReceipt(id, user.organizationId);
 
     res.set({
       'Content-Type': contentType,
@@ -342,7 +362,7 @@ export class ReceiptController {
   })
   async getReceiptOcrData(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id') id: string,
+    @Param('id') id: string
   ) {
     return await this.receiptService.getReceiptOcrData(id, user.organizationId);
   }
@@ -365,7 +385,7 @@ export class ReceiptController {
   })
   async reprocessOcr(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id') id: string,
+    @Param('id') id: string
   ) {
     return await this.receiptService.reprocessOcr(id, user.organizationId);
   }
@@ -405,9 +425,12 @@ export class ReceiptController {
   })
   async getExpenseUpdateSuggestions(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id') id: string,
+    @Param('id') id: string
   ) {
-    return await this.receiptService.suggestExpenseUpdates(id, user.organizationId);
+    return await this.receiptService.suggestExpenseUpdates(
+      id,
+      user.organizationId
+    );
   }
 
   @Delete(':id')
@@ -431,7 +454,7 @@ export class ReceiptController {
   })
   async deleteReceipt(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id') id: string,
+    @Param('id') id: string
   ) {
     await this.receiptService.deleteReceipt(id, user.organizationId);
   }

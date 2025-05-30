@@ -1,6 +1,17 @@
-import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
-import { TaxFiling, TaxFilingType, TaxFilingStatus, TaxType, Prisma } from '@prisma/client';
+import {
+  Prisma,
+  TaxFiling,
+  TaxFilingStatus,
+  TaxFilingType,
+  TaxType,
+} from '@prisma/client';
 import { TaxCalculationService } from './tax-calculation.service';
 
 export interface CreateTaxFilingDto {
@@ -23,14 +34,20 @@ export interface TaxFilingWithPeriod extends TaxFiling {
 
 export interface FilingSummary {
   totalFilings: number;
-  byType: Record<TaxFilingType, {
-    count: number;
-    totalTax: number;
-  }>;
-  byStatus: Record<TaxFilingStatus, {
-    count: number;
-    totalTax: number;
-  }>;
+  byType: Record<
+    TaxFilingType,
+    {
+      count: number;
+      totalTax: number;
+    }
+  >;
+  byStatus: Record<
+    TaxFilingStatus,
+    {
+      count: number;
+      totalTax: number;
+    }
+  >;
   submissionRate: number;
   averageProcessingDays: number;
 }
@@ -70,7 +87,7 @@ export class TaxFilingService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly taxCalculationService: TaxCalculationService,
+    private readonly taxCalculationService: TaxCalculationService
   ) {}
 
   /**
@@ -78,7 +95,9 @@ export class TaxFilingService {
    */
   async prepareFiling(dto: CreateTaxFilingDto): Promise<TaxFiling> {
     try {
-      this.logger.log(`Preparing ${dto.filingType} filing for period: ${dto.taxPeriodId}`);
+      this.logger.log(
+        `Preparing ${dto.filingType} filing for period: ${dto.taxPeriodId}`
+      );
 
       // Verify tax period exists
       const taxPeriod = await this.prisma.taxPeriod.findFirst({
@@ -109,7 +128,10 @@ export class TaxFilingService {
       }
 
       // Generate filing data based on type
-      const filingData = await this.generateFilingData(dto.filingType, taxPeriod);
+      const filingData = await this.generateFilingData(
+        dto.filingType,
+        taxPeriod
+      );
       const calculatedTax = this.calculateTaxFromFilingData(filingData);
 
       const filing = await this.prisma.taxFiling.create({
@@ -128,8 +150,11 @@ export class TaxFilingService {
 
       this.logger.log(`Tax filing prepared: ${filing.id}`);
       return filing;
-    } catch (error) {
-      this.logger.error(`Failed to prepare tax filing: ${error.message}`, error.stack);
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to prepare tax filing: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -140,7 +165,7 @@ export class TaxFilingService {
   async submitFiling(
     organizationId: string,
     filingId: string,
-    submittedBy: string,
+    submittedBy: string
   ): Promise<TaxFiling> {
     try {
       const filing = await this.prisma.taxFiling.findFirst({
@@ -151,8 +176,13 @@ export class TaxFilingService {
         throw new NotFoundException('Tax filing not found');
       }
 
-      if (filing.status !== TaxFilingStatus.PREPARED && filing.status !== TaxFilingStatus.DRAFT) {
-        throw new BadRequestException('Only prepared or draft filings can be submitted');
+      if (
+        filing.status !== TaxFilingStatus.PREPARED &&
+        filing.status !== TaxFilingStatus.DRAFT
+      ) {
+        throw new BadRequestException(
+          'Only prepared or draft filings can be submitted'
+        );
       }
 
       // TODO: Implement actual ZRA submission
@@ -172,8 +202,11 @@ export class TaxFilingService {
 
       this.logger.log(`Tax filing submitted to ZRA: ${filingId}`);
       return updated;
-    } catch (error) {
-      this.logger.error(`Failed to submit tax filing: ${error.message}`, error.stack);
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to submit tax filing: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -188,7 +221,7 @@ export class TaxFilingService {
       filingType?: TaxFilingType;
       status?: TaxFilingStatus;
       year?: number;
-    },
+    }
   ): Promise<TaxFilingWithPeriod[]> {
     try {
       const where: any = { organizationId };
@@ -229,8 +262,11 @@ export class TaxFilingService {
       });
 
       return filings;
-    } catch (error) {
-      this.logger.error(`Failed to get tax filings: ${error.message}`, error.stack);
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to get tax filings: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -240,7 +276,7 @@ export class TaxFilingService {
    */
   async generateVATReturn(
     organizationId: string,
-    taxPeriodId: string,
+    taxPeriodId: string
   ): Promise<VATReturnData> {
     try {
       this.logger.log(`Generating VAT return for period: ${taxPeriodId}`);
@@ -261,10 +297,16 @@ export class TaxFilingService {
       }
 
       // Get sales data from invoices
-      const salesData = await this.getSalesDataForPeriod(organizationId, taxPeriod);
-      
+      const salesData = await this.getSalesDataForPeriod(
+        organizationId,
+        taxPeriod
+      );
+
       // Get purchase data from expenses
-      const purchaseData = await this.getPurchaseDataForPeriod(organizationId, taxPeriod);
+      const purchaseData = await this.getPurchaseDataForPeriod(
+        organizationId,
+        taxPeriod
+      );
 
       // Calculate VAT
       const outputVAT = salesData.standardRated * 0.16;
@@ -296,8 +338,11 @@ export class TaxFilingService {
 
       this.logger.log('VAT return generated successfully');
       return vatReturn;
-    } catch (error) {
-      this.logger.error(`Failed to generate VAT return: ${error.message}`, error.stack);
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to generate VAT return: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -307,7 +352,7 @@ export class TaxFilingService {
    */
   async getFilingSummary(
     organizationId: string,
-    year?: number,
+    year?: number
   ): Promise<FilingSummary> {
     try {
       const filings = await this.getFilings(organizationId, { year });
@@ -351,7 +396,8 @@ export class TaxFilingService {
           // Calculate processing time
           if (filing.acknowledgedAt) {
             const processingDays = Math.ceil(
-              (filing.acknowledgedAt.getTime() - filing.submittedAt.getTime()) / (1000 * 60 * 60 * 24)
+              (filing.acknowledgedAt.getTime() - filing.submittedAt.getTime()) /
+                (1000 * 60 * 60 * 24)
             );
             totalProcessingDays += processingDays;
             processedCount++;
@@ -359,15 +405,22 @@ export class TaxFilingService {
         }
       });
 
-      summary.submissionRate = filings.length > 0 ? 
-        Math.round((submittedCount / filings.length) * 100) : 0;
+      summary.submissionRate =
+        filings.length > 0
+          ? Math.round((submittedCount / filings.length) * 100)
+          : 0;
 
-      summary.averageProcessingDays = processedCount > 0 ? 
-        Math.round(totalProcessingDays / processedCount) : 0;
+      summary.averageProcessingDays =
+        processedCount > 0
+          ? Math.round(totalProcessingDays / processedCount)
+          : 0;
 
       return summary;
-    } catch (error) {
-      this.logger.error(`Failed to get filing summary: ${error.message}`, error.stack);
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to get filing summary: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -375,17 +428,29 @@ export class TaxFilingService {
   /**
    * Generate filing data based on type
    */
-  private async generateFilingData(filingType: TaxFilingType, taxPeriod: any): Promise<any> {
+  private async generateFilingData(
+    filingType: TaxFilingType,
+    taxPeriod: any
+  ): Promise<any> {
     switch (filingType) {
       case TaxFilingType.VAT_RETURN:
-        return await this.generateVATReturn(taxPeriod.organizationId, taxPeriod.id);
-      
+        return await this.generateVATReturn(
+          taxPeriod.organizationId,
+          taxPeriod.id
+        );
+
       case TaxFilingType.WHT_RETURN:
-        return await this.generateWHTReturnData(taxPeriod.organizationId, taxPeriod);
-      
+        return await this.generateWHTReturnData(
+          taxPeriod.organizationId,
+          taxPeriod
+        );
+
       case TaxFilingType.PAYE_RETURN:
-        return await this.generatePAYEReturnData(taxPeriod.organizationId, taxPeriod);
-      
+        return await this.generatePAYEReturnData(
+          taxPeriod.organizationId,
+          taxPeriod
+        );
+
       default:
         return {
           type: filingType,
@@ -408,15 +473,15 @@ export class TaxFilingService {
     if (filingData.vatCalculation) {
       return Math.max(0, filingData.vatCalculation.netVAT);
     }
-    
+
     if (filingData.totalTaxWithheld) {
       return filingData.totalTaxWithheld;
     }
-    
+
     if (filingData.totalPAYE) {
       return filingData.totalPAYE;
     }
-    
+
     return 0;
   }
 
@@ -437,7 +502,10 @@ export class TaxFilingService {
   /**
    * Get purchase data for VAT period
    */
-  private async getPurchaseDataForPeriod(organizationId: string, taxPeriod: any) {
+  private async getPurchaseDataForPeriod(
+    organizationId: string,
+    taxPeriod: any
+  ) {
     // TODO: Implement actual purchase data retrieval from expenses
     // For now, return mock data
     return {

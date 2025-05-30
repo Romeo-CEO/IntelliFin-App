@@ -1,32 +1,32 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
   Search, 
-  Filter, 
-  Download, 
-  Upload, 
   Settings,
   TreePine,
   List,
   RefreshCw
 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+
 import { useAccounting } from '../../contexts/AccountingContext';
-import { AccountHierarchyTree } from './AccountHierarchyTree';
-import { AccountList } from './AccountList';
-import { AccountForm } from './AccountForm';
-import { AccountDetails } from './AccountDetails';
-import { InitializeAccountsModal } from './InitializeAccountsModal';
+import { ErrorMessage } from '../common/ErrorMessage';
+import { LoadingSpinner } from '../common/LoadingSpinner';
+import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
+import { Card } from '../ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
 import { Input } from '../ui/input';
 import { Select } from '../ui/select';
-import { Card } from '../ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
-import { Badge } from '../ui/badge';
-import { LoadingSpinner } from '../common/LoadingSpinner';
-import { ErrorMessage } from '../common/ErrorMessage';
+
+import { AccountDetails } from './AccountDetails';
+import { AccountForm } from './AccountForm';
+import { AccountHierarchyTree } from './AccountHierarchyTree';
+import { AccountList } from './AccountList';
+import { InitializeAccountsModal } from './InitializeAccountsModal';
+
 
 interface ChartOfAccountsPageProps {
   className?: string;
@@ -328,174 +328,3 @@ export const ChartOfAccountsPage: React.FC<ChartOfAccountsPageProps> = ({ classN
     </div>
   );
 };
-
-// CSS styles (would typically be in a separate CSS file)
-const styles = `
-.chart-of-accounts-page {
-  padding: 24px;
-  max-width: 1400px;
-  margin: 0 auto;
-}
-
-.page-header {
-  margin-bottom: 32px;
-}
-
-.header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 24px;
-}
-
-.title-section h1 {
-  font-size: 2rem;
-  font-weight: 600;
-  color: var(--color-neutral-900);
-  margin-bottom: 8px;
-}
-
-.title-section p {
-  color: var(--color-neutral-700);
-  font-size: 1rem;
-}
-
-.header-actions {
-  display: flex;
-  gap: 12px;
-}
-
-.summary-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 16px;
-}
-
-.summary-card {
-  padding: 20px;
-}
-
-.summary-content {
-  text-align: center;
-}
-
-.summary-value {
-  font-size: 2rem;
-  font-weight: 600;
-  color: var(--color-primary);
-  margin-bottom: 4px;
-}
-
-.summary-label {
-  font-size: 0.875rem;
-  color: var(--color-neutral-700);
-}
-
-.controls-section {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-  gap: 16px;
-}
-
-.search-filter-controls {
-  display: flex;
-  gap: 16px;
-  flex: 1;
-}
-
-.search-control {
-  position: relative;
-  flex: 1;
-  max-width: 400px;
-}
-
-.search-icon {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 16px;
-  height: 16px;
-  color: var(--color-neutral-500);
-}
-
-.search-input {
-  padding-left: 40px;
-}
-
-.view-controls {
-  display: flex;
-  gap: 12px;
-}
-
-.view-toggle {
-  display: flex;
-  gap: 4px;
-}
-
-.main-content {
-  min-height: 400px;
-}
-
-.loading-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 64px;
-  text-align: center;
-}
-
-.accounts-content {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 24px;
-  min-height: 600px;
-}
-
-.accounts-view {
-  min-width: 0;
-}
-
-.account-details-panel {
-  width: 400px;
-  min-width: 400px;
-}
-
-@media (max-width: 1024px) {
-  .accounts-content {
-    grid-template-columns: 1fr;
-  }
-  
-  .account-details-panel {
-    width: 100%;
-    min-width: 0;
-  }
-}
-
-@media (max-width: 768px) {
-  .chart-of-accounts-page {
-    padding: 16px;
-  }
-  
-  .header-content {
-    flex-direction: column;
-    gap: 16px;
-  }
-  
-  .controls-section {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  
-  .search-filter-controls {
-    flex-direction: column;
-  }
-  
-  .summary-cards {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-`;

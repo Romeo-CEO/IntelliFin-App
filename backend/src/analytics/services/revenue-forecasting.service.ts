@@ -2,12 +2,20 @@ import { Injectable, Logger } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
 import { BaseAnalyticsService } from './base-analytics.service';
 import { AnalyticsAggregationService } from './analytics-aggregation.service';
-import { TimeSeriesDataPoint, ForecastDataPoint, TrendAnalysis } from '../analytics.repository';
 import {
-  ForecastResult as NewForecastResult,
+  ForecastDataPoint,
+  TimeSeriesDataPoint,
+  TrendAnalysis,
+} from '../analytics.repository';
+import {
+  AnalyticsDataSource,
   DateRange,
-  AnalyticsDataSource
+  ForecastResult as NewForecastResult,
+  ForecastingOptions as NewForecastingOptions,
+  TimeSeriesData as NewTimeSeriesData,
 } from '../interfaces/analytics-data.interface';
+
+import { AnalyticsEngineFactory } from '../engines/analytics-engine.factory';
 
 export interface ForecastingOptions {
   periods: number; // Number of periods to forecast
@@ -40,7 +48,8 @@ export class RevenueForecastingService {
   constructor(
     private readonly databaseService: DatabaseService,
     private readonly baseAnalyticsService: BaseAnalyticsService,
-    private readonly aggregationService: AnalyticsAggregationService
+    private readonly aggregationService: AnalyticsAggregationService,
+    private readonly engineFactory: AnalyticsEngineFactory
   ) {}
 
   /**
@@ -53,16 +62,21 @@ export class RevenueForecastingService {
     modelType?: 'LINEAR' | 'SEASONAL' | 'EXPONENTIAL'
   ): Promise<NewForecastResult[]> {
     try {
-      this.logger.log(`Generating enhanced revenue forecast for organization ${organizationId}`);
-
-      // Get aggregated financial data using new infrastructure
-      const financialData = await this.aggregationService.aggregateFinancialData(
-        organizationId,
-        dateRange
+      this.logger.log(
+        `Generating enhanced revenue forecast for organization ${organizationId}`
       );
 
+      // Get aggregated financial data using new infrastructure
+      const financialData =
+        await this.aggregationService.aggregateFinancialData(
+          organizationId,
+          dateRange
+        );
+
       // Convert to time series data
-      const timeSeriesData = this.convertInvoicesToTimeSeries(financialData.invoices);
+      const timeSeriesData = this.convertInvoicesToTimeSeries(
+        financialData.invoices
+      );
 
       // Validate data sufficiency
       this.validateTimeSeriesData(timeSeriesData);
@@ -75,22 +89,33 @@ export class RevenueForecastingService {
       );
 
       // Generate forecast
-      const forecast = this.generateForecastByModel(model, timeSeriesData, forecastPeriods);
+      const forecast = this.generateForecastByModel(
+        model,
+        timeSeriesData,
+        forecastPeriods
+      );
 
       // Apply Zambian business context
-      const enhancedForecast = this.applyZambianBusinessContext(forecast, dateRange);
+      const enhancedForecast = this.applyZambianBusinessContext(
+        forecast,
+        dateRange
+      );
 
-      this.logger.log(`Generated ${enhancedForecast.length} period enhanced forecast`);
+      this.logger.log(
+        `Generated ${enhancedForecast.length} period enhanced forecast`
+      );
       return enhancedForecast;
-
     } catch (error) {
-      this.logger.error(`Failed to generate enhanced revenue forecast: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to generate enhanced revenue forecast: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
 
   /**
-   * Generate revenue forecast for an organization (legacy method)
+   * Generate revenue forecast for an organization (legacy method - updated to use factory)
    */
   async generateRevenueForecast(
     organizationId: string,
@@ -101,41 +126,118 @@ export class RevenueForecastingService {
       confidence: 0.9,
       method: 'seasonal',
       includeSeasonality: true,
-    },
+    }
   ): Promise<ForecastResult> {
     try {
-      this.logger.log(`Generating revenue forecast for organization: ${organizationId}`);
+      this.logger.log(
+        `Generating revenue forecast for organization: ${organizationId} (using factory)`
+      );
 
       // Get historical revenue data
-      const historical = await this.getHistoricalRevenueData(organizationId, startDate, endDate);
+      const historical = await this.getHistoricalRevenueData(
+        organizationId,
+        startDate,
+        endDate
+      );
 
       if (historical.length < 3) {
-        throw new Error('Insufficient historical data for forecasting (minimum 3 periods required)');
+        throw new Error(
+          'Insufficient historical data for forecasting (minimum 3 periods required)'
+        );
       }
 
-      // Perform trend analysis
-      const trendAnalysis = this.analyzeTrend(historical);
-
-      // Generate forecast based on selected method
-      const forecast = await this.generateForecastData(historical, options, trendAnalysis);
-
-      // Calculate accuracy metrics using cross-validation
-      const accuracy = this.calculateAccuracy(historical, options);
-
-      // Generate insights and recommendations
-      const insights = this.generateInsights(historical, forecast, trendAnalysis);
-
-      this.logger.log(`Revenue forecast generated successfully: ${forecast.length} periods`);
-
-      return {
-        historical,
-        forecast,
-        trendAnalysis,
-        accuracy,
-        insights,
+      // Convert legacy TimeSeriesDataPoint[] to new TimeSeriesData format
+      const newTimeSeriesData: NewTimeSeriesData = {
+        values: historical.map(d => d.value),
+        timestamps: historical.map(d => d.date),
+        metadata: {
+          // Add metadata based on available info
+          organizationId,
+          dataType: 'REVENUE',
+          dateRange: { startDate, endDate },
+          quality: {
+            completeness: 1.0,
+            accuracy: 0.9,
+            consistency: 0.9,
+            timeliness: 1.0,
+          }, // Placeholder quality
+        },
       };
+
+      // Convert legacy ForecastingOptions to new ForecastingOptions format
+      const newOptions: NewForecastingOptions = {
+        method: options.method, // Direct mapping for now
+        periods: options.periods,
+        confidence: options.confidence,
+        includeSeasonality: options.includeSeasonality,
+        zambianContext: true, // Assume zambian context for this service
+        // Add other new options as needed from configuration or context
+      };
+
+      // Get appropriate forecasting engine from the factory
+      const forecastingEngine = this.engineFactory.getForecastingEngine(
+        newTimeSeriesData.values.length,
+        this.assessDataComplexity(newTimeSeriesData), // Reuse data complexity assessment if available
+        false // Use statistical for now
+      );
+
+      // Generate forecast using the engine
+      const newForecastResult = await forecastingEngine.generateForecast(
+        newTimeSeriesData,
+        newOptions
+      );
+
+      // Convert new ForecastResult back to legacy ForecastResult format if needed
+      // For now, we will adapt the return type of this method to the new format for consistency
+      // in the long run, legacy methods should be phased out.
+      // TODO: Adapt the return type or map the result to the legacy format if strictly necessary for compatibility
+
+      // Temporarily mapping to a simplified ForecastResult structure based on the new result
+      const legacyForecastResult: ForecastResult = {
+        historical, // Keep original historical data format
+        forecast: newForecastResult.predictions.map(p => ({
+          period: p.timestamp.toISOString().slice(0, 7), // Convert Date to YYYY-MM format
+          value: p.value,
+          date: p.timestamp,
+          confidence: p.confidence,
+        })), // Map new predictions to old forecast format
+        trendAnalysis: {
+          // Placeholder or derive from new insights/metrics
+          trend: 'stable',
+          strength: 0,
+          seasonality: { detected: newOptions.includeSeasonality },
+          anomalies: [],
+        },
+        accuracy: {
+          // Map new accuracy metrics
+          mape: newForecastResult.accuracy?.mape || 0,
+          rmse: newForecastResult.accuracy?.rmse || 0,
+          r2: newForecastResult.accuracy?.r2 || 0,
+        },
+        insights: {
+          // Map new insights
+          expectedGrowth: 0, // Derive from insights
+          seasonalPeaks:
+            newForecastResult.insights
+              ?.filter(i => i.includes('seasonal'))
+              .map(i => i.replace('Detected seasonal peaks in:', '').trim()) ||
+            [], // Example mapping
+          riskFactors:
+            newForecastResult.insights?.filter(i => i.includes('risk')) || [], // Example mapping
+          recommendations: newForecastResult.recommendations || [],
+        },
+      };
+
+      this.logger.log(
+        `Revenue forecast generated successfully: ${legacyForecastResult.forecast.length} periods`
+      );
+
+      return legacyForecastResult; // Return the mapped legacy format
     } catch (error) {
-      this.logger.error(`Failed to generate revenue forecast: ${error.message}`, error);
+      this.logger.error(
+        `Failed to generate revenue forecast: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -146,7 +248,7 @@ export class RevenueForecastingService {
   private async getHistoricalRevenueData(
     organizationId: string,
     startDate: Date,
-    endDate: Date,
+    endDate: Date
   ): Promise<TimeSeriesDataPoint[]> {
     const revenueData = await this.prisma.invoice.groupBy({
       by: ['issueDate'],
@@ -165,13 +267,16 @@ export class RevenueForecastingService {
     revenueData.forEach(item => {
       const monthKey = this.getMonthKey(item.issueDate);
       const existing = monthlyData.get(monthKey) || 0;
-      monthlyData.set(monthKey, existing + (item._sum.paidAmount?.toNumber() || 0));
+      monthlyData.set(
+        monthKey,
+        existing + (item._sum.paidAmount?.toNumber() || 0)
+      );
     });
 
     return Array.from(monthlyData.entries()).map(([period, value]) => ({
       period,
       value,
-      date: new Date(period + '-01'),
+      date: new Date(`${period  }-01`),
     }));
   }
 
@@ -217,7 +322,7 @@ export class RevenueForecastingService {
   private async generateForecastData(
     historical: TimeSeriesDataPoint[],
     options: ForecastingOptions,
-    trendAnalysis: TrendAnalysis,
+    trendAnalysis: TrendAnalysis
   ): Promise<ForecastDataPoint[]> {
     const forecast: ForecastDataPoint[] = [];
     const lastDataPoint = historical[historical.length - 1];
@@ -244,12 +349,18 @@ export class RevenueForecastingService {
 
       // Apply seasonality adjustment if enabled
       if (options.includeSeasonality && trendAnalysis.seasonality.detected) {
-        predicted = this.applySeasonalityAdjustment(predicted, forecastDate, trendAnalysis);
+        predicted = this.applySeasonalityAdjustment(
+          predicted,
+          forecastDate,
+          trendAnalysis
+        );
       }
 
       // Calculate confidence intervals
       const variance = this.calculateVariance(historical);
-      const confidenceMultiplier = this.getConfidenceMultiplier(options.confidence);
+      const confidenceMultiplier = this.getConfidenceMultiplier(
+        options.confidence
+      );
       const margin = Math.sqrt(variance) * confidenceMultiplier;
 
       forecast.push({
@@ -269,7 +380,10 @@ export class RevenueForecastingService {
   /**
    * Linear forecasting method
    */
-  private linearForecast(data: TimeSeriesDataPoint[], periodsAhead: number): number {
+  private linearForecast(
+    data: TimeSeriesDataPoint[],
+    periodsAhead: number
+  ): number {
     const { slope, intercept } = this.calculateLinearRegression(data);
     const nextPeriod = data.length + periodsAhead;
     return intercept + slope * nextPeriod;
@@ -278,7 +392,10 @@ export class RevenueForecastingService {
   /**
    * Exponential smoothing forecasting method
    */
-  private exponentialForecast(data: TimeSeriesDataPoint[], periodsAhead: number): number {
+  private exponentialForecast(
+    data: TimeSeriesDataPoint[],
+    periodsAhead: number
+  ): number {
     const alpha = 0.3; // Smoothing parameter
     let smoothed = data[0].value;
 
@@ -296,7 +413,7 @@ export class RevenueForecastingService {
   private seasonalForecast(
     data: TimeSeriesDataPoint[],
     periodsAhead: number,
-    trendAnalysis: TrendAnalysis,
+    trendAnalysis: TrendAnalysis
   ): number {
     // Use linear trend as base
     const baseForecast = this.linearForecast(data, periodsAhead);
@@ -313,25 +430,35 @@ export class RevenueForecastingService {
   /**
    * Calculate linear regression for trend analysis
    */
-  private calculateLinearRegression(data: TimeSeriesDataPoint[]): { slope: number; intercept: number; r2: number } {
+  private calculateLinearRegression(data: TimeSeriesDataPoint[]): {
+    slope: number;
+    intercept: number;
+    r2: number;
+  } {
     const n = data.length;
     const sumX = data.reduce((sum, _, i) => sum + i, 0);
     const sumY = data.reduce((sum, point) => sum + point.value, 0);
     const sumXY = data.reduce((sum, point, i) => sum + i * point.value, 0);
     const sumXX = data.reduce((sum, _, i) => sum + i * i, 0);
-    const sumYY = data.reduce((sum, point) => sum + point.value * point.value, 0);
+    const sumYY = data.reduce(
+      (sum, point) => sum + point.value * point.value,
+      0
+    );
 
     const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
     const intercept = (sumY - slope * sumX) / n;
 
     // Calculate R-squared
     const meanY = sumY / n;
-    const ssTotal = data.reduce((sum, point) => sum + Math.pow(point.value - meanY, 2), 0);
+    const ssTotal = data.reduce(
+      (sum, point) => sum + Math.pow(point.value - meanY, 2),
+      0
+    );
     const ssResidual = data.reduce((sum, point, i) => {
       const predicted = intercept + slope * i;
       return sum + Math.pow(point.value - predicted, 2);
     }, 0);
-    const r2 = 1 - (ssResidual / ssTotal);
+    const r2 = 1 - ssResidual / ssTotal;
 
     return { slope, intercept, r2 };
   }
@@ -339,7 +466,9 @@ export class RevenueForecastingService {
   /**
    * Detect seasonality in data
    */
-  private detectSeasonality(data: TimeSeriesDataPoint[]): TrendAnalysis['seasonality'] {
+  private detectSeasonality(
+    data: TimeSeriesDataPoint[]
+  ): TrendAnalysis['seasonality'] {
     if (data.length < 12) {
       return { detected: false };
     }
@@ -363,7 +492,9 @@ export class RevenueForecastingService {
 
     // Calculate coefficient of variation to detect seasonality
     const mean = monthlyAverages.reduce((sum, val) => sum + val, 0) / 12;
-    const variance = monthlyAverages.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / 12;
+    const variance =
+      monthlyAverages.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) /
+      12;
     const coefficientOfVariation = Math.sqrt(variance) / mean;
 
     const detected = coefficientOfVariation > 0.2; // Threshold for seasonality detection
@@ -378,19 +509,24 @@ export class RevenueForecastingService {
   /**
    * Detect anomalies in data
    */
-  private detectAnomalies(data: TimeSeriesDataPoint[]): TrendAnalysis['anomalies'] {
+  private detectAnomalies(
+    data: TimeSeriesDataPoint[]
+  ): TrendAnalysis['anomalies'] {
     if (data.length < 3) return [];
 
     const anomalies: TrendAnalysis['anomalies'] = [];
-    const mean = data.reduce((sum, point) => sum + point.value, 0) / data.length;
+    const mean =
+      data.reduce((sum, point) => sum + point.value, 0) / data.length;
     const stdDev = Math.sqrt(
-      data.reduce((sum, point) => sum + Math.pow(point.value - mean, 2), 0) / data.length
+      data.reduce((sum, point) => sum + Math.pow(point.value - mean, 2), 0) /
+        data.length
     );
 
     data.forEach(point => {
       const zScore = Math.abs(point.value - mean) / stdDev;
 
-      if (zScore > 2.5) { // Threshold for anomaly detection
+      if (zScore > 2.5) {
+        // Threshold for anomaly detection
         anomalies.push({
           period: point.period,
           value: point.value,
@@ -412,8 +548,12 @@ export class RevenueForecastingService {
   }
 
   private calculateVariance(data: TimeSeriesDataPoint[]): number {
-    const mean = data.reduce((sum, point) => sum + point.value, 0) / data.length;
-    return data.reduce((sum, point) => sum + Math.pow(point.value - mean, 2), 0) / data.length;
+    const mean =
+      data.reduce((sum, point) => sum + point.value, 0) / data.length;
+    return (
+      data.reduce((sum, point) => sum + Math.pow(point.value - mean, 2), 0) /
+      data.length
+    );
   }
 
   private getConfidenceMultiplier(confidence: number): number {
@@ -429,22 +569,32 @@ export class RevenueForecastingService {
   private applySeasonalityAdjustment(
     predicted: number,
     date: Date,
-    trendAnalysis: TrendAnalysis,
+    trendAnalysis: TrendAnalysis
   ): number {
     // Simple seasonal adjustment based on month
     const month = date.getMonth();
-    const seasonalFactors = [0.9, 0.85, 0.95, 1.0, 1.1, 1.15, 1.2, 1.1, 1.05, 1.0, 0.95, 1.1];
+    const seasonalFactors = [
+      0.9, 0.85, 0.95, 1.0, 1.1, 1.15, 1.2, 1.1, 1.05, 1.0, 0.95, 1.1,
+    ];
     return predicted * seasonalFactors[month];
   }
 
-  private getSeasonalIndex(data: TimeSeriesDataPoint[], periodsAhead: number): number {
+  private getSeasonalIndex(
+    data: TimeSeriesDataPoint[],
+    periodsAhead: number
+  ): number {
     // Simplified seasonal index calculation
     const targetMonth = (new Date().getMonth() + periodsAhead) % 12;
-    const seasonalFactors = [0.9, 0.85, 0.95, 1.0, 1.1, 1.15, 1.2, 1.1, 1.05, 1.0, 0.95, 1.1];
+    const seasonalFactors = [
+      0.9, 0.85, 0.95, 1.0, 1.1, 1.15, 1.2, 1.1, 1.05, 1.0, 0.95, 1.1,
+    ];
     return seasonalFactors[targetMonth];
   }
 
-  private calculateAccuracy(data: TimeSeriesDataPoint[], options: ForecastingOptions): ForecastResult['accuracy'] {
+  private calculateAccuracy(
+    data: TimeSeriesDataPoint[],
+    options: ForecastingOptions
+  ): ForecastResult['accuracy'] {
     // Simplified accuracy calculation using last few periods
     if (data.length < 6) {
       return { mape: 0, rmse: 0, r2: 0 };
@@ -478,10 +628,12 @@ export class RevenueForecastingService {
   private generateInsights(
     historical: TimeSeriesDataPoint[],
     forecast: ForecastDataPoint[],
-    trendAnalysis: TrendAnalysis,
+    trendAnalysis: TrendAnalysis
   ): ForecastResult['insights'] {
     const lastValue = historical[historical.length - 1].value;
-    const avgForecast = forecast.reduce((sum, point) => sum + point.predicted, 0) / forecast.length;
+    const avgForecast =
+      forecast.reduce((sum, point) => sum + point.predicted, 0) /
+      forecast.length;
     const expectedGrowth = ((avgForecast - lastValue) / lastValue) * 100;
 
     const seasonalPeaks: string[] = [];
@@ -506,7 +658,9 @@ export class RevenueForecastingService {
       recommendations.push('Plan for seasonal variations in cash flow');
     }
     if (riskFactors.length === 0) {
-      recommendations.push('Revenue forecast looks stable - maintain current strategies');
+      recommendations.push(
+        'Revenue forecast looks stable - maintain current strategies'
+      );
     }
 
     return {
@@ -529,14 +683,15 @@ export class RevenueForecastingService {
 
     invoices.forEach(invoice => {
       const month = invoice.issueDate.toISOString().slice(0, 7); // YYYY-MM
-      monthlyRevenue[month] = (monthlyRevenue[month] || 0) + invoice.totalAmount;
+      monthlyRevenue[month] =
+        (monthlyRevenue[month] || 0) + invoice.totalAmount;
     });
 
     return Object.entries(monthlyRevenue)
       .map(([period, value]) => ({
-        date: new Date(period + '-01'),
+        date: new Date(`${period  }-01`),
         value,
-        period
+        period,
       }))
       .sort((a, b) => a.date.getTime() - b.date.getTime());
   }
@@ -546,12 +701,16 @@ export class RevenueForecastingService {
    */
   private validateTimeSeriesData(data: any[]): void {
     if (data.length < 3) {
-      throw new Error('Insufficient historical data for forecasting. Minimum 3 months required.');
+      throw new Error(
+        'Insufficient historical data for forecasting. Minimum 3 months required.'
+      );
     }
 
     const zeroValues = data.filter(d => d.value === 0).length;
     if (zeroValues > data.length * 0.5) {
-      throw new Error('Too many zero revenue periods. Data quality insufficient for reliable forecasting.');
+      throw new Error(
+        'Too many zero revenue periods. Data quality insufficient for reliable forecasting.'
+      );
     }
 
     const values = data.map(d => d.value);
@@ -574,16 +733,17 @@ export class RevenueForecastingService {
   ): Promise<any> {
     try {
       // Try to get existing active model
-      const existingModel = await this.databaseService.forecastingModel.findFirst({
-        where: {
-          organizationId,
-          isActive: true,
-          modelType: preferredModelType || undefined
-        },
-        orderBy: {
-          lastTrainedAt: 'desc'
-        }
-      });
+      const existingModel =
+        await this.databaseService.forecastingModel.findFirst({
+          where: {
+            organizationId,
+            isActive: true,
+            modelType: preferredModelType || undefined,
+          },
+          orderBy: {
+            lastTrainedAt: 'desc',
+          },
+        });
 
       // Check if existing model is still valid (trained within last 30 days)
       if (existingModel && this.isModelValid(existingModel)) {
@@ -591,8 +751,12 @@ export class RevenueForecastingService {
       }
 
       // Create new model
-      const modelType = preferredModelType || this.selectBestModelType(timeSeriesData);
-      const modelParameters = this.trainEnhancedModel(timeSeriesData, modelType);
+      const modelType =
+        preferredModelType || this.selectBestModelType(timeSeriesData);
+      const modelParameters = this.trainEnhancedModel(
+        timeSeriesData,
+        modelType
+      );
 
       // Save model to database
       const savedModel = await this.databaseService.forecastingModel.create({
@@ -601,14 +765,15 @@ export class RevenueForecastingService {
           modelType,
           modelParameters: modelParameters as any,
           isActive: true,
-          lastTrainedAt: new Date()
-        }
+          lastTrainedAt: new Date(),
+        },
       });
 
       return this.convertToForecastModel(savedModel);
-
     } catch (error) {
-      this.logger.error(`Failed to get/create forecasting model: ${error.message}`);
+      this.logger.error(
+        `Failed to get/create forecasting model: ${error.message}`
+      );
       throw error;
     }
   }
@@ -633,7 +798,10 @@ export class RevenueForecastingService {
   /**
    * Train enhanced model with Zambian business context
    */
-  private trainEnhancedModel(data: any[], modelType: string): Record<string, any> {
+  private trainEnhancedModel(
+    data: any[],
+    modelType: string
+  ): Record<string, any> {
     const values = data.map(d => d.value);
 
     switch (modelType) {
@@ -666,12 +834,15 @@ export class RevenueForecastingService {
 
     // Calculate R-squared
     const yMean = sumY / n;
-    const ssTotal = values.reduce((sum, val) => sum + Math.pow(val - yMean, 2), 0);
+    const ssTotal = values.reduce(
+      (sum, val) => sum + Math.pow(val - yMean, 2),
+      0
+    );
     const ssResidual = values.reduce((sum, val, i) => {
       const predicted = intercept + slope * (i + 1);
       return sum + Math.pow(val - predicted, 2);
     }, 0);
-    const rSquared = 1 - (ssResidual / ssTotal);
+    const rSquared = 1 - ssResidual / ssTotal;
 
     return {
       type: 'LINEAR',
@@ -679,7 +850,7 @@ export class RevenueForecastingService {
       intercept,
       rSquared,
       zambianContext: true,
-      trainedAt: new Date().toISOString()
+      trainedAt: new Date().toISOString(),
     };
   }
 
@@ -691,19 +862,27 @@ export class RevenueForecastingService {
     const seasonalPeriod = 12; // Monthly data, annual seasonality
 
     // Enhanced seasonal decomposition with Zambian context
-    const trend = this.baseAnalyticsService.calculateMovingAverage(values, Math.min(seasonalPeriod, values.length));
-    const detrended = values.map((val, i) => val - (trend[i] || trend[trend.length - 1]));
+    const trend = this.baseAnalyticsService.calculateMovingAverage(
+      values,
+      Math.min(seasonalPeriod, values.length)
+    );
+    const detrended = values.map(
+      (val, i) => val - (trend[i] || trend[trend.length - 1])
+    );
 
     // Calculate seasonal components with Zambian business patterns
-    const seasonal = this.calculateZambianSeasonalComponents(data, seasonalPeriod);
+    const seasonal = this.calculateZambianSeasonalComponents(
+      data,
+      seasonalPeriod
+    );
 
     return {
       type: 'SEASONAL',
-      trend: trend,
-      seasonal: seasonal,
+      trend,
+      seasonal,
       seasonalPeriod,
       zambianContext: true,
-      trainedAt: new Date().toISOString()
+      trainedAt: new Date().toISOString(),
     };
   }
 
@@ -712,15 +891,16 @@ export class RevenueForecastingService {
    */
   private trainEnhancedExponentialModel(values: number[]): Record<string, any> {
     const alpha = 0.3; // Smoothing parameter
-    let smoothed = [values[0]];
+    const smoothed = [values[0]];
 
     for (let i = 1; i < values.length; i++) {
       smoothed[i] = alpha * values[i] + (1 - alpha) * smoothed[i - 1];
     }
 
-    const mae = values.reduce((sum, val, i) => {
-      return sum + Math.abs(val - smoothed[i]);
-    }, 0) / values.length;
+    const mae =
+      values.reduce((sum, val, i) => {
+        return sum + Math.abs(val - smoothed[i]);
+      }, 0) / values.length;
 
     return {
       type: 'EXPONENTIAL',
@@ -728,7 +908,7 @@ export class RevenueForecastingService {
       lastSmoothed: smoothed[smoothed.length - 1],
       mae,
       zambianContext: true,
-      trainedAt: new Date().toISOString()
+      trainedAt: new Date().toISOString(),
     };
   }
 
@@ -742,13 +922,29 @@ export class RevenueForecastingService {
   ): NewForecastResult[] {
     switch (model.type) {
       case 'LINEAR':
-        return this.generateEnhancedLinearForecast(model, historicalData, periods);
+        return this.generateEnhancedLinearForecast(
+          model,
+          historicalData,
+          periods
+        );
       case 'SEASONAL':
-        return this.generateEnhancedSeasonalForecast(model, historicalData, periods);
+        return this.generateEnhancedSeasonalForecast(
+          model,
+          historicalData,
+          periods
+        );
       case 'EXPONENTIAL':
-        return this.generateEnhancedExponentialForecast(model, historicalData, periods);
+        return this.generateEnhancedExponentialForecast(
+          model,
+          historicalData,
+          periods
+        );
       default:
-        return this.generateEnhancedLinearForecast(model, historicalData, periods);
+        return this.generateEnhancedLinearForecast(
+          model,
+          historicalData,
+          periods
+        );
     }
   }
 
@@ -771,7 +967,9 @@ export class RevenueForecastingService {
       const confidence = Math.max(0.5, rSquared);
       const margin = predictedValue * (1 - confidence) * 0.5;
 
-      const forecastDate = new Date(historicalData[historicalData.length - 1].date);
+      const forecastDate = new Date(
+        historicalData[historicalData.length - 1].date
+      );
       forecastDate.setMonth(forecastDate.getMonth() + i + 1);
 
       forecast.push({
@@ -779,21 +977,21 @@ export class RevenueForecastingService {
         predictedValue: Math.max(0, predictedValue),
         confidenceInterval: {
           lower: Math.max(0, predictedValue - margin),
-          upper: predictedValue + margin
+          upper: predictedValue + margin,
         },
         confidence,
         factors: [
           {
             factor: 'Linear Trend',
             impact: slope > 0 ? 0.7 : -0.7,
-            description: `${slope > 0 ? 'Positive' : 'Negative'} linear trend detected`
+            description: `${slope > 0 ? 'Positive' : 'Negative'} linear trend detected`,
           },
           {
             factor: 'Model Accuracy',
             impact: rSquared,
-            description: `Model explains ${(rSquared * 100).toFixed(1)}% of variance`
-          }
-        ]
+            description: `Model explains ${(rSquared * 100).toFixed(1)}% of variance`,
+          },
+        ],
       });
     }
 
@@ -817,12 +1015,16 @@ export class RevenueForecastingService {
       const seasonalComponent = seasonal[seasonalIndex] || 0;
       const predictedValue = lastTrend + seasonalComponent;
 
-      const forecastDate = new Date(historicalData[historicalData.length - 1].date);
+      const forecastDate = new Date(
+        historicalData[historicalData.length - 1].date
+      );
       forecastDate.setMonth(forecastDate.getMonth() + i + 1);
 
       // Apply Zambian seasonal adjustments
-      const zambianSeason = this.baseAnalyticsService.getZambianSeason(forecastDate);
-      const zambianMultiplier = this.getZambianSeasonalMultiplier(zambianSeason);
+      const zambianSeason =
+        this.baseAnalyticsService.getZambianSeason(forecastDate);
+      const zambianMultiplier =
+        this.getZambianSeasonalMultiplier(zambianSeason);
       const adjustedValue = predictedValue * zambianMultiplier;
 
       forecast.push({
@@ -830,21 +1032,21 @@ export class RevenueForecastingService {
         predictedValue: Math.max(0, adjustedValue),
         confidenceInterval: {
           lower: Math.max(0, adjustedValue * 0.85),
-          upper: adjustedValue * 1.15
+          upper: adjustedValue * 1.15,
         },
         confidence: 0.8,
         factors: [
           {
             factor: 'Seasonal Pattern',
             impact: seasonalComponent / lastTrend,
-            description: 'Historical seasonal pattern'
+            description: 'Historical seasonal pattern',
           },
           {
             factor: 'Zambian Season',
             impact: zambianMultiplier - 1,
-            description: `${zambianSeason} seasonal adjustment`
-          }
-        ]
+            description: `${zambianSeason} seasonal adjustment`,
+          },
+        ],
       });
     }
 
@@ -863,7 +1065,9 @@ export class RevenueForecastingService {
     const forecast: NewForecastResult[] = [];
 
     for (let i = 0; i < periods; i++) {
-      const forecastDate = new Date(historicalData[historicalData.length - 1].date);
+      const forecastDate = new Date(
+        historicalData[historicalData.length - 1].date
+      );
       forecastDate.setMonth(forecastDate.getMonth() + i + 1);
 
       const predictedValue = lastSmoothed;
@@ -874,21 +1078,21 @@ export class RevenueForecastingService {
         predictedValue: Math.max(0, predictedValue),
         confidenceInterval: {
           lower: Math.max(0, predictedValue - margin),
-          upper: predictedValue + margin
+          upper: predictedValue + margin,
         },
         confidence: 0.75,
         factors: [
           {
             factor: 'Exponential Smoothing',
             impact: 0.8,
-            description: 'Weighted average of historical values'
+            description: 'Weighted average of historical values',
           },
           {
             factor: 'Forecast Uncertainty',
             impact: mae / predictedValue,
-            description: 'Uncertainty increases with forecast horizon'
-          }
-        ]
+            description: 'Uncertainty increases with forecast horizon',
+          },
+        ],
       });
     }
 
@@ -903,7 +1107,7 @@ export class RevenueForecastingService {
     dateRange: DateRange
   ): NewForecastResult[] {
     return forecast.map(result => {
-      const forecastDate = new Date(result.period + '-01');
+      const forecastDate = new Date(`${result.period  }-01`);
 
       // Apply Zambian holiday effects
       const holidayMultiplier = this.getZambianHolidayMultiplier(forecastDate);
@@ -916,7 +1120,7 @@ export class RevenueForecastingService {
         result.factors.push({
           factor: 'Zambian Holiday Effect',
           impact: holidayMultiplier - 1,
-          description: 'Zambian holiday calendar adjustment'
+          description: 'Zambian holiday calendar adjustment',
         });
       }
 
@@ -933,8 +1137,10 @@ export class RevenueForecastingService {
     const firstHalf = values.slice(0, Math.floor(values.length / 2));
     const secondHalf = values.slice(Math.floor(values.length / 2));
 
-    const firstAvg = firstHalf.reduce((sum, val) => sum + val, 0) / firstHalf.length;
-    const secondAvg = secondHalf.reduce((sum, val) => sum + val, 0) / secondHalf.length;
+    const firstAvg =
+      firstHalf.reduce((sum, val) => sum + val, 0) / firstHalf.length;
+    const secondAvg =
+      secondHalf.reduce((sum, val) => sum + val, 0) / secondHalf.length;
 
     return firstAvg > 0 ? (secondAvg - firstAvg) / firstAvg : 0;
   }
@@ -950,27 +1156,36 @@ export class RevenueForecastingService {
 
     const monthlyCV = Object.entries(monthlyVariance).map(([month, values]) => {
       const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
-      const stdDev = this.baseAnalyticsService.calculateStandardDeviation(values);
+      const stdDev =
+        this.baseAnalyticsService.calculateStandardDeviation(values);
       return stdDev / mean;
     });
 
     return monthlyCV.reduce((sum, cv) => sum + cv, 0) / monthlyCV.length;
   }
 
-  private calculateZambianSeasonalComponents(data: any[], period: number): number[] {
+  private calculateZambianSeasonalComponents(
+    data: any[],
+    period: number
+  ): number[] {
     const seasonal = new Array(period).fill(0);
     const counts = new Array(period).fill(0);
 
     data.forEach((point, index) => {
       const seasonIndex = index % period;
-      const zambianSeason = this.baseAnalyticsService.getZambianSeason(point.date);
-      const zambianMultiplier = this.getZambianSeasonalMultiplier(zambianSeason);
+      const zambianSeason = this.baseAnalyticsService.getZambianSeason(
+        point.date
+      );
+      const zambianMultiplier =
+        this.getZambianSeasonalMultiplier(zambianSeason);
 
       seasonal[seasonIndex] += point.value * zambianMultiplier;
       counts[seasonIndex]++;
     });
 
-    return seasonal.map((sum, index) => counts[index] > 0 ? sum / counts[index] : 0);
+    return seasonal.map((sum, index) =>
+      counts[index] > 0 ? sum / counts[index] : 0
+    );
   }
 
   private getZambianSeasonalMultiplier(season: string): number {
@@ -991,8 +1206,8 @@ export class RevenueForecastingService {
 
     // Major Zambian holidays affecting business
     if (month === 12) return 1.2; // December - holiday season boost
-    if (month === 1) return 0.9;  // January - post-holiday slowdown
-    if (month === 3) return 1.1;  // March - Youth Day, Heroes Day
+    if (month === 1) return 0.9; // January - post-holiday slowdown
+    if (month === 3) return 1.1; // March - Youth Day, Heroes Day
     if (month === 10) return 1.1; // October - Independence Day
 
     return 1.0;
@@ -1010,7 +1225,7 @@ export class RevenueForecastingService {
       parameters: dbModel.modelParameters,
       accuracy: dbModel.accuracyMetrics?.accuracy || 0,
       lastTrained: dbModel.lastTrainedAt,
-      isActive: dbModel.isActive
+      isActive: dbModel.isActive,
     };
   }
 }

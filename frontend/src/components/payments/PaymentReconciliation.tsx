@@ -1,6 +1,5 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
 import { 
   RefreshCw, 
   CheckCircle, 
@@ -18,6 +17,8 @@ import {
   Building,
   CreditCard
 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+
 import { 
   ReconciliationResult, 
   ReconciliationMatch, 

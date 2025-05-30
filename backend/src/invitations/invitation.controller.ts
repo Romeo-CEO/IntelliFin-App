@@ -1,42 +1,42 @@
 import {
-  Controller,
-  Get,
-  Post,
-  Put,
-  Delete,
   Body,
-  Param,
-  Query,
-  UseGuards,
+  Controller,
+  Delete,
+  Get,
   HttpStatus,
   Logger,
-  ParseUUIDPipe,
-  ParseIntPipe,
+  Param,
   ParseEnumPipe,
+  ParseIntPipe,
+  ParseUUIDPipe,
+  Post,
+  Put,
+  Query,
+  UseGuards,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiParam,
-  ApiQuery,
   ApiBearerAuth,
   ApiBody,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { UserRole, InvitationStatus } from '@prisma/client';
+import { InvitationStatus, UserRole } from '@prisma/client';
 import { InvitationService } from './invitation.service';
 import {
-  CreateInvitationDto,
   AcceptInvitationDto,
-  InvitationResponseDto,
-  InvitationListResponseDto,
-  ResendInvitationDto,
   BulkInvitationDto,
   BulkInvitationResponseDto,
+  CreateInvitationDto,
+  InvitationListResponseDto,
+  InvitationResponseDto,
+  ResendInvitationDto,
 } from './dto/invitation.dto';
 
 @ApiTags('User Invitations')
@@ -52,7 +52,8 @@ export class InvitationController {
   @Roles(UserRole.TENANT_ADMIN, UserRole.ADMIN)
   @ApiOperation({
     summary: 'Create a new user invitation',
-    description: 'Invite a new user to join the organization with specified role',
+    description:
+      'Invite a new user to join the organization with specified role',
   })
   @ApiBody({ type: CreateInvitationDto })
   @ApiResponse({
@@ -74,13 +75,15 @@ export class InvitationController {
   })
   async createInvitation(
     @Body() createInvitationDto: CreateInvitationDto,
-    @CurrentUser() user: any,
+    @CurrentUser() user: any
   ): Promise<InvitationResponseDto> {
-    this.logger.log(`Creating invitation for ${createInvitationDto.email} by user ${user.id}`);
+    this.logger.log(
+      `Creating invitation for ${createInvitationDto.email} by user ${user.id}`
+    );
     return this.invitationService.createInvitation(
       createInvitationDto,
       user.id,
-      user.tenantId,
+      user.tenantId
     );
   }
 
@@ -119,9 +122,11 @@ export class InvitationController {
     description: 'User with this email already exists',
   })
   async acceptInvitation(
-    @Body() acceptInvitationDto: AcceptInvitationDto,
+    @Body() acceptInvitationDto: AcceptInvitationDto
   ): Promise<{ user: any; invitation: InvitationResponseDto }> {
-    this.logger.log(`Accepting invitation with token: ${acceptInvitationDto.token}`);
+    this.logger.log(
+      `Accepting invitation with token: ${acceptInvitationDto.token}`
+    );
     return this.invitationService.acceptInvitation(acceptInvitationDto);
   }
 
@@ -130,7 +135,8 @@ export class InvitationController {
   @Roles(UserRole.TENANT_ADMIN, UserRole.ADMIN)
   @ApiOperation({
     summary: 'Get invitations for current tenant',
-    description: 'Retrieve paginated list of invitations for the current tenant',
+    description:
+      'Retrieve paginated list of invitations for the current tenant',
   })
   @ApiQuery({
     name: 'page',
@@ -160,14 +166,14 @@ export class InvitationController {
     @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
     @Query('limit', new ParseIntPipe({ optional: true })) limit: number = 10,
     @Query('status', new ParseEnumPipe(InvitationStatus, { optional: true }))
-    status?: InvitationStatus,
+    status?: InvitationStatus
   ): Promise<InvitationListResponseDto> {
     this.logger.log(`Getting invitations for tenant ${user.tenantId}`);
     const result = await this.invitationService.getInvitationsByTenant(
       user.tenantId,
       page,
       limit,
-      status,
+      status
     );
 
     return {
@@ -202,7 +208,7 @@ export class InvitationController {
     description: 'Invitation not found',
   })
   async getInvitationById(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ParseUUIDPipe) id: string
   ): Promise<InvitationResponseDto> {
     this.logger.log(`Getting invitation by ID: ${id}`);
     const invitation = await this.invitationService.getInvitationById(id);
@@ -239,7 +245,7 @@ export class InvitationController {
   async resendInvitation(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() resendDto: ResendInvitationDto,
-    @CurrentUser() user: any,
+    @CurrentUser() user: any
   ): Promise<InvitationResponseDto> {
     this.logger.log(`Resending invitation ${id} by user ${user.id}`);
     return this.invitationService.resendInvitation(id, resendDto, user.id);
@@ -272,7 +278,7 @@ export class InvitationController {
   })
   async cancelInvitation(
     @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: any
   ): Promise<void> {
     this.logger.log(`Cancelling invitation ${id} by user ${user.id}`);
     return this.invitationService.cancelInvitation(id, user.id);
@@ -297,20 +303,21 @@ export class InvitationController {
   })
   async sendBulkInvitations(
     @Body() bulkInvitationDto: BulkInvitationDto,
-    @CurrentUser() user: any,
+    @CurrentUser() user: any
   ): Promise<BulkInvitationResponseDto> {
     this.logger.log(`Sending bulk invitations by user ${user.id}`);
     return this.invitationService.sendBulkInvitations(
       bulkInvitationDto,
       user.id,
-      user.tenantId,
+      user.tenantId
     );
   }
 
   @Get('token/:token')
   @ApiOperation({
     summary: 'Get invitation by token',
-    description: 'Retrieve invitation details using the invitation token (for public access)',
+    description:
+      'Retrieve invitation details using the invitation token (for public access)',
   })
   @ApiParam({
     name: 'token',
@@ -336,9 +343,7 @@ export class InvitationController {
     status: HttpStatus.NOT_FOUND,
     description: 'Invalid or expired invitation token',
   })
-  async getInvitationByToken(
-    @Param('token') token: string,
-  ): Promise<{
+  async getInvitationByToken(@Param('token') token: string): Promise<{
     email: string;
     role: UserRole;
     organizationName: string;

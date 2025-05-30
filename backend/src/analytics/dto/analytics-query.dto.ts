@@ -1,10 +1,19 @@
-import { IsOptional, IsString, IsDateString, IsArray, IsEnum, IsBoolean, IsObject, ValidateNested } from 'class-validator';
-import { Type, Transform } from 'class-transformer';
+import {
+  IsArray,
+  IsBoolean,
+  IsDateString,
+  IsEnum,
+  IsObject,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
+import { Transform, Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 /**
  * Analytics Query DTOs
- * 
+ *
  * Data Transfer Objects for analytics API requests and responses.
  * Provides validation and documentation for analytics endpoints.
  */
@@ -16,14 +25,14 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 export class DateRangeDto {
   @ApiProperty({
     description: 'Start date for the analytics period',
-    example: '2024-01-01'
+    example: '2024-01-01',
   })
   @IsDateString()
   startDate: string;
 
   @ApiProperty({
     description: 'End date for the analytics period',
-    example: '2024-12-31'
+    example: '2024-12-31',
   })
   @IsDateString()
   endDate: string;
@@ -31,7 +40,7 @@ export class DateRangeDto {
 
 export class AnalyticsQueryDto {
   @ApiProperty({
-    description: 'Date range for analytics data'
+    description: 'Date range for analytics data',
   })
   @ValidateNested()
   @Type(() => DateRangeDto)
@@ -39,7 +48,7 @@ export class AnalyticsQueryDto {
 
   @ApiPropertyOptional({
     description: 'Specific metrics to include in the response',
-    example: ['revenue', 'expenses', 'profit']
+    example: ['revenue', 'expenses', 'profit'],
   })
   @IsOptional()
   @IsArray()
@@ -49,7 +58,7 @@ export class AnalyticsQueryDto {
   @ApiPropertyOptional({
     description: 'Group results by time period',
     enum: ['DAY', 'WEEK', 'MONTH', 'QUARTER', 'YEAR'],
-    example: 'MONTH'
+    example: 'MONTH',
   })
   @IsOptional()
   @IsEnum(['DAY', 'WEEK', 'MONTH', 'QUARTER', 'YEAR'])
@@ -57,7 +66,7 @@ export class AnalyticsQueryDto {
 
   @ApiPropertyOptional({
     description: 'Additional filters for the query',
-    example: { customerId: 'customer-123', status: 'PAID' }
+    example: { customerId: 'customer-123', status: 'PAID' },
   })
   @IsOptional()
   @IsObject()
@@ -65,7 +74,7 @@ export class AnalyticsQueryDto {
 
   @ApiPropertyOptional({
     description: 'Include forecast data in the response',
-    example: true
+    example: true,
   })
   @IsOptional()
   @IsBoolean()
@@ -73,11 +82,20 @@ export class AnalyticsQueryDto {
 
   @ApiPropertyOptional({
     description: 'Include industry benchmarks in the response',
-    example: true
+    example: true,
   })
   @IsOptional()
   @IsBoolean()
   includeBenchmarks?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Anomaly detection sensitivity level',
+    enum: ['LOW', 'MEDIUM', 'HIGH'],
+    example: 'MEDIUM',
+  })
+  @IsOptional()
+  @IsEnum(['LOW', 'MEDIUM', 'HIGH'])
+  sensitivityLevel?: 'LOW' | 'MEDIUM' | 'HIGH';
 }
 
 // ============================================================================
@@ -87,7 +105,7 @@ export class AnalyticsQueryDto {
 export class ForecastingQueryDto extends AnalyticsQueryDto {
   @ApiPropertyOptional({
     description: 'Number of periods to forecast',
-    example: 6
+    example: 6,
   })
   @IsOptional()
   @Transform(({ value }) => parseInt(value))
@@ -96,7 +114,7 @@ export class ForecastingQueryDto extends AnalyticsQueryDto {
   @ApiPropertyOptional({
     description: 'Forecasting model type to use',
     enum: ['LINEAR', 'SEASONAL', 'ARIMA', 'EXPONENTIAL'],
-    example: 'SEASONAL'
+    example: 'SEASONAL',
   })
   @IsOptional()
   @IsEnum(['LINEAR', 'SEASONAL', 'ARIMA', 'EXPONENTIAL'])
@@ -104,7 +122,7 @@ export class ForecastingQueryDto extends AnalyticsQueryDto {
 
   @ApiPropertyOptional({
     description: 'Confidence level for forecast intervals',
-    example: 0.95
+    example: 0.95,
   })
   @IsOptional()
   @Transform(({ value }) => parseFloat(value))
@@ -114,18 +132,18 @@ export class ForecastingQueryDto extends AnalyticsQueryDto {
 export class ForecastResultDto {
   @ApiProperty({
     description: 'Period identifier',
-    example: '2024-07'
+    example: '2024-07',
   })
   period: string;
 
   @ApiProperty({
     description: 'Predicted value for the period',
-    example: 125000.50
+    example: 125000.5,
   })
   predictedValue: number;
 
   @ApiProperty({
-    description: 'Confidence interval for the prediction'
+    description: 'Confidence interval for the prediction',
   })
   confidenceInterval: {
     lower: number;
@@ -134,12 +152,12 @@ export class ForecastResultDto {
 
   @ApiProperty({
     description: 'Confidence level (0-1)',
-    example: 0.85
+    example: 0.85,
   })
   confidence: number;
 
   @ApiProperty({
-    description: 'Factors influencing the forecast'
+    description: 'Factors influencing the forecast',
   })
   factors: Array<{
     factor: string;
@@ -156,7 +174,7 @@ export class ProfitabilityQueryDto extends AnalyticsQueryDto {
   @ApiPropertyOptional({
     description: 'Analysis type for profitability',
     enum: ['CUSTOMER', 'PRODUCT', 'SEGMENT', 'OVERALL'],
-    example: 'CUSTOMER'
+    example: 'CUSTOMER',
   })
   @IsOptional()
   @IsEnum(['CUSTOMER', 'PRODUCT', 'SEGMENT', 'OVERALL'])
@@ -164,7 +182,7 @@ export class ProfitabilityQueryDto extends AnalyticsQueryDto {
 
   @ApiPropertyOptional({
     description: 'Minimum profit threshold for inclusion',
-    example: 1000
+    example: 1000,
   })
   @IsOptional()
   @Transform(({ value }) => parseFloat(value))
@@ -172,7 +190,7 @@ export class ProfitabilityQueryDto extends AnalyticsQueryDto {
 
   @ApiPropertyOptional({
     description: 'Include cost allocation details',
-    example: true
+    example: true,
   })
   @IsOptional()
   @IsBoolean()
@@ -182,62 +200,62 @@ export class ProfitabilityQueryDto extends AnalyticsQueryDto {
 export class CustomerProfitabilityDto {
   @ApiProperty({
     description: 'Customer ID',
-    example: 'customer-123'
+    example: 'customer-123',
   })
   customerId: string;
 
   @ApiProperty({
     description: 'Customer name',
-    example: 'ABC Trading Ltd'
+    example: 'ABC Trading Ltd',
   })
   customerName: string;
 
   @ApiProperty({
     description: 'Total revenue from customer',
-    example: 150000.00
+    example: 150000.0,
   })
   revenue: number;
 
   @ApiProperty({
     description: 'Direct costs associated with customer',
-    example: 90000.00
+    example: 90000.0,
   })
   directCosts: number;
 
   @ApiProperty({
     description: 'Allocated overhead costs',
-    example: 15000.00
+    example: 15000.0,
   })
   allocatedCosts: number;
 
   @ApiProperty({
     description: 'Gross profit (revenue - direct costs)',
-    example: 60000.00
+    example: 60000.0,
   })
   grossProfit: number;
 
   @ApiProperty({
     description: 'Net profit (gross profit - allocated costs)',
-    example: 45000.00
+    example: 45000.0,
   })
   netProfit: number;
 
   @ApiProperty({
     description: 'Profit margin percentage',
-    example: 30.0
+    example: 30.0,
   })
   profitMargin: number;
 
   @ApiProperty({
     description: 'Customer ranking by profitability',
-    example: 1
+    example: 1,
   })
   ranking: number;
 
   @ApiProperty({
     description: 'Risk level assessment',
     enum: ['LOW', 'MEDIUM', 'HIGH'],
-    example: 'LOW'
+    example: 'LOW',
   })
   riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
 }
@@ -249,7 +267,7 @@ export class CustomerProfitabilityDto {
 export class TaxAnalyticsQueryDto extends AnalyticsQueryDto {
   @ApiPropertyOptional({
     description: 'Specific tax types to analyze',
-    example: ['VAT', 'WITHHOLDING_TAX', 'INCOME_TAX']
+    example: ['VAT', 'WITHHOLDING_TAX', 'INCOME_TAX'],
   })
   @IsOptional()
   @IsArray()
@@ -258,7 +276,7 @@ export class TaxAnalyticsQueryDto extends AnalyticsQueryDto {
 
   @ApiPropertyOptional({
     description: 'Include optimization recommendations',
-    example: true
+    example: true,
   })
   @IsOptional()
   @IsBoolean()
@@ -266,7 +284,7 @@ export class TaxAnalyticsQueryDto extends AnalyticsQueryDto {
 
   @ApiPropertyOptional({
     description: 'Include compliance scoring',
-    example: true
+    example: true,
   })
   @IsOptional()
   @IsBoolean()
@@ -276,24 +294,24 @@ export class TaxAnalyticsQueryDto extends AnalyticsQueryDto {
 export class TaxOptimizationDto {
   @ApiProperty({
     description: 'Current tax liability',
-    example: 25000.00
+    example: 25000.0,
   })
   currentLiability: number;
 
   @ApiProperty({
     description: 'Optimized tax liability',
-    example: 22000.00
+    example: 22000.0,
   })
   optimizedLiability: number;
 
   @ApiProperty({
     description: 'Potential tax savings',
-    example: 3000.00
+    example: 3000.0,
   })
   potentialSavings: number;
 
   @ApiProperty({
-    description: 'Tax optimization strategies'
+    description: 'Tax optimization strategies',
   })
   strategies: Array<{
     strategy: string;
@@ -307,13 +325,13 @@ export class TaxOptimizationDto {
   @ApiProperty({
     description: 'Overall risk level of optimization',
     enum: ['LOW', 'MEDIUM', 'HIGH'],
-    example: 'LOW'
+    example: 'LOW',
   })
   riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
 
   @ApiProperty({
     description: 'Tax compliance score (0-100)',
-    example: 95
+    example: 95,
   })
   complianceScore: number;
 }
@@ -325,7 +343,7 @@ export class TaxOptimizationDto {
 export class FinancialRatiosQueryDto extends AnalyticsQueryDto {
   @ApiPropertyOptional({
     description: 'Specific ratio categories to calculate',
-    example: ['LIQUIDITY', 'PROFITABILITY', 'EFFICIENCY']
+    example: ['LIQUIDITY', 'PROFITABILITY', 'EFFICIENCY'],
   })
   @IsOptional()
   @IsArray()
@@ -334,7 +352,7 @@ export class FinancialRatiosQueryDto extends AnalyticsQueryDto {
 
   @ApiPropertyOptional({
     description: 'Include industry benchmarking',
-    example: true
+    example: true,
   })
   @IsOptional()
   @IsBoolean()
@@ -342,7 +360,7 @@ export class FinancialRatiosQueryDto extends AnalyticsQueryDto {
 
   @ApiPropertyOptional({
     description: 'Include historical comparison',
-    example: true
+    example: true,
   })
   @IsOptional()
   @IsBoolean()
@@ -351,7 +369,7 @@ export class FinancialRatiosQueryDto extends AnalyticsQueryDto {
 
 export class FinancialRatiosDto {
   @ApiProperty({
-    description: 'Liquidity ratios'
+    description: 'Liquidity ratios',
   })
   liquidity: {
     currentRatio: number;
@@ -361,7 +379,7 @@ export class FinancialRatiosDto {
   };
 
   @ApiProperty({
-    description: 'Profitability ratios'
+    description: 'Profitability ratios',
   })
   profitability: {
     grossMargin: number;
@@ -372,7 +390,7 @@ export class FinancialRatiosDto {
   };
 
   @ApiProperty({
-    description: 'Efficiency ratios'
+    description: 'Efficiency ratios',
   })
   efficiency: {
     inventoryTurnover: number;
@@ -383,7 +401,7 @@ export class FinancialRatiosDto {
   };
 
   @ApiProperty({
-    description: 'Leverage ratios'
+    description: 'Leverage ratios',
   })
   leverage: {
     debtToEquity: number;
@@ -393,7 +411,7 @@ export class FinancialRatiosDto {
   };
 
   @ApiPropertyOptional({
-    description: 'Industry benchmark comparison'
+    description: 'Industry benchmark comparison',
   })
   industryComparison?: {
     industry: string;
@@ -402,13 +420,13 @@ export class FinancialRatiosDto {
   };
 
   @ApiProperty({
-    description: 'Period for which ratios were calculated'
+    description: 'Period for which ratios were calculated',
   })
   period: DateRangeDto;
 
   @ApiProperty({
     description: 'When the ratios were calculated',
-    example: '2024-01-15T10:30:00Z'
+    example: '2024-01-15T10:30:00Z',
   })
   calculatedAt: string;
 }
@@ -419,12 +437,12 @@ export class FinancialRatiosDto {
 
 export class AnalyticsResponseDto<T = any> {
   @ApiProperty({
-    description: 'Analytics data'
+    description: 'Analytics data',
   })
   data: T;
 
   @ApiProperty({
-    description: 'Response metadata'
+    description: 'Response metadata',
   })
   metadata: {
     organizationId: string;
@@ -435,7 +453,7 @@ export class AnalyticsResponseDto<T = any> {
   };
 
   @ApiPropertyOptional({
-    description: 'Analytics insights and recommendations'
+    description: 'Analytics insights and recommendations',
   })
   insights?: Array<{
     id: string;
@@ -455,23 +473,23 @@ export class AnalyticsResponseDto<T = any> {
 export class AnalyticsErrorDto {
   @ApiProperty({
     description: 'Error code',
-    example: 'INSUFFICIENT_DATA'
+    example: 'INSUFFICIENT_DATA',
   })
   code: string;
 
   @ApiProperty({
     description: 'Error message',
-    example: 'Insufficient data for reliable analytics'
+    example: 'Insufficient data for reliable analytics',
   })
   message: string;
 
   @ApiPropertyOptional({
-    description: 'Additional error details'
+    description: 'Additional error details',
   })
   details?: Record<string, any>;
 
   @ApiPropertyOptional({
-    description: 'Suggestions to resolve the error'
+    description: 'Suggestions to resolve the error',
   })
   suggestions?: string[];
 }

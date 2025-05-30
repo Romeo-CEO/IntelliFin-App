@@ -1,12 +1,18 @@
 import {
   Controller,
   Get,
-  Query,
-  UseGuards,
-  Request,
   ParseIntPipe,
+  Query,
+  Request,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { TaxAnalyticsService } from '../services/tax-analytics.service';
 
@@ -19,16 +25,24 @@ export class TaxAnalyticsController {
 
   @Get('trends')
   @ApiOperation({ summary: 'Get tax trend analysis' })
-  @ApiQuery({ name: 'months', required: false, type: Number, description: 'Number of months to analyze (default: 12)' })
-  @ApiResponse({ status: 200, description: 'Trend analysis retrieved successfully' })
+  @ApiQuery({
+    name: 'months',
+    required: false,
+    type: Number,
+    description: 'Number of months to analyze (default: 12)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Trend analysis retrieved successfully',
+  })
   async getTrendAnalysis(
     @Request() req: any,
-    @Query('months', new ParseIntPipe({ optional: true })) months: number = 12,
+    @Query('months', new ParseIntPipe({ optional: true })) months: number = 12
   ) {
     try {
       const trends = await this.taxAnalyticsService.generateTrendAnalysis(
         req.user.organizationId,
-        months,
+        months
       );
 
       return {
@@ -47,11 +61,14 @@ export class TaxAnalyticsController {
 
   @Get('compliance-prediction')
   @ApiOperation({ summary: 'Predict compliance score for next period' })
-  @ApiResponse({ status: 200, description: 'Compliance prediction generated successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Compliance prediction generated successfully',
+  })
   async predictCompliance(@Request() req: any) {
     try {
       const prediction = await this.taxAnalyticsService.predictCompliance(
-        req.user.organizationId,
+        req.user.organizationId
       );
 
       return {
@@ -70,11 +87,14 @@ export class TaxAnalyticsController {
 
   @Get('efficiency-metrics')
   @ApiOperation({ summary: 'Calculate tax efficiency metrics' })
-  @ApiResponse({ status: 200, description: 'Efficiency metrics calculated successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Efficiency metrics calculated successfully',
+  })
   async getEfficiencyMetrics(@Request() req: any) {
     try {
       const metrics = await this.taxAnalyticsService.calculateEfficiencyMetrics(
-        req.user.organizationId,
+        req.user.organizationId
       );
 
       return {
@@ -93,11 +113,14 @@ export class TaxAnalyticsController {
 
   @Get('seasonal-analysis')
   @ApiOperation({ summary: 'Generate seasonal tax analysis' })
-  @ApiResponse({ status: 200, description: 'Seasonal analysis generated successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Seasonal analysis generated successfully',
+  })
   async getSeasonalAnalysis(@Request() req: any) {
     try {
       const analysis = await this.taxAnalyticsService.generateSeasonalAnalysis(
-        req.user.organizationId,
+        req.user.organizationId
       );
 
       return {
@@ -116,11 +139,14 @@ export class TaxAnalyticsController {
 
   @Get('risk-assessment')
   @ApiOperation({ summary: 'Assess tax risks' })
-  @ApiResponse({ status: 200, description: 'Risk assessment completed successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Risk assessment completed successfully',
+  })
   async assessTaxRisks(@Request() req: any) {
     try {
       const assessment = await this.taxAnalyticsService.assessTaxRisks(
-        req.user.organizationId,
+        req.user.organizationId
       );
 
       return {
@@ -139,27 +165,33 @@ export class TaxAnalyticsController {
 
   @Get('dashboard')
   @ApiOperation({ summary: 'Get comprehensive tax analytics dashboard' })
-  @ApiResponse({ status: 200, description: 'Analytics dashboard data retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Analytics dashboard data retrieved successfully',
+  })
   async getAnalyticsDashboard(@Request() req: any) {
     try {
       // Get all analytics data for dashboard
-      const [
-        trends,
-        prediction,
-        metrics,
-        seasonalAnalysis,
-        riskAssessment,
-      ] = await Promise.all([
-        this.taxAnalyticsService.generateTrendAnalysis(req.user.organizationId, 6),
-        this.taxAnalyticsService.predictCompliance(req.user.organizationId),
-        this.taxAnalyticsService.calculateEfficiencyMetrics(req.user.organizationId),
-        this.taxAnalyticsService.generateSeasonalAnalysis(req.user.organizationId),
-        this.taxAnalyticsService.assessTaxRisks(req.user.organizationId),
-      ]);
+      const [trends, prediction, metrics, seasonalAnalysis, riskAssessment] =
+        await Promise.all([
+          this.taxAnalyticsService.generateTrendAnalysis(
+            req.user.organizationId,
+            6
+          ),
+          this.taxAnalyticsService.predictCompliance(req.user.organizationId),
+          this.taxAnalyticsService.calculateEfficiencyMetrics(
+            req.user.organizationId
+          ),
+          this.taxAnalyticsService.generateSeasonalAnalysis(
+            req.user.organizationId
+          ),
+          this.taxAnalyticsService.assessTaxRisks(req.user.organizationId),
+        ]);
 
       const dashboardData = {
         overview: {
-          currentComplianceScore: trends[trends.length - 1]?.complianceScore || 0,
+          currentComplianceScore:
+            trends[trends.length - 1]?.complianceScore || 0,
           predictedScore: prediction.nextPeriod.predictedScore,
           riskLevel: riskAssessment.overallRisk,
           effectiveTaxRate: metrics.effectiveTaxRate,
@@ -177,14 +209,19 @@ export class TaxAnalyticsController {
         prediction,
         metrics,
         seasonalInsights: {
-          peakMonth: seasonalAnalysis.reduce((max, current) => 
-            current.averageTaxLiability > max.averageTaxLiability ? current : max
+          peakMonth: seasonalAnalysis.reduce((max, current) =>
+            current.averageTaxLiability > max.averageTaxLiability
+              ? current
+              : max
           ),
-          lowMonth: seasonalAnalysis.reduce((min, current) => 
-            current.averageTaxLiability < min.averageTaxLiability ? current : min
+          lowMonth: seasonalAnalysis.reduce((min, current) =>
+            current.averageTaxLiability < min.averageTaxLiability
+              ? current
+              : min
           ),
-          seasonalVariation: Math.max(...seasonalAnalysis.map(s => s.seasonalityIndex)) - 
-                            Math.min(...seasonalAnalysis.map(s => s.seasonalityIndex)),
+          seasonalVariation:
+            Math.max(...seasonalAnalysis.map(s => s.seasonalityIndex)) -
+            Math.min(...seasonalAnalysis.map(s => s.seasonalityIndex)),
         },
         riskAssessment,
         recommendations: [
@@ -210,13 +247,17 @@ export class TaxAnalyticsController {
 
   @Get('benchmarking')
   @ApiOperation({ summary: 'Get tax benchmarking data' })
-  @ApiResponse({ status: 200, description: 'Benchmarking data retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Benchmarking data retrieved successfully',
+  })
   async getBenchmarking(@Request() req: any) {
     try {
       // Get organization metrics
-      const organizationMetrics = await this.taxAnalyticsService.calculateEfficiencyMetrics(
-        req.user.organizationId,
-      );
+      const organizationMetrics =
+        await this.taxAnalyticsService.calculateEfficiencyMetrics(
+          req.user.organizationId
+        );
 
       // Mock industry averages (in real implementation, this would come from aggregated data)
       const industryAverage = {
@@ -230,22 +271,52 @@ export class TaxAnalyticsController {
 
       // Calculate percentile ranking
       const metrics = [
-        { name: 'effectiveTaxRate', org: organizationMetrics.effectiveTaxRate, industry: industryAverage.effectiveTaxRate, lowerIsBetter: true },
-        { name: 'taxBurdenRatio', org: organizationMetrics.taxBurdenRatio, industry: industryAverage.taxBurdenRatio, lowerIsBetter: true },
-        { name: 'complianceCost', org: organizationMetrics.complianceCost, industry: industryAverage.complianceCost, lowerIsBetter: true },
-        { name: 'penaltyRatio', org: organizationMetrics.penaltyRatio, industry: industryAverage.penaltyRatio, lowerIsBetter: true },
-        { name: 'timeToFile', org: organizationMetrics.timeToFile, industry: industryAverage.timeToFile, lowerIsBetter: true },
-        { name: 'automationRate', org: organizationMetrics.automationRate, industry: industryAverage.automationRate, lowerIsBetter: false },
+        {
+          name: 'effectiveTaxRate',
+          org: organizationMetrics.effectiveTaxRate,
+          industry: industryAverage.effectiveTaxRate,
+          lowerIsBetter: true,
+        },
+        {
+          name: 'taxBurdenRatio',
+          org: organizationMetrics.taxBurdenRatio,
+          industry: industryAverage.taxBurdenRatio,
+          lowerIsBetter: true,
+        },
+        {
+          name: 'complianceCost',
+          org: organizationMetrics.complianceCost,
+          industry: industryAverage.complianceCost,
+          lowerIsBetter: true,
+        },
+        {
+          name: 'penaltyRatio',
+          org: organizationMetrics.penaltyRatio,
+          industry: industryAverage.penaltyRatio,
+          lowerIsBetter: true,
+        },
+        {
+          name: 'timeToFile',
+          org: organizationMetrics.timeToFile,
+          industry: industryAverage.timeToFile,
+          lowerIsBetter: true,
+        },
+        {
+          name: 'automationRate',
+          org: organizationMetrics.automationRate,
+          industry: industryAverage.automationRate,
+          lowerIsBetter: false,
+        },
       ];
 
       let totalPercentile = 0;
       const improvementAreas: string[] = [];
 
       metrics.forEach(metric => {
-        const isPerformingBetter = metric.lowerIsBetter ? 
-          metric.org < metric.industry : 
-          metric.org > metric.industry;
-        
+        const isPerformingBetter = metric.lowerIsBetter
+          ? metric.org < metric.industry
+          : metric.org > metric.industry;
+
         if (isPerformingBetter) {
           totalPercentile += 75; // Above average
         } else {
@@ -262,7 +333,8 @@ export class TaxAnalyticsController {
         percentileRanking,
         improvementAreas: improvementAreas.map(area => {
           const areaLabels: Record<string, string> = {
-            effectiveTaxRate: 'Reduce effective tax rate through better tax planning',
+            effectiveTaxRate:
+              'Reduce effective tax rate through better tax planning',
             taxBurdenRatio: 'Optimize tax burden relative to profits',
             complianceCost: 'Reduce compliance costs through automation',
             penaltyRatio: 'Improve compliance to reduce penalties',
@@ -275,9 +347,13 @@ export class TaxAnalyticsController {
           metric: metric.name,
           organization: metric.org,
           industry: metric.industry,
-          performance: metric.lowerIsBetter ? 
-            (metric.org < metric.industry ? 'Better' : 'Worse') :
-            (metric.org > metric.industry ? 'Better' : 'Worse'),
+          performance: metric.lowerIsBetter
+            ? metric.org < metric.industry
+              ? 'Better'
+              : 'Worse'
+            : metric.org > metric.industry
+              ? 'Better'
+              : 'Worse',
           difference: Math.abs(metric.org - metric.industry),
         })),
       };
@@ -298,14 +374,22 @@ export class TaxAnalyticsController {
 
   @Get('insights')
   @ApiOperation({ summary: 'Get AI-powered tax insights' })
-  @ApiResponse({ status: 200, description: 'Tax insights generated successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Tax insights generated successfully',
+  })
   async getTaxInsights(@Request() req: any) {
     try {
       // Get various analytics data
       const [trends, riskAssessment, metrics] = await Promise.all([
-        this.taxAnalyticsService.generateTrendAnalysis(req.user.organizationId, 12),
+        this.taxAnalyticsService.generateTrendAnalysis(
+          req.user.organizationId,
+          12
+        ),
         this.taxAnalyticsService.assessTaxRisks(req.user.organizationId),
-        this.taxAnalyticsService.calculateEfficiencyMetrics(req.user.organizationId),
+        this.taxAnalyticsService.calculateEfficiencyMetrics(
+          req.user.organizationId
+        ),
       ]);
 
       // Generate insights based on data patterns
@@ -313,15 +397,19 @@ export class TaxAnalyticsController {
 
       // Trend insights
       const recentTrend = trends.slice(-3);
-      const avgRecentCompliance = recentTrend.reduce((sum, t) => sum + t.complianceScore, 0) / recentTrend.length;
-      
+      const avgRecentCompliance =
+        recentTrend.reduce((sum, t) => sum + t.complianceScore, 0) /
+        recentTrend.length;
+
       if (avgRecentCompliance > 90) {
         insights.push({
           type: 'POSITIVE',
           title: 'Excellent Compliance Performance',
-          description: 'Your compliance score has been consistently high over the past 3 months.',
+          description:
+            'Your compliance score has been consistently high over the past 3 months.',
           impact: 'LOW_RISK',
-          recommendation: 'Maintain current processes and consider sharing best practices.',
+          recommendation:
+            'Maintain current processes and consider sharing best practices.',
         });
       } else if (avgRecentCompliance < 70) {
         insights.push({
@@ -329,7 +417,8 @@ export class TaxAnalyticsController {
           title: 'Declining Compliance Trend',
           description: 'Your compliance score has been below 70% recently.',
           impact: 'HIGH_RISK',
-          recommendation: 'Immediate review of tax processes and implementation of corrective measures required.',
+          recommendation:
+            'Immediate review of tax processes and implementation of corrective measures required.',
         });
       }
 
@@ -340,18 +429,23 @@ export class TaxAnalyticsController {
           title: 'Automation Opportunity',
           description: `Your automation rate is ${metrics.automationRate.toFixed(1)}%, below industry average.`,
           impact: 'EFFICIENCY',
-          recommendation: 'Consider implementing automated tax calculation and filing processes.',
+          recommendation:
+            'Consider implementing automated tax calculation and filing processes.',
         });
       }
 
       // Risk insights
-      if (riskAssessment.overallRisk === 'HIGH' || riskAssessment.overallRisk === 'CRITICAL') {
+      if (
+        riskAssessment.overallRisk === 'HIGH' ||
+        riskAssessment.overallRisk === 'CRITICAL'
+      ) {
         insights.push({
           type: 'CRITICAL',
           title: 'High Tax Risk Detected',
           description: `Your overall tax risk level is ${riskAssessment.overallRisk}.`,
           impact: 'HIGH_RISK',
-          recommendation: 'Immediate attention required to address identified risk factors.',
+          recommendation:
+            'Immediate attention required to address identified risk factors.',
         });
       }
 
@@ -364,7 +458,8 @@ export class TaxAnalyticsController {
           title: 'Peak Tax Season',
           description: 'This month typically has higher tax obligations.',
           impact: 'PLANNING',
-          recommendation: 'Ensure adequate cash flow planning for increased tax payments.',
+          recommendation:
+            'Ensure adequate cash flow planning for increased tax payments.',
         });
       }
 
@@ -375,7 +470,8 @@ export class TaxAnalyticsController {
           summary: {
             totalInsights: insights.length,
             criticalCount: insights.filter(i => i.type === 'CRITICAL').length,
-            opportunityCount: insights.filter(i => i.type === 'OPPORTUNITY').length,
+            opportunityCount: insights.filter(i => i.type === 'OPPORTUNITY')
+              .length,
             positiveCount: insights.filter(i => i.type === 'POSITIVE').length,
           },
           generatedAt: new Date(),

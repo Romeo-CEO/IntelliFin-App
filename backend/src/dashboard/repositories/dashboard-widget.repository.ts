@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Prisma, DashboardWidget, WidgetType } from '@prisma/client';
+import { DashboardWidget, Prisma, WidgetType } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
 
 /**
@@ -15,7 +15,9 @@ export class DashboardWidgetRepository {
   /**
    * Create a new widget
    */
-  async create(data: Prisma.DashboardWidgetCreateInput): Promise<DashboardWidget> {
+  async create(
+    data: Prisma.DashboardWidgetCreateInput
+  ): Promise<DashboardWidget> {
     try {
       const widget = await this.prisma.dashboardWidget.create({
         data,
@@ -30,7 +32,9 @@ export class DashboardWidgetRepository {
         },
       });
 
-      this.logger.log(`Created widget: ${widget.id} for dashboard: ${widget.dashboardId}`);
+      this.logger.log(
+        `Created widget: ${widget.id} for dashboard: ${widget.dashboardId}`
+      );
       return widget;
     } catch (error) {
       this.logger.error(`Failed to create widget: ${error.message}`, error);
@@ -72,7 +76,7 @@ export class DashboardWidgetRepository {
    */
   async findByDashboard(
     dashboardId: string,
-    includeHidden = false,
+    includeHidden = false
   ): Promise<DashboardWidget[]> {
     try {
       const whereCondition: Prisma.DashboardWidgetWhereInput = {
@@ -85,16 +89,18 @@ export class DashboardWidgetRepository {
 
       const widgets = await this.prisma.dashboardWidget.findMany({
         where: whereCondition,
-        orderBy: [
-          { position: 'asc' },
-          { createdAt: 'asc' },
-        ],
+        orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
       });
 
-      this.logger.log(`Retrieved ${widgets.length} widgets for dashboard: ${dashboardId}`);
+      this.logger.log(
+        `Retrieved ${widgets.length} widgets for dashboard: ${dashboardId}`
+      );
       return widgets;
     } catch (error) {
-      this.logger.error(`Failed to find widgets by dashboard: ${error.message}`, error);
+      this.logger.error(
+        `Failed to find widgets by dashboard: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -104,7 +110,7 @@ export class DashboardWidgetRepository {
    */
   async findByType(
     dashboardId: string,
-    widgetType: WidgetType,
+    widgetType: WidgetType
   ): Promise<DashboardWidget[]> {
     try {
       const widgets = await this.prisma.dashboardWidget.findMany({
@@ -113,16 +119,18 @@ export class DashboardWidgetRepository {
           widgetType,
           isVisible: true,
         },
-        orderBy: [
-          { position: 'asc' },
-          { createdAt: 'asc' },
-        ],
+        orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
       });
 
-      this.logger.log(`Retrieved ${widgets.length} ${widgetType} widgets for dashboard: ${dashboardId}`);
+      this.logger.log(
+        `Retrieved ${widgets.length} ${widgetType} widgets for dashboard: ${dashboardId}`
+      );
       return widgets;
     } catch (error) {
-      this.logger.error(`Failed to find widgets by type: ${error.message}`, error);
+      this.logger.error(
+        `Failed to find widgets by type: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -132,7 +140,7 @@ export class DashboardWidgetRepository {
    */
   async update(
     id: string,
-    data: Prisma.DashboardWidgetUpdateInput,
+    data: Prisma.DashboardWidgetUpdateInput
   ): Promise<DashboardWidget> {
     try {
       const widget = await this.prisma.dashboardWidget.update({
@@ -162,7 +170,7 @@ export class DashboardWidgetRepository {
    */
   async updatePosition(
     id: string,
-    position: Prisma.JsonValue,
+    position: Prisma.JsonValue
   ): Promise<DashboardWidget> {
     try {
       const widget = await this.prisma.dashboardWidget.update({
@@ -173,7 +181,10 @@ export class DashboardWidgetRepository {
       this.logger.log(`Updated widget position: ${widget.id}`);
       return widget;
     } catch (error) {
-      this.logger.error(`Failed to update widget position: ${error.message}`, error);
+      this.logger.error(
+        `Failed to update widget position: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -183,7 +194,7 @@ export class DashboardWidgetRepository {
    */
   async updateConfiguration(
     id: string,
-    configuration: Prisma.JsonValue,
+    configuration: Prisma.JsonValue
   ): Promise<DashboardWidget> {
     try {
       const widget = await this.prisma.dashboardWidget.update({
@@ -194,7 +205,10 @@ export class DashboardWidgetRepository {
       this.logger.log(`Updated widget configuration: ${widget.id}`);
       return widget;
     } catch (error) {
-      this.logger.error(`Failed to update widget configuration: ${error.message}`, error);
+      this.logger.error(
+        `Failed to update widget configuration: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -204,7 +218,7 @@ export class DashboardWidgetRepository {
    */
   async updateDataSource(
     id: string,
-    dataSource: Prisma.JsonValue,
+    dataSource: Prisma.JsonValue
   ): Promise<DashboardWidget> {
     try {
       const widget = await this.prisma.dashboardWidget.update({
@@ -215,7 +229,10 @@ export class DashboardWidgetRepository {
       this.logger.log(`Updated widget data source: ${widget.id}`);
       return widget;
     } catch (error) {
-      this.logger.error(`Failed to update widget data source: ${error.message}`, error);
+      this.logger.error(
+        `Failed to update widget data source: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -239,10 +256,15 @@ export class DashboardWidgetRepository {
         data: { isVisible: !currentWidget.isVisible },
       });
 
-      this.logger.log(`Toggled widget visibility: ${widget.id} to ${widget.isVisible}`);
+      this.logger.log(
+        `Toggled widget visibility: ${widget.id} to ${widget.isVisible}`
+      );
       return widget;
     } catch (error) {
-      this.logger.error(`Failed to toggle widget visibility: ${error.message}`, error);
+      this.logger.error(
+        `Failed to toggle widget visibility: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -267,7 +289,7 @@ export class DashboardWidgetRepository {
    * Bulk update widget positions
    */
   async bulkUpdatePositions(
-    updates: Array<{ id: string; position: Prisma.JsonValue }>,
+    updates: Array<{ id: string; position: Prisma.JsonValue }>
   ): Promise<void> {
     try {
       await this.prisma.$transaction(
@@ -275,13 +297,16 @@ export class DashboardWidgetRepository {
           this.prisma.dashboardWidget.update({
             where: { id },
             data: { position },
-          }),
-        ),
+          })
+        )
       );
 
       this.logger.log(`Bulk updated positions for ${updates.length} widgets`);
     } catch (error) {
-      this.logger.error(`Failed to bulk update widget positions: ${error.message}`, error);
+      this.logger.error(
+        `Failed to bulk update widget positions: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -310,10 +335,13 @@ export class DashboardWidgetRepository {
         }),
       ]);
 
-      const typeStats = byType.reduce((acc, item) => {
-        acc[item.widgetType] = item._count.widgetType;
-        return acc;
-      }, {} as Record<string, number>);
+      const typeStats = byType.reduce(
+        (acc, item) => {
+          acc[item.widgetType] = item._count.widgetType;
+          return acc;
+        },
+        {} as Record<string, number>
+      );
 
       const statistics = {
         total,
@@ -322,10 +350,15 @@ export class DashboardWidgetRepository {
         byType: typeStats,
       };
 
-      this.logger.log(`Retrieved widget statistics for dashboard: ${dashboardId}`);
+      this.logger.log(
+        `Retrieved widget statistics for dashboard: ${dashboardId}`
+      );
       return statistics;
     } catch (error) {
-      this.logger.error(`Failed to get widget statistics: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get widget statistics: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -356,7 +389,10 @@ export class DashboardWidgetRepository {
       this.logger.log(`Found ${widgets.length} widgets that need refresh`);
       return widgets;
     } catch (error) {
-      this.logger.error(`Failed to find widgets for refresh: ${error.message}`, error);
+      this.logger.error(
+        `Failed to find widgets for refresh: ${error.message}`,
+        error
+      );
       throw error;
     }
   }

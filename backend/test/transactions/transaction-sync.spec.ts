@@ -11,11 +11,11 @@ import { RetryStrategy } from '../../src/queue/strategies/retry.strategy';
 import { PrismaService } from '../../src/database/prisma.service';
 import { QUEUE_NAMES } from '../../src/queue/queue.module';
 
-import { 
-  MobileMoneyProvider, 
-  TransactionType, 
+import {
+  MobileMoneyProvider,
+  SyncStatus,
   TransactionStatus,
-  SyncStatus 
+  TransactionType,
 } from '@prisma/client';
 
 describe('Transaction Sync Service', () => {
@@ -133,27 +133,43 @@ describe('Transaction Sync Service', () => {
     }).compile();
 
     service = module.get<TransactionSyncService>(TransactionSyncService);
-    transactionRepository = module.get<TransactionRepository>(TransactionRepository);
+    transactionRepository = module.get<TransactionRepository>(
+      TransactionRepository
+    );
     airtelApiClient = module.get<AirtelMoneyApiClient>(AirtelMoneyApiClient);
-    tokenRepository = module.get<AirtelMoneyTokenRepository>(AirtelMoneyTokenRepository);
+    tokenRepository = module.get<AirtelMoneyTokenRepository>(
+      AirtelMoneyTokenRepository
+    );
     prismaService = module.get<PrismaService>(PrismaService);
   });
 
   describe('syncAccountTransactions', () => {
     beforeEach(() => {
-      jest.spyOn(prismaService.mobileMoneyAccount, 'findUnique').mockResolvedValue(mockAccount as any);
+      jest
+        .spyOn(prismaService.mobileMoneyAccount, 'findUnique')
+        .mockResolvedValue(mockAccount as any);
       jest.spyOn(tokenRepository, 'getTokens').mockResolvedValue(mockTokens);
       jest.spyOn(tokenRepository, 'areTokensExpired').mockResolvedValue(false);
-      jest.spyOn(airtelApiClient, 'getTransactions').mockResolvedValue(mockAirtelResponse as any);
-      jest.spyOn(transactionRepository, 'findByExternalId').mockResolvedValue(null);
-      jest.spyOn(transactionRepository, 'createMany').mockResolvedValue({ count: 2 });
-      jest.spyOn(transactionRepository, 'getLatestTransactionDate').mockResolvedValue(new Date('2023-11-30T10:00:00Z'));
+      jest
+        .spyOn(airtelApiClient, 'getTransactions')
+        .mockResolvedValue(mockAirtelResponse as any);
+      jest
+        .spyOn(transactionRepository, 'findByExternalId')
+        .mockResolvedValue(null);
+      jest
+        .spyOn(transactionRepository, 'createMany')
+        .mockResolvedValue({ count: 2 });
+      jest
+        .spyOn(transactionRepository, 'getLatestTransactionDate')
+        .mockResolvedValue(new Date('2023-11-30T10:00:00Z'));
       jest.spyOn(prismaService.syncJob, 'create').mockResolvedValue({
         id: 'sync-job-1',
         status: SyncStatus.RUNNING,
       } as any);
       jest.spyOn(prismaService.syncJob, 'update').mockResolvedValue({} as any);
-      jest.spyOn(prismaService.mobileMoneyAccount, 'update').mockResolvedValue({} as any);
+      jest
+        .spyOn(prismaService.mobileMoneyAccount, 'update')
+        .mockResolvedValue({} as any);
     });
 
     it('should successfully sync new transactions', async () => {
@@ -163,7 +179,7 @@ describe('Transaction Sync Service', () => {
       expect(result.newTransactions).toBe(2);
       expect(result.totalProcessed).toBe(2);
       expect(result.errors).toHaveLength(0);
-      
+
       expect(airtelApiClient.getTransactions).toHaveBeenCalledWith(
         mockTokens.accessToken,
         expect.objectContaining({
@@ -171,7 +187,7 @@ describe('Transaction Sync Service', () => {
           offset: 0,
         })
       );
-      
+
       expect(transactionRepository.createMany).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({
@@ -198,7 +214,8 @@ describe('Transaction Sync Service', () => {
         description: 'Old description',
       };
 
-      jest.spyOn(transactionRepository, 'findByExternalId')
+      jest
+        .spyOn(transactionRepository, 'findByExternalId')
         .mockResolvedValueOnce(existingTransaction as any)
         .mockResolvedValueOnce(null);
 
@@ -232,7 +249,9 @@ describe('Transaction Sync Service', () => {
       const result = await service.syncAccountTransactions('account-1');
 
       expect(result.success).toBe(true);
-      expect(airtelApiClient.refreshToken).toHaveBeenCalledWith(mockTokens.refreshToken);
+      expect(airtelApiClient.refreshToken).toHaveBeenCalledWith(
+        mockTokens.refreshToken
+      );
       expect(tokenRepository.updateTokens).toHaveBeenCalledWith(
         'account-1',
         expect.objectContaining({
@@ -263,11 +282,14 @@ describe('Transaction Sync Service', () => {
         },
       };
 
-      jest.spyOn(airtelApiClient, 'getTransactions')
+      jest
+        .spyOn(airtelApiClient, 'getTransactions')
         .mockResolvedValueOnce(firstPageResponse as any)
         .mockResolvedValueOnce(secondPageResponse as any);
 
-      const result = await service.syncAccountTransactions('account-1', { limit: 1 });
+      const result = await service.syncAccountTransactions('account-1', {
+        limit: 1,
+      });
 
       expect(result.success).toBe(true);
       expect(result.totalProcessed).toBe(2);
@@ -275,7 +297,9 @@ describe('Transaction Sync Service', () => {
     });
 
     it('should handle API errors gracefully', async () => {
-      jest.spyOn(airtelApiClient, 'getTransactions').mockRejectedValue(new Error('API Error'));
+      jest
+        .spyOn(airtelApiClient, 'getTransactions')
+        .mockRejectedValue(new Error('API Error'));
 
       const result = await service.syncAccountTransactions('account-1');
 
@@ -286,30 +310,42 @@ describe('Transaction Sync Service', () => {
 
     it('should handle token refresh failures', async () => {
       jest.spyOn(tokenRepository, 'areTokensExpired').mockResolvedValue(true);
-      jest.spyOn(airtelApiClient, 'refreshToken').mockRejectedValue(new Error('Token refresh failed'));
+      jest
+        .spyOn(airtelApiClient, 'refreshToken')
+        .mockRejectedValue(new Error('Token refresh failed'));
 
-      await expect(service.syncAccountTransactions('account-1')).rejects.toThrow('Failed to refresh expired token');
+      await expect(
+        service.syncAccountTransactions('account-1')
+      ).rejects.toThrow('Failed to refresh expired token');
     });
 
     it('should handle missing account', async () => {
-      jest.spyOn(prismaService.mobileMoneyAccount, 'findUnique').mockResolvedValue(null);
+      jest
+        .spyOn(prismaService.mobileMoneyAccount, 'findUnique')
+        .mockResolvedValue(null);
 
-      await expect(service.syncAccountTransactions('invalid-account')).rejects.toThrow('Account invalid-account not found or not linked');
+      await expect(
+        service.syncAccountTransactions('invalid-account')
+      ).rejects.toThrow('Account invalid-account not found or not linked');
     });
 
     it('should handle missing tokens', async () => {
       jest.spyOn(tokenRepository, 'getTokens').mockResolvedValue(null);
 
-      await expect(service.syncAccountTransactions('account-1')).rejects.toThrow('No valid tokens found for account');
+      await expect(
+        service.syncAccountTransactions('account-1')
+      ).rejects.toThrow('No valid tokens found for account');
     });
   });
 
   describe('syncAllAccountsForOrganization', () => {
     beforeEach(() => {
-      jest.spyOn(prismaService.mobileMoneyAccount, 'findMany').mockResolvedValue([
-        { ...mockAccount, id: 'account-1' },
-        { ...mockAccount, id: 'account-2' },
-      ] as any);
+      jest
+        .spyOn(prismaService.mobileMoneyAccount, 'findMany')
+        .mockResolvedValue([
+          { ...mockAccount, id: 'account-1' },
+          { ...mockAccount, id: 'account-2' },
+        ] as any);
     });
 
     it('should sync all accounts in organization', async () => {
@@ -332,7 +368,8 @@ describe('Transaction Sync Service', () => {
     });
 
     it('should handle individual account failures', async () => {
-      jest.spyOn(service, 'syncAccountTransactions')
+      jest
+        .spyOn(service, 'syncAccountTransactions')
         .mockResolvedValueOnce({
           accountId: 'account-1',
           success: true,
@@ -391,11 +428,20 @@ describe('Transaction Sync Service', () => {
 
     it('should correctly map Airtel transaction statuses', async () => {
       const testCases = [
-        { airtelStatus: 'COMPLETED', expectedStatus: TransactionStatus.COMPLETED },
+        {
+          airtelStatus: 'COMPLETED',
+          expectedStatus: TransactionStatus.COMPLETED,
+        },
         { airtelStatus: 'PENDING', expectedStatus: TransactionStatus.PENDING },
         { airtelStatus: 'FAILED', expectedStatus: TransactionStatus.FAILED },
-        { airtelStatus: 'CANCELLED', expectedStatus: TransactionStatus.CANCELLED },
-        { airtelStatus: 'REVERSED', expectedStatus: TransactionStatus.REVERSED },
+        {
+          airtelStatus: 'CANCELLED',
+          expectedStatus: TransactionStatus.CANCELLED,
+        },
+        {
+          airtelStatus: 'REVERSED',
+          expectedStatus: TransactionStatus.REVERSED,
+        },
         { airtelStatus: 'UNKNOWN', expectedStatus: TransactionStatus.PENDING },
       ];
 

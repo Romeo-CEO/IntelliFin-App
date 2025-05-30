@@ -1,5 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { StockMovement, StockMovementType, StockMovementSourceType, Prisma } from '@prisma/client';
+import {
+  Prisma,
+  StockMovement,
+  StockMovementSourceType,
+  StockMovementType,
+} from '@prisma/client';
 import { TenantDatabaseProvider } from '../../modules/tenants/providers/tenant-database.provider';
 
 export interface CreateStockMovementData {
@@ -39,16 +44,14 @@ export interface StockMovementFilters {
 export class StockMovementRepository {
   private readonly logger = new Logger(StockMovementRepository.name);
 
-  constructor(
-    private readonly tenantDb: TenantDatabaseProvider,
-  ) {}
+  constructor(private readonly tenantDb: TenantDatabaseProvider) {}
 
   /**
    * Create a new stock movement
    */
   async create(data: CreateStockMovementData): Promise<StockMovement> {
     try {
-      return await this.tenantDb.executeInTenantContext(async (prisma) => {
+      return await this.tenantDb.executeInTenantContext(async prisma => {
         return await prisma.stockMovement.create({
           data: {
             organizationId: data.organizationId,
@@ -74,7 +77,10 @@ export class StockMovementRepository {
         });
       });
     } catch (error) {
-      this.logger.error(`Failed to create stock movement: ${error.message}`, error);
+      this.logger.error(
+        `Failed to create stock movement: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -82,9 +88,12 @@ export class StockMovementRepository {
   /**
    * Find stock movement by ID
    */
-  async findById(id: string, organizationId: string): Promise<StockMovement | null> {
+  async findById(
+    id: string,
+    organizationId: string
+  ): Promise<StockMovement | null> {
     try {
-      return await this.tenantDb.executeInTenantContext(async (prisma) => {
+      return await this.tenantDb.executeInTenantContext(async prisma => {
         return await prisma.stockMovement.findFirst({
           where: {
             id,
@@ -103,7 +112,10 @@ export class StockMovementRepository {
         });
       });
     } catch (error) {
-      this.logger.error(`Failed to find stock movement by ID: ${error.message}`, error);
+      this.logger.error(
+        `Failed to find stock movement by ID: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -115,10 +127,10 @@ export class StockMovementRepository {
     filters: StockMovementFilters,
     orderBy?: Prisma.StockMovementOrderByWithRelationInput,
     skip?: number,
-    take?: number,
+    take?: number
   ): Promise<StockMovement[]> {
     try {
-      return await this.tenantDb.executeInTenantContext(async (prisma) => {
+      return await this.tenantDb.executeInTenantContext(async prisma => {
         const where = this.buildWhereClause(filters);
 
         return await prisma.stockMovement.findMany({
@@ -140,7 +152,10 @@ export class StockMovementRepository {
         });
       });
     } catch (error) {
-      this.logger.error(`Failed to find stock movements: ${error.message}`, error);
+      this.logger.error(
+        `Failed to find stock movements: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -150,12 +165,15 @@ export class StockMovementRepository {
    */
   async count(filters: StockMovementFilters): Promise<number> {
     try {
-      return await this.tenantDb.executeInTenantContext(async (prisma) => {
+      return await this.tenantDb.executeInTenantContext(async prisma => {
         const where = this.buildWhereClause(filters);
         return await prisma.stockMovement.count({ where });
       });
     } catch (error) {
-      this.logger.error(`Failed to count stock movements: ${error.message}`, error);
+      this.logger.error(
+        `Failed to count stock movements: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -168,10 +186,10 @@ export class StockMovementRepository {
     organizationId: string,
     startDate?: Date,
     endDate?: Date,
-    limit = 50,
+    limit = 50
   ): Promise<StockMovement[]> {
     try {
-      return await this.tenantDb.executeInTenantContext(async (prisma) => {
+      return await this.tenantDb.executeInTenantContext(async prisma => {
         const where: Prisma.StockMovementWhereInput = {
           organizationId,
           productId,
@@ -200,7 +218,10 @@ export class StockMovementRepository {
         });
       });
     } catch (error) {
-      this.logger.error(`Failed to get product movements: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get product movements: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -211,10 +232,10 @@ export class StockMovementRepository {
   async getMovementSummary(
     organizationId: string,
     startDate?: Date,
-    endDate?: Date,
+    endDate?: Date
   ): Promise<any> {
     try {
-      return await this.tenantDb.executeInTenantContext(async (prisma) => {
+      return await this.tenantDb.executeInTenantContext(async prisma => {
         const where: Prisma.StockMovementWhereInput = {
           organizationId,
         };
@@ -235,27 +256,27 @@ export class StockMovementRepository {
         ] = await Promise.all([
           // Total movements
           prisma.stockMovement.count({ where }),
-          
+
           // IN movements
           prisma.stockMovement.count({
             where: { ...where, movementType: 'IN' },
           }),
-          
+
           // OUT movements
           prisma.stockMovement.count({
             where: { ...where, movementType: 'OUT' },
           }),
-          
+
           // Adjustments
           prisma.stockMovement.count({
             where: { ...where, movementType: 'ADJUSTMENT' },
           }),
-          
+
           // Transfers
           prisma.stockMovement.count({
             where: { ...where, movementType: 'TRANSFER' },
           }),
-          
+
           // Total value
           prisma.stockMovement.aggregate({
             where: {
@@ -278,7 +299,10 @@ export class StockMovementRepository {
         };
       });
     } catch (error) {
-      this.logger.error(`Failed to get movement summary: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get movement summary: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -286,9 +310,12 @@ export class StockMovementRepository {
   /**
    * Get recent stock movements
    */
-  async getRecentMovements(organizationId: string, limit = 20): Promise<StockMovement[]> {
+  async getRecentMovements(
+    organizationId: string,
+    limit = 20
+  ): Promise<StockMovement[]> {
     try {
-      return await this.tenantDb.executeInTenantContext(async (prisma) => {
+      return await this.tenantDb.executeInTenantContext(async prisma => {
         return await prisma.stockMovement.findMany({
           where: { organizationId },
           orderBy: { createdAt: 'desc' },
@@ -306,7 +333,10 @@ export class StockMovementRepository {
         });
       });
     } catch (error) {
-      this.logger.error(`Failed to get recent movements: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get recent movements: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -317,10 +347,10 @@ export class StockMovementRepository {
   async getMovementsBySource(
     organizationId: string,
     sourceType: StockMovementSourceType,
-    sourceId: string,
+    sourceId: string
   ): Promise<StockMovement[]> {
     try {
-      return await this.tenantDb.executeInTenantContext(async (prisma) => {
+      return await this.tenantDb.executeInTenantContext(async prisma => {
         return await prisma.stockMovement.findMany({
           where: {
             organizationId,
@@ -341,7 +371,10 @@ export class StockMovementRepository {
         });
       });
     } catch (error) {
-      this.logger.error(`Failed to get movements by source: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get movements by source: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -349,9 +382,12 @@ export class StockMovementRepository {
   /**
    * Delete old stock movements
    */
-  async deleteOldMovements(organizationId: string, daysOld = 365): Promise<number> {
+  async deleteOldMovements(
+    organizationId: string,
+    daysOld = 365
+  ): Promise<number> {
     try {
-      return await this.tenantDb.executeInTenantContext(async (prisma) => {
+      return await this.tenantDb.executeInTenantContext(async prisma => {
         const cutoffDate = new Date();
         cutoffDate.setDate(cutoffDate.getDate() - daysOld);
 
@@ -367,7 +403,10 @@ export class StockMovementRepository {
         return result.count;
       });
     } catch (error) {
-      this.logger.error(`Failed to delete old movements: ${error.message}`, error);
+      this.logger.error(
+        `Failed to delete old movements: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -377,7 +416,7 @@ export class StockMovementRepository {
    */
   async getMovementStats(organizationId: string, days = 30): Promise<any> {
     try {
-      return await this.tenantDb.executeInTenantContext(async (prisma) => {
+      return await this.tenantDb.executeInTenantContext(async prisma => {
         const startDate = new Date();
         startDate.setDate(startDate.getDate() - days);
 
@@ -397,22 +436,25 @@ export class StockMovementRepository {
         });
 
         // Group by movement type
-        const stats = movements.reduce((acc, movement) => {
-          const type = movement.movementType;
-          if (!acc[type]) {
-            acc[type] = {
-              count: 0,
-              totalQuantity: 0,
-              totalValue: 0,
-            };
-          }
-          
-          acc[type].count++;
-          acc[type].totalQuantity += Number(movement.quantity);
-          acc[type].totalValue += Number(movement.totalCost || 0);
-          
-          return acc;
-        }, {} as Record<string, any>);
+        const stats = movements.reduce(
+          (acc, movement) => {
+            const type = movement.movementType;
+            if (!acc[type]) {
+              acc[type] = {
+                count: 0,
+                totalQuantity: 0,
+                totalValue: 0,
+              };
+            }
+
+            acc[type].count++;
+            acc[type].totalQuantity += Number(movement.quantity);
+            acc[type].totalValue += Number(movement.totalCost || 0);
+
+            return acc;
+          },
+          {} as Record<string, any>
+        );
 
         return {
           period: `${days} days`,
@@ -421,7 +463,10 @@ export class StockMovementRepository {
         };
       });
     } catch (error) {
-      this.logger.error(`Failed to get movement stats: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get movement stats: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -429,7 +474,9 @@ export class StockMovementRepository {
   /**
    * Build where clause for filtering
    */
-  private buildWhereClause(filters: StockMovementFilters): Prisma.StockMovementWhereInput {
+  private buildWhereClause(
+    filters: StockMovementFilters
+  ): Prisma.StockMovementWhereInput {
     const where: Prisma.StockMovementWhereInput = {
       organizationId: filters.organizationId,
     };

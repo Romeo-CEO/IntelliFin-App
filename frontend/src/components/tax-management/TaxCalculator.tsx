@@ -1,4 +1,8 @@
+import { Calculator, Info, Copy, Check } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
+
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -6,7 +10,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -17,10 +20,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
-import { Calculator, Info, Copy, Check } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
 import { taxManagementApi, TaxCalculationResult, TaxType } from '@/lib/api/tax-management';
+
+import { useToast } from '@/hooks/use-toast';
+
 
 export function TaxCalculator() {
   const [taxTypes, setTaxTypes] = useState<TaxType[]>([]);

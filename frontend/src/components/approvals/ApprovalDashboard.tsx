@@ -1,36 +1,29 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-// import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Clock,
-  CheckCircle,
   XCircle,
   AlertTriangle,
   Search,
-  Filter,
   TrendingUp,
-  Users,
-  Calendar,
-  DollarSign,
 } from 'lucide-react';
+import React, { useState } from 'react';
+
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+// import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePendingApprovals, useApprovalStats, useApprovalWorkflow } from '@/hooks/useApprovals';
-import { ApprovalRequestStatus, ApprovalPriority } from '@/types/approval';
 import { formatCurrency } from '@/lib/utils';
-import { PendingApprovalsList } from './PendingApprovalsList';
+import { ApprovalRequestStatus, ApprovalPriority } from '@/types/approval';
+
 import { ApprovalRequestsList } from './ApprovalRequestsList';
 import { ApprovalStatsChart } from './ApprovalStatsChart';
+import { PendingApprovalsList } from './PendingApprovalsList';
 
-interface ApprovalDashboardProps {
-  userRole: string;
-}
-
-export function ApprovalDashboard({ userRole }: ApprovalDashboardProps) {
+export function ApprovalDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [priorityFilter, setPriorityFilter] = useState<string>('ALL');

@@ -1,13 +1,16 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
-import { DateRange, AnalyticsConfiguration } from '../interfaces/analytics-data.interface';
+import {
+  AnalyticsConfiguration,
+  DateRange,
+} from '../interfaces/analytics-data.interface';
 
 /**
  * Base Analytics Service
- * 
+ *
  * Provides common utilities and functionality for all analytics services.
  * Handles multi-tenant data isolation, date calculations, and Zambian business context.
- * 
+ *
  * Features:
  * - Multi-tenant data isolation
  * - Date range utilities for Zambian business cycles
@@ -37,48 +40,48 @@ export class BaseAnalyticsService {
       // Current periods
       thisMonth: {
         startDate: new Date(currentYear, currentMonth, 1),
-        endDate: new Date(currentYear, currentMonth + 1, 0)
+        endDate: new Date(currentYear, currentMonth + 1, 0),
       },
       thisQuarter: this.getCurrentQuarter(),
       thisYear: {
         startDate: new Date(currentYear, 0, 1),
-        endDate: new Date(currentYear, 11, 31)
+        endDate: new Date(currentYear, 11, 31),
       },
 
       // Previous periods
       lastMonth: {
         startDate: new Date(currentYear, currentMonth - 1, 1),
-        endDate: new Date(currentYear, currentMonth, 0)
+        endDate: new Date(currentYear, currentMonth, 0),
       },
       lastQuarter: this.getPreviousQuarter(),
       lastYear: {
         startDate: new Date(currentYear - 1, 0, 1),
-        endDate: new Date(currentYear - 1, 11, 31)
+        endDate: new Date(currentYear - 1, 11, 31),
       },
 
       // Rolling periods
       last30Days: {
         startDate: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000),
-        endDate: now
+        endDate: now,
       },
       last90Days: {
         startDate: new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000),
-        endDate: now
+        endDate: now,
       },
       last12Months: {
         startDate: new Date(currentYear - 1, currentMonth, 1),
-        endDate: now
+        endDate: now,
       },
 
       // Zambian fiscal year (January to December)
       fiscalYear: {
         startDate: new Date(currentYear, 0, 1),
-        endDate: new Date(currentYear, 11, 31)
+        endDate: new Date(currentYear, 11, 31),
       },
       previousFiscalYear: {
         startDate: new Date(currentYear - 1, 0, 1),
-        endDate: new Date(currentYear - 1, 11, 31)
-      }
+        endDate: new Date(currentYear - 1, 11, 31),
+      },
     };
   }
 
@@ -93,7 +96,7 @@ export class BaseAnalyticsService {
 
     return {
       startDate: new Date(currentYear, quarter * 3, 1),
-      endDate: new Date(currentYear, (quarter + 1) * 3, 0)
+      endDate: new Date(currentYear, (quarter + 1) * 3, 0),
     };
   }
 
@@ -104,13 +107,13 @@ export class BaseAnalyticsService {
     const current = this.getCurrentQuarter();
     const prevQuarterStart = new Date(current.startDate);
     prevQuarterStart.setMonth(prevQuarterStart.getMonth() - 3);
-    
+
     const prevQuarterEnd = new Date(current.startDate);
     prevQuarterEnd.setDate(prevQuarterEnd.getDate() - 1);
 
     return {
       startDate: prevQuarterStart,
-      endDate: prevQuarterEnd
+      endDate: prevQuarterEnd,
     };
   }
 
@@ -140,11 +143,19 @@ export class BaseAnalyticsService {
           current.setDate(current.getDate() + 7);
           break;
         case 'MONTH':
-          periodEnd = new Date(current.getFullYear(), current.getMonth() + 1, 0);
+          periodEnd = new Date(
+            current.getFullYear(),
+            current.getMonth() + 1,
+            0
+          );
           current.setMonth(current.getMonth() + 1);
           break;
         case 'QUARTER':
-          periodEnd = new Date(current.getFullYear(), current.getMonth() + 3, 0);
+          periodEnd = new Date(
+            current.getFullYear(),
+            current.getMonth() + 3,
+            0
+          );
           current.setMonth(current.getMonth() + 3);
           break;
       }
@@ -196,7 +207,7 @@ export class BaseAnalyticsService {
    */
   calculateMovingAverage(values: number[], window: number): number[] {
     const result: number[] = [];
-    
+
     for (let i = 0; i < values.length; i++) {
       const start = Math.max(0, i - window + 1);
       const subset = values.slice(start, i + 1);
@@ -213,7 +224,8 @@ export class BaseAnalyticsService {
   calculateStandardDeviation(values: number[]): number {
     const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
     const squaredDifferences = values.map(val => Math.pow(val - mean, 2));
-    const variance = squaredDifferences.reduce((sum, val) => sum + val, 0) / values.length;
+    const variance =
+      squaredDifferences.reduce((sum, val) => sum + val, 0) / values.length;
     return Math.sqrt(variance);
   }
 
@@ -233,7 +245,9 @@ export class BaseAnalyticsService {
     const sumYY = y.reduce((sum, val) => sum + val * val, 0);
 
     const numerator = n * sumXY - sumX * sumY;
-    const denominator = Math.sqrt((n * sumXX - sumX * sumX) * (n * sumYY - sumY * sumY));
+    const denominator = Math.sqrt(
+      (n * sumXX - sumX * sumX) * (n * sumYY - sumY * sumY)
+    );
 
     return denominator === 0 ? 0 : numerator / denominator;
   }
@@ -250,7 +264,7 @@ export class BaseAnalyticsService {
       style: 'currency',
       currency: 'ZMW',
       minimumFractionDigits: 2,
-      maximumFractionDigits: 2
+      maximumFractionDigits: 2,
     }).format(amount);
   }
 
@@ -285,13 +299,14 @@ export class BaseAnalyticsService {
     analyticsType: string
   ): Promise<AnalyticsConfiguration | null> {
     try {
-      const config = await this.databaseService.analyticsConfiguration.findFirst({
-        where: {
-          organizationId,
-          analyticsType,
-          isActive: true
-        }
-      });
+      const config =
+        await this.databaseService.analyticsConfiguration.findFirst({
+          where: {
+            organizationId,
+            analyticsType,
+            isActive: true,
+          },
+        });
 
       if (!config) {
         return null;
@@ -302,10 +317,12 @@ export class BaseAnalyticsService {
         type: config.analyticsType as any,
         settings: config.configuration as Record<string, any>,
         isActive: config.isActive,
-        lastUpdated: config.updatedAt
+        lastUpdated: config.updatedAt,
       };
     } catch (error) {
-      this.logger.error(`Failed to get analytics configuration: ${error.message}`);
+      this.logger.error(
+        `Failed to get analytics configuration: ${error.message}`
+      );
       return null;
     }
   }
@@ -313,28 +330,32 @@ export class BaseAnalyticsService {
   /**
    * Save analytics configuration
    */
-  async saveAnalyticsConfiguration(config: AnalyticsConfiguration): Promise<void> {
+  async saveAnalyticsConfiguration(
+    config: AnalyticsConfiguration
+  ): Promise<void> {
     try {
       await this.databaseService.analyticsConfiguration.upsert({
         where: {
           organizationId_analyticsType: {
             organizationId: config.organizationId,
-            analyticsType: config.type
-          }
+            analyticsType: config.type,
+          },
         },
         update: {
           configuration: config.settings,
-          isActive: config.isActive
+          isActive: config.isActive,
         },
         create: {
           organizationId: config.organizationId,
           analyticsType: config.type,
           configuration: config.settings,
-          isActive: config.isActive
-        }
+          isActive: config.isActive,
+        },
       });
     } catch (error) {
-      this.logger.error(`Failed to save analytics configuration: ${error.message}`);
+      this.logger.error(
+        `Failed to save analytics configuration: ${error.message}`
+      );
       throw error;
     }
   }
@@ -356,11 +377,13 @@ export class BaseAnalyticsService {
   async validateOrganizationAccess(organizationId: string): Promise<boolean> {
     try {
       const organization = await this.databaseService.organization.findUnique({
-        where: { id: organizationId }
+        where: { id: organizationId },
       });
       return !!organization;
     } catch (error) {
-      this.logger.error(`Failed to validate organization access: ${error.message}`);
+      this.logger.error(
+        `Failed to validate organization access: ${error.message}`
+      );
       return false;
     }
   }
@@ -376,7 +399,7 @@ export class BaseAnalyticsService {
     return {
       minimumInvoices: 5,
       minimumExpenses: 10,
-      minimumPeriodDays: 30
+      minimumPeriodDays: 30,
     };
   }
 
@@ -402,14 +425,18 @@ export class BaseAnalyticsService {
           organizationId,
           issueDate: {
             gte: dateRange.startDate,
-            lte: dateRange.endDate
-          }
-        }
+            lte: dateRange.endDate,
+          },
+        },
       });
 
       if (invoiceCount < requirements.minimumInvoices) {
-        issues.push(`Insufficient invoices (${invoiceCount}/${requirements.minimumInvoices})`);
-        recommendations.push('Create more invoices to improve forecast accuracy');
+        issues.push(
+          `Insufficient invoices (${invoiceCount}/${requirements.minimumInvoices})`
+        );
+        recommendations.push(
+          'Create more invoices to improve forecast accuracy'
+        );
       }
 
       // Check expense count
@@ -418,37 +445,42 @@ export class BaseAnalyticsService {
           organizationId,
           expenseDate: {
             gte: dateRange.startDate,
-            lte: dateRange.endDate
-          }
-        }
+            lte: dateRange.endDate,
+          },
+        },
       });
 
       if (expenseCount < requirements.minimumExpenses) {
-        issues.push(`Insufficient expenses (${expenseCount}/${requirements.minimumExpenses})`);
+        issues.push(
+          `Insufficient expenses (${expenseCount}/${requirements.minimumExpenses})`
+        );
         recommendations.push('Record more expenses for better trend analysis');
       }
 
       // Check period length
       const periodDays = Math.floor(
-        (dateRange.endDate.getTime() - dateRange.startDate.getTime()) / (1000 * 60 * 60 * 24)
+        (dateRange.endDate.getTime() - dateRange.startDate.getTime()) /
+          (1000 * 60 * 60 * 24)
       );
 
       if (periodDays < requirements.minimumPeriodDays) {
-        issues.push(`Period too short (${periodDays}/${requirements.minimumPeriodDays} days)`);
+        issues.push(
+          `Period too short (${periodDays}/${requirements.minimumPeriodDays} days)`
+        );
         recommendations.push('Use a longer period for more reliable analytics');
       }
 
       return {
         sufficient: issues.length === 0,
         issues,
-        recommendations
+        recommendations,
       };
     } catch (error) {
       this.logger.error(`Failed to check data sufficiency: ${error.message}`);
       return {
         sufficient: false,
         issues: ['Failed to validate data sufficiency'],
-        recommendations: ['Please try again later']
+        recommendations: ['Please try again later'],
       };
     }
   }

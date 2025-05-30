@@ -1,5 +1,6 @@
-import { apiClient } from './api.service';
 import { Dashboard, DashboardWidget, CreateDashboardData, UpdateDashboardData, CreateWidgetData, UpdateWidgetData } from '../types/dashboard.types';
+
+import { apiClient } from './api.service';
 
 /**
  * Dashboard service for API communication

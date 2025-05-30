@@ -1,6 +1,5 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
 import {
   BarChart3,
   PieChart,
@@ -12,15 +11,17 @@ import {
   Building2,
   RefreshCw
 } from 'lucide-react';
-import { AccountingProvider } from '../../../../contexts/AccountingContext';
-import { DashboardLayout } from '../../../../components/layout/DashboardLayout';
-import { accountingService, TrialBalance, BalanceSheet, IncomeStatement } from '../../../../services/accounting.service';
-import { Button } from '../../../../components/ui/button';
-import { Input } from '../../../../components/ui/input';
-import { Card } from '../../../../components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../../components/ui/tabs';
-import { LoadingSpinner } from '../../../../components/common/LoadingSpinner';
+import React, { useState, useEffect } from 'react';
+
 import { ErrorMessage } from '../../../../components/common/ErrorMessage';
+import { LoadingSpinner } from '../../../../components/common/LoadingSpinner';
+import { DashboardLayout } from '../../../../components/layout/DashboardLayout';
+import { Button } from '../../../../components/ui/button';
+import { Card } from '../../../../components/ui/card';
+import { Input } from '../../../../components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../../components/ui/tabs';
+import { AccountingProvider } from '../../../../contexts/AccountingContext';
+import { accountingService, TrialBalance, BalanceSheet, IncomeStatement } from '../../../../services/accounting.service';
 
 const FinancialReportsContent: React.FC = () => {
   const [trialBalance, setTrialBalance] = useState<TrialBalance | null>(null);

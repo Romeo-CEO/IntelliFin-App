@@ -22,7 +22,7 @@ export class ExpenseInfoDto {
 
   @ApiProperty({
     description: 'Expense amount',
-    example: 150.50,
+    example: 150.5,
   })
   amount: number;
 
@@ -69,25 +69,25 @@ export class OcrDataDto {
 
   @ApiPropertyOptional({
     description: 'Extracted total amount',
-    example: 150.50,
+    example: 150.5,
   })
   total?: number;
 
   @ApiPropertyOptional({
     description: 'Extracted subtotal',
-    example: 130.00,
+    example: 130.0,
   })
   subtotal?: number;
 
   @ApiPropertyOptional({
     description: 'Extracted tax amount',
-    example: 20.50,
+    example: 20.5,
   })
   tax?: number;
 
   @ApiPropertyOptional({
     description: 'Extracted VAT amount',
-    example: 20.50,
+    example: 20.5,
   })
   vatAmount?: number;
 
@@ -169,7 +169,8 @@ export class ReceiptResponseDto {
 
   @ApiPropertyOptional({
     description: 'Thumbnail storage path',
-    example: 'receipts/org123/2024/01/expense456/thumbnails/thumb_receipt_001.jpg',
+    example:
+      'receipts/org123/2024/01/expense456/thumbnails/thumb_receipt_001.jpg',
   })
   thumbnailPath?: string;
 

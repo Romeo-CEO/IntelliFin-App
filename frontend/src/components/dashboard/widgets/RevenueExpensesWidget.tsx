@@ -1,7 +1,5 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -11,10 +9,13 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
-import { DashboardWidget } from '../../../types/dashboard.types';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Bar } from 'react-chartjs-2';
+
 import { analyticsService, RevenueExpensesAnalytics, AnalyticsQuery } from '../../../services/analytics.service';
-import { LoadingSpinner } from '../../common/LoadingSpinner';
+import { DashboardWidget } from '../../../types/dashboard.types';
 import { ErrorMessage } from '../../common/ErrorMessage';
+import { LoadingSpinner } from '../../common/LoadingSpinner';
 
 // Register Chart.js components
 ChartJS.register(

@@ -1,24 +1,24 @@
 import {
+  Body,
   Controller,
+  Delete,
   Get,
+  HttpStatus,
+  Param,
+  ParseUUIDPipe,
   Post,
   Put,
-  Delete,
-  Body,
-  Param,
   Query,
-  UseGuards,
   Request,
-  HttpStatus,
-  ParseUUIDPipe,
+  UseGuards,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
   ApiBearerAuth,
+  ApiOperation,
   ApiParam,
   ApiQuery,
+  ApiResponse,
+  ApiTags,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -27,13 +27,13 @@ import { UserRole } from '@prisma/client';
 import { ApprovalService } from './approval.service';
 import { ApprovalRulesEngine } from './approval-rules.engine';
 import {
-  CreateApprovalRequestDto,
   ApprovalDecisionDto,
-  BulkApprovalDto,
   ApprovalRequestQueryDto,
+  ApprovalStatsResponseDto,
+  BulkApprovalDto,
+  CreateApprovalRequestDto,
   CreateApprovalRuleDto,
   UpdateApprovalRuleDto,
-  ApprovalStatsResponseDto,
 } from './dto/approval.dto';
 
 @ApiTags('Approval Workflow')
@@ -43,7 +43,7 @@ import {
 export class ApprovalController {
   constructor(
     private readonly approvalService: ApprovalService,
-    private readonly rulesEngine: ApprovalRulesEngine,
+    private readonly rulesEngine: ApprovalRulesEngine
   ) {}
 
   // ============================================================================
@@ -63,13 +63,15 @@ export class ApprovalController {
   @Roles(UserRole.USER, UserRole.MANAGER, UserRole.ADMIN)
   async submitForApproval(
     @Body() createApprovalRequestDto: CreateApprovalRequestDto,
-    @Request() req: any,
+    @Request() { user }: { user: { sub: string, organizationId: string } }
   ) {
-    const approvalRequest = await this.approvalService.submitExpenseForApproval({
-      ...createApprovalRequestDto,
-      organizationId: req.user.organizationId,
-      requesterId: req.user.sub,
-    });
+    const approvalRequest = await this.approvalService.submitExpenseForApproval(
+      {
+        ...createApprovalRequestDto,
+        organizationId: user.organizationId,
+        requesterId: user.sub,
+      }
+    );
 
     return {
       success: true,
@@ -87,13 +89,13 @@ export class ApprovalController {
   @Roles(UserRole.MANAGER, UserRole.ADMIN)
   async getApprovalRequests(
     @Query() query: ApprovalRequestQueryDto,
-    @Request() req: any,
+    @Request() req: any
   ) {
     const result = await this.approvalService.getApprovalRequests(
       req.user.organizationId,
       query,
       query.page,
-      query.limit,
+      query.limit
     );
 
     return {
@@ -116,8 +118,7 @@ export class ApprovalController {
   })
   @Roles(UserRole.USER, UserRole.MANAGER, UserRole.ADMIN)
   async getApprovalRequest(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Request() req: any,
+    @Param('id', ParseUUIDPipe) id: string
   ) {
     const approvalRequest = await this.approvalService.getApprovalRequest(id);
 
@@ -139,12 +140,12 @@ export class ApprovalController {
   async cancelApprovalRequest(
     @Param('id', ParseUUIDPipe) id: string,
     @Body('reason') reason: string,
-    @Request() req: any,
+    @Request() { user }: { user: { sub: string } }
   ) {
     const approvalRequest = await this.approvalService.cancelApprovalRequest(
       id,
-      req.user.sub,
-      reason,
+      user.sub,
+      reason
     );
 
     return {
@@ -175,11 +176,11 @@ export class ApprovalController {
   @Roles(UserRole.MANAGER, UserRole.ADMIN)
   async makeApprovalDecision(
     @Body() approvalDecisionDto: ApprovalDecisionDto,
-    @Request() req: any,
+    @Request() { user }: { user: { sub: string } }
   ) {
     const task = await this.approvalService.processApprovalDecision({
       ...approvalDecisionDto,
-      approverId: req.user.sub,
+      approverId: user.sub,
     });
 
     return {
@@ -198,11 +199,11 @@ export class ApprovalController {
   @Roles(UserRole.MANAGER, UserRole.ADMIN)
   async makeBulkApprovalDecision(
     @Body() bulkApprovalDto: BulkApprovalDto,
-    @Request() req: any,
+    @Request() { user }: { user: { sub: string } }
   ) {
     const tasks = await this.approvalService.processBulkApproval({
       ...bulkApprovalDto,
-      approverId: req.user.sub,
+      approverId: user.sub,
     });
 
     return {
@@ -228,13 +229,13 @@ export class ApprovalController {
   async getPendingApprovals(
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 20,
-    @Request() req: any,
+    @Request() { user }: { user: { sub: string, organizationId: string } }
   ) {
     const result = await this.approvalService.getPendingApprovals(
-      req.user.sub,
-      req.user.organizationId,
+      user.sub,
+      user.organizationId,
       page,
-      limit,
+      limit
     );
 
     return {
@@ -250,8 +251,8 @@ export class ApprovalController {
 
   @Get('stats')
   @ApiOperation({ summary: 'Get approval statistics' })
-  @ApiQuery({ name: 'dateFrom', required: false, description: 'Start date (ISO string)' })
-  @ApiQuery({ name: 'dateTo', required: false, description: 'End date (ISO string)' })
+  @ApiQuery({ name: 'dateFrom', required: false, description: 'Start date (YYYY-MM-DD)' })
+  @ApiQuery({ name: 'dateTo', required: false, description: 'End date (YYYY-MM-DD)' })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Approval statistics retrieved successfully',
@@ -261,12 +262,13 @@ export class ApprovalController {
   async getApprovalStats(
     @Query('dateFrom') dateFrom?: string,
     @Query('dateTo') dateTo?: string,
-    @Request() req: any,
-  ) {
+    @Request() { user }: { user: { organizationId: string } }
+  ): Promise<ApprovalStatsResponseDto> {
+    const dateRange = this.approvalService.validateDateRange(dateFrom, dateTo);
     const stats = await this.approvalService.getApprovalStats(
-      req.user.organizationId,
-      dateFrom ? new Date(dateFrom) : undefined,
-      dateTo ? new Date(dateTo) : undefined,
+      user.organizationId,
+      dateRange.startDate,
+      dateRange.endDate
     );
 
     return {
@@ -289,15 +291,12 @@ export class ApprovalController {
   @Roles(UserRole.ADMIN)
   async createApprovalRule(
     @Body() createApprovalRuleDto: CreateApprovalRuleDto,
-    @Request() req: any,
+    @Request() { user }: { user: { organizationId: string } }
   ) {
-    const rule = await this.rulesEngine.createRule(
-      {
-        ...createApprovalRuleDto,
-        organizationId: req.user.organizationId,
-      },
-      req.user.sub,
-    );
+    const rule = await this.rulesEngine.createRule({
+      ...createApprovalRuleDto,
+      organizationId: user.organizationId,
+    });
 
     return {
       success: true,
@@ -308,7 +307,11 @@ export class ApprovalController {
 
   @Get('rules')
   @ApiOperation({ summary: 'Get approval rules' })
-  @ApiQuery({ name: 'includeInactive', required: false, description: 'Include inactive rules' })
+  @ApiQuery({
+    name: 'includeInactive',
+    required: false,
+    description: 'Include inactive rules',
+  })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Approval rules retrieved successfully',
@@ -316,12 +319,9 @@ export class ApprovalController {
   @Roles(UserRole.ADMIN)
   async getApprovalRules(
     @Query('includeInactive') includeInactive: boolean = false,
-    @Request() req: any,
+    @Request() { user }: { user: { organizationId: string } }
   ) {
-    const rules = await this.rulesEngine.getRules(
-      req.user.organizationId,
-      includeInactive,
-    );
+    const rules = await this.rulesEngine.getRules(user.organizationId, includeInactive);
 
     return {
       success: true,
@@ -341,13 +341,16 @@ export class ApprovalController {
   async updateApprovalRule(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateApprovalRuleDto: UpdateApprovalRuleDto,
-    @Request() req: any,
+    @Request() { user }: { user: { organizationId: string } }
   ) {
-    const rule = await this.rulesEngine.updateRule(id, updateApprovalRuleDto);
+    const updatedRule = await this.rulesEngine.updateRule(
+      id,
+      { ...updateApprovalRuleDto, organizationId: user.organizationId },
+    );
 
     return {
       success: true,
-      data: rule,
+      data: updatedRule,
       message: 'Approval rule updated successfully',
     };
   }
@@ -362,9 +365,9 @@ export class ApprovalController {
   @Roles(UserRole.ADMIN)
   async deleteApprovalRule(
     @Param('id', ParseUUIDPipe) id: string,
-    @Request() req: any,
+    @Request() { user }: { user: { organizationId: string } }
   ) {
-    await this.rulesEngine.deleteRule(id);
+    await this.rulesEngine.deleteRule(id, user.organizationId);
 
     return {
       success: true,
@@ -373,14 +376,16 @@ export class ApprovalController {
   }
 
   @Get('rules/default')
-  @ApiOperation({ summary: 'Get default approval rules template' })
+  @ApiOperation({ summary: 'Get default approval rules' })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Default approval rules retrieved successfully',
   })
-  @Roles(UserRole.ADMIN)
-  async getDefaultRules(@Request() req: any) {
-    const defaultRules = this.rulesEngine.getDefaultRules(req.user.organizationId);
+  @Roles(UserRole.MANAGER, UserRole.ADMIN)
+  async getDefaultRules(
+    @Request() { user }: { user: { organizationId: string } }
+  ) {
+    const defaultRules = await this.rulesEngine.getDefaultRules(user.organizationId);
 
     return {
       success: true,

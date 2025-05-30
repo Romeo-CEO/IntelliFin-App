@@ -1,7 +1,7 @@
 import {
-  ExceptionFilter,
-  Catch,
   ArgumentsHost,
+  Catch,
+  ExceptionFilter,
   HttpException,
   HttpStatus,
   Logger,
@@ -39,7 +39,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     this.logger.error(
       `HTTP ${status} Error: ${message}`,
       exception instanceof Error ? exception.stack : 'No stack trace',
-      `${request.method} ${request.url}`,
+      `${request.method} ${request.url}`
     );
 
     // Prepare error response

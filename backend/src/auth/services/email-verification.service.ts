@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import { PrismaService } from '../../database/prisma.service';
@@ -10,7 +14,7 @@ export class EmailVerificationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly passwordService: PasswordService,
-    private readonly configService: ConfigService,
+    private readonly configService: ConfigService
     // private readonly emailService: EmailService, // Will be uncommented later
   ) {}
 
@@ -128,7 +132,8 @@ export class EmailVerificationService {
     }
 
     // Validate password strength
-    const passwordValidation = this.passwordService.validatePasswordStrength(newPassword);
+    const passwordValidation =
+      this.passwordService.validatePasswordStrength(newPassword);
     if (!passwordValidation.isValid) {
       throw new BadRequestException(passwordValidation.errors.join(', '));
     }
@@ -167,13 +172,15 @@ export class EmailVerificationService {
   private async sendVerificationEmail(
     email: string,
     firstName: string,
-    token: string,
+    token: string
   ): Promise<void> {
     const verificationUrl = `${this.configService.get('app.frontendUrl')}/verify-email?token=${token}`;
 
     // TODO: Integrate with email service
     console.log(`Verification email for ${email}:`);
-    console.log(`Hello ${firstName}, please verify your email: ${verificationUrl}`);
+    console.log(
+      `Hello ${firstName}, please verify your email: ${verificationUrl}`
+    );
 
     // await this.emailService.sendEmail({
     //   to: email,
@@ -192,7 +199,7 @@ export class EmailVerificationService {
   private async sendResetPasswordEmail(
     email: string,
     firstName: string,
-    token: string,
+    token: string
   ): Promise<void> {
     const resetUrl = `${this.configService.get('app.frontendUrl')}/reset-password?token=${token}`;
 

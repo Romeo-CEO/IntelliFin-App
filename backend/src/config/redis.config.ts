@@ -9,7 +9,10 @@ export const redisConfig = registerAs('redis', () => ({
   keyPrefix: process.env.REDIS_KEY_PREFIX || 'intellifin:',
   retryAttempts: parseInt(process.env.REDIS_RETRY_ATTEMPTS || '3', 10),
   retryDelay: parseInt(process.env.REDIS_RETRY_DELAY || '3000', 10),
-  maxRetriesPerRequest: parseInt(process.env.REDIS_MAX_RETRIES_PER_REQUEST || '3', 10),
+  maxRetriesPerRequest: parseInt(
+    process.env.REDIS_MAX_RETRIES_PER_REQUEST || '3',
+    10
+  ),
   lazyConnect: true,
   keepAlive: 30000,
   family: 4,

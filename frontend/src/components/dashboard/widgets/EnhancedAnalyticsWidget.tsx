@@ -1,17 +1,17 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { DashboardWidget, Dashboard } from '../../../types/dashboard.types';
+
 import { analyticsService } from '../../../services/analytics.service';
-import { LoadingSpinner } from '../../common/LoadingSpinner';
-import { ErrorMessage } from '../../common/ErrorMessage';
+import { DashboardWidget, Dashboard } from '../../../types/dashboard.types';
 import { Chart } from '../../charts/Chart';
+import { ErrorMessage } from '../../common/ErrorMessage';
+import { LoadingSpinner } from '../../common/LoadingSpinner';
+
 import { MetricCard } from './MetricCard';
 
 interface EnhancedAnalyticsWidgetProps {
   widget: DashboardWidget;
-  dashboard: Dashboard;
-  isEditing?: boolean;
   performanceMode?: 'normal' | 'low-bandwidth';
   isMobile?: boolean;
 }
@@ -45,8 +45,6 @@ interface AnalyticsData {
  */
 export const EnhancedAnalyticsWidget: React.FC<EnhancedAnalyticsWidgetProps> = ({
   widget,
-  dashboard,
-  isEditing = false,
   performanceMode = 'normal',
   isMobile = false,
 }) => {
@@ -64,7 +62,6 @@ export const EnhancedAnalyticsWidget: React.FC<EnhancedAnalyticsWidgetProps> = (
     includeAnomalies = true,
     showTrends = true,
     currency = 'ZMW',
-    mobileOptimized = true,
   } = config;
 
   // Load analytics data
@@ -118,7 +115,7 @@ export const EnhancedAnalyticsWidget: React.FC<EnhancedAnalyticsWidgetProps> = (
   const formatCurrency = useCallback((amount: number) => {
     return new Intl.NumberFormat('en-ZM', {
       style: 'currency',
-      currency: currency,
+      currency,
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);

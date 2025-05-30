@@ -1,21 +1,25 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type, Transform } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
-  IsString,
-  IsNotEmpty,
-  IsOptional,
-  IsUUID,
-  IsDateString,
-  IsNumber,
-  IsPositive,
-  IsEnum,
   IsBoolean,
-  Min,
-  Max,
-  Length,
+  IsDateString,
   IsDecimal,
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsPositive,
+  IsString,
+  IsUUID,
+  Length,
+  Max,
+  Min,
 } from 'class-validator';
-import { ExpenseStatus, PaymentMethod, RecurrencePattern } from '@prisma/client';
+import {
+  ExpenseStatus,
+  PaymentMethod,
+  RecurrencePattern,
+} from '@prisma/client';
 
 export class CreateExpenseDto {
   @ApiProperty({
@@ -54,7 +58,7 @@ export class CreateExpenseDto {
 
   @ApiProperty({
     description: 'Amount of the expense',
-    example: 150.50,
+    example: 150.5,
     minimum: 0.01,
   })
   @IsNumber({ maxDecimalPlaces: 2 })
@@ -202,7 +206,7 @@ export class UpdateExpenseDto {
 
   @ApiPropertyOptional({
     description: 'Amount of the expense',
-    example: 150.50,
+    example: 150.5,
     minimum: 0.01,
   })
   @IsOptional()

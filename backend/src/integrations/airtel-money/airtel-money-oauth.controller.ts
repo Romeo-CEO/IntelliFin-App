@@ -1,22 +1,22 @@
 import {
-  Controller,
-  Post,
-  Get,
-  Query,
   Body,
-  Param,
-  UseGuards,
-  Res,
+  Controller,
+  Get,
   HttpStatus,
+  Param,
   ParseUUIDPipe,
+  Post,
+  Query,
+  Res,
+  UseGuards,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
   ApiBearerAuth,
-  ApiQuery,
+  ApiOperation,
   ApiParam,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
 } from '@nestjs/swagger';
 import { Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
@@ -35,9 +35,7 @@ import {
 @ApiTags('Airtel Money Integration')
 @Controller('integrations/airtel-money')
 export class AirtelMoneyOAuthController {
-  constructor(
-    private readonly oauthService: AirtelMoneyOAuthService,
-  ) {}
+  constructor(private readonly oauthService: AirtelMoneyOAuthService) {}
 
   @Post('connect')
   @UseGuards(JwtAuthGuard)
@@ -45,7 +43,8 @@ export class AirtelMoneyOAuthController {
   @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 requests per minute
   @ApiOperation({
     summary: 'Initiate Airtel Money account connection',
-    description: 'Start the OAuth flow to connect an Airtel Money account to the organization',
+    description:
+      'Start the OAuth flow to connect an Airtel Money account to the organization',
   })
   @ApiResponse({
     status: 200,
@@ -66,12 +65,12 @@ export class AirtelMoneyOAuthController {
   })
   async connectAccount(
     @CurrentUser() user: AuthenticatedUser,
-    @Body() connectDto: ConnectAccountDto,
+    @Body() connectDto: ConnectAccountDto
   ): Promise<ConnectAccountResponseDto> {
     return await this.oauthService.initiateConnection(
       user.organizationId,
       user.userId,
-      connectDto,
+      connectDto
     );
   }
 
@@ -109,10 +108,10 @@ export class AirtelMoneyOAuthController {
     @Query('state') state?: string,
     @Query('error') error?: string,
     @Query('error_description') errorDescription?: string,
-    @Res() res?: Response,
+    @Res() res?: Response
   ): Promise<void> {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    
+
     try {
       // Handle OAuth errors
       if (error) {
@@ -182,14 +181,14 @@ export class AirtelMoneyOAuthController {
   })
   async refreshToken(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('accountId', ParseUUIDPipe) accountId: string,
+    @Param('accountId', ParseUUIDPipe) accountId: string
   ): Promise<{ success: boolean; message: string }> {
     const success = await this.oauthService.refreshAccessToken(accountId);
-    
+
     return {
       success,
-      message: success 
-        ? 'Token refreshed successfully' 
+      message: success
+        ? 'Token refreshed successfully'
         : 'Failed to refresh token - account may need to be reconnected',
     };
   }
@@ -233,10 +232,10 @@ export class AirtelMoneyOAuthController {
   })
   async disconnectAccount(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('accountId', ParseUUIDPipe) accountId: string,
+    @Param('accountId', ParseUUIDPipe) accountId: string
   ): Promise<{ success: boolean; message: string }> {
     await this.oauthService.disconnectAccount(accountId, user.userId);
-    
+
     return {
       success: true,
       message: 'Account disconnected successfully',
@@ -248,7 +247,8 @@ export class AirtelMoneyOAuthController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Get Airtel Money connection status',
-    description: 'Retrieve the connection status and linked accounts for the organization',
+    description:
+      'Retrieve the connection status and linked accounts for the organization',
   })
   @ApiResponse({
     status: 200,
@@ -267,7 +267,11 @@ export class AirtelMoneyOAuthController {
               accountNumber: { type: 'string' },
               accountName: { type: 'string' },
               isLinked: { type: 'boolean' },
-              lastSyncAt: { type: 'string', format: 'date-time', nullable: true },
+              lastSyncAt: {
+                type: 'string',
+                format: 'date-time',
+                nullable: true,
+              },
               currentBalance: { type: 'number', nullable: true },
             },
           },
@@ -279,9 +283,7 @@ export class AirtelMoneyOAuthController {
     status: 401,
     description: 'Unauthorized - Invalid or missing JWT token',
   })
-  async getConnectionStatus(
-    @CurrentUser() user: AuthenticatedUser,
-  ): Promise<{
+  async getConnectionStatus(@CurrentUser() user: AuthenticatedUser): Promise<{
     hasLinkedAccounts: boolean;
     accountCount: number;
     accounts: Array<{
@@ -299,7 +301,8 @@ export class AirtelMoneyOAuthController {
   @Get('health')
   @ApiOperation({
     summary: 'Health check for Airtel Money integration',
-    description: 'Check the health status of the Airtel Money integration service',
+    description:
+      'Check the health status of the Airtel Money integration service',
   })
   @ApiResponse({
     status: 200,

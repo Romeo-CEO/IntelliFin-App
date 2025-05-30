@@ -1,25 +1,22 @@
 import {
-  Injectable,
-  UnauthorizedException,
-  ConflictException,
   BadRequestException,
+  ConflictException,
+  Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
 
 import { UserStatus } from '@prisma/client';
 
 import {
+  ChangePasswordDto,
+  ForgotPasswordDto,
   LoginDto,
   RegisterDto,
-  ForgotPasswordDto,
   ResetPasswordDto,
-  ChangePasswordDto,
 } from './dto/auth.dto';
-import {
-  LoginResponse,
-  RegisterResponse,
-} from './interfaces/auth.interface';
+import { LoginResponse, RegisterResponse } from './interfaces/auth.interface';
 
 import { UsersService } from '../users/users.service';
 import { PasswordService } from './services/password.service';
@@ -32,7 +29,7 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly passwordService: PasswordService,
     private readonly tokenService: TokenService,
-    private readonly emailVerificationService: EmailVerificationService,
+    private readonly emailVerificationService: EmailVerificationService
   ) {}
 
   /**
@@ -40,26 +37,33 @@ export class AuthService {
    */
   async register(
     registerDto: RegisterDto,
-    _ipAddress?: string,
-    _userAgent?: string,
+    /* _ipAddress?: string, */
+    /* _userAgent?: string */
   ): Promise<RegisterResponse> {
-    const { email, password, firstName, lastName, tenantId, phone } = registerDto;
+    const { email, password, firstName, lastName, tenantId, phone } =
+      registerDto;
 
     // Check if user already exists
-    const existingUser = await this.usersService.findByEmailAndTenant(email, tenantId);
+    const existingUser = await this.usersService.findByEmailAndTenant(
+      email,
+      tenantId
+    );
     if (existingUser) {
       throw new ConflictException('User with this email already exists');
     }
 
     // Validate password strength
-    const passwordValidation = this.passwordService.validatePasswordStrength(password);
+    const passwordValidation =
+      this.passwordService.validatePasswordStrength(password);
     if (!passwordValidation.isValid) {
       throw new BadRequestException(passwordValidation.errors.join(', '));
     }
 
     // Check for common passwords
     if (this.passwordService.isCommonPassword(password)) {
-      throw new BadRequestException('Password is too common. Please choose a stronger password.');
+      throw new BadRequestException(
+        'Password is too common. Please choose a stronger password.'
+      );
     }
 
     // Hash password
@@ -74,7 +78,7 @@ export class AuthService {
         tenantId,
         phone,
       },
-      hashedPassword,
+      hashedPassword
     );
 
     // Send email verification
@@ -85,7 +89,8 @@ export class AuthService {
 
     return {
       user: authenticatedUser,
-      message: 'Registration successful. Please check your email to verify your account.',
+      message:
+        'Registration successful. Please check your email to verify your account.',
       verificationRequired: true,
     };
   }
@@ -97,7 +102,7 @@ export class AuthService {
     loginDto: LoginDto,
     ipAddress?: string,
     userAgent?: string,
-    deviceInfo?: any,
+    deviceInfo?: any
   ): Promise<LoginResponse> {
     const { email, password, rememberMe } = loginDto;
 
@@ -110,17 +115,17 @@ export class AuthService {
     // Check if account is locked
     if (user.lockedUntil && user.lockedUntil > new Date()) {
       const lockTimeRemaining = Math.ceil(
-        (user.lockedUntil.getTime() - Date.now()) / (1000 * 60),
+        (user.lockedUntil.getTime() - Date.now()) / (1000 * 60)
       );
       throw new UnauthorizedException(
-        `Account is locked. Try again in ${lockTimeRemaining} minutes`,
+        `Account is locked. Try again in ${lockTimeRemaining} minutes`
       );
     }
 
     // Verify password
     const isPasswordValid = await this.passwordService.comparePassword(
       password,
-      user.password,
+      user.password
     );
 
     if (!isPasswordValid) {
@@ -132,14 +137,14 @@ export class AuthService {
     // Check if email is verified
     if (!user.emailVerified) {
       throw new UnauthorizedException(
-        'Email not verified. Please check your email and verify your account.',
+        'Email not verified. Please check your email and verify your account.'
       );
     }
 
     // Check user status
     if (user.status !== UserStatus.ACTIVE) {
       throw new UnauthorizedException(
-        `Account is ${user.status.toLowerCase()}. Please contact support.`,
+        `Account is ${user.status.toLowerCase()}. Please contact support.`
       );
     }
 
@@ -156,7 +161,7 @@ export class AuthService {
     const tokens = await this.tokenService.generateTokens(
       authenticatedUser,
       sessionId,
-      rememberMe,
+      rememberMe
     );
 
     // Create session with the generated tokens
@@ -167,7 +172,7 @@ export class AuthService {
       userAgent,
       deviceInfo,
       rememberMe,
-      sessionId, // Pass the session ID to ensure consistency
+      sessionId // Pass the session ID to ensure consistency
     );
 
     return {
@@ -207,21 +212,29 @@ export class AuthService {
   /**
    * Forgot password
    */
-  async forgotPassword(forgotPasswordDto: ForgotPasswordDto): Promise<{ message: string }> {
+  async forgotPassword(
+    forgotPasswordDto: ForgotPasswordDto
+  ): Promise<{ message: string }> {
     const { email } = forgotPasswordDto;
     await this.emailVerificationService.sendPasswordResetEmail(email);
     return {
-      message: 'If an account with that email exists, a password reset link has been sent.',
+      message:
+        'If an account with that email exists, a password reset link has been sent.',
     };
   }
 
   /**
    * Reset password
    */
-  async resetPassword(resetPasswordDto: ResetPasswordDto): Promise<{ message: string }> {
+  async resetPassword(
+    resetPasswordDto: ResetPasswordDto
+  ): Promise<{ message: string }> {
     const { token, newPassword } = resetPasswordDto;
     await this.emailVerificationService.resetPassword(token, newPassword);
-    return { message: 'Password reset successful. Please login with your new password.' };
+    return {
+      message:
+        'Password reset successful. Please login with your new password.',
+    };
   }
 
   /**
@@ -229,7 +242,7 @@ export class AuthService {
    */
   async changePassword(
     userId: string,
-    changePasswordDto: ChangePasswordDto,
+    changePasswordDto: ChangePasswordDto
   ): Promise<{ message: string }> {
     const { currentPassword, newPassword } = changePasswordDto;
 
@@ -242,7 +255,7 @@ export class AuthService {
     // Verify current password
     const isCurrentPasswordValid = await this.passwordService.comparePassword(
       currentPassword,
-      user.password,
+      user.password
     );
 
     if (!isCurrentPasswordValid) {
@@ -250,7 +263,8 @@ export class AuthService {
     }
 
     // Validate new password strength
-    const passwordValidation = this.passwordService.validatePasswordStrength(newPassword);
+    const passwordValidation =
+      this.passwordService.validatePasswordStrength(newPassword);
     if (!passwordValidation.isValid) {
       throw new BadRequestException(passwordValidation.errors.join(', '));
     }
@@ -258,10 +272,12 @@ export class AuthService {
     // Check if new password is different from current
     const isSamePassword = await this.passwordService.comparePassword(
       newPassword,
-      user.password,
+      user.password
     );
     if (isSamePassword) {
-      throw new BadRequestException('New password must be different from current password');
+      throw new BadRequestException(
+        'New password must be different from current password'
+      );
     }
 
     // Hash new password
@@ -291,7 +307,10 @@ export class AuthService {
     const user = await this.usersService.findByEmail(email);
     if (!user) {
       // Don't reveal if email exists for security
-      return { message: 'If an account with that email exists, a verification email has been sent.' };
+      return {
+        message:
+          'If an account with that email exists, a verification email has been sent.',
+      };
     }
 
     if (user.emailVerified) {

@@ -1,4 +1,10 @@
-import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { Dashboard, DashboardPermissionType } from '@prisma/client';
 import { DashboardConfigurationRepository } from '../repositories/dashboard-configuration.repository';
 
@@ -11,7 +17,7 @@ export class DashboardConfigurationService {
   private readonly logger = new Logger(DashboardConfigurationService.name);
 
   constructor(
-    private readonly dashboardRepository: DashboardConfigurationRepository,
+    private readonly dashboardRepository: DashboardConfigurationRepository
   ) {}
 
   /**
@@ -27,7 +33,7 @@ export class DashboardConfigurationService {
       isPublic?: boolean;
       layout?: any;
       settings?: any;
-    },
+    }
   ): Promise<Dashboard> {
     try {
       // Validate dashboard name
@@ -37,7 +43,8 @@ export class DashboardConfigurationService {
 
       // If setting as default, ensure only one default exists
       if (data.isDefault) {
-        const existingDefault = await this.dashboardRepository.findDefault(organizationId);
+        const existingDefault =
+          await this.dashboardRepository.findDefault(organizationId);
         if (existingDefault) {
           throw new BadRequestException('A default dashboard already exists');
         }
@@ -71,7 +78,9 @@ export class DashboardConfigurationService {
         },
       });
 
-      this.logger.log(`Created dashboard: ${dashboard.id} for organization: ${organizationId}`);
+      this.logger.log(
+        `Created dashboard: ${dashboard.id} for organization: ${organizationId}`
+      );
       return dashboard;
     } catch (error) {
       this.logger.error(`Failed to create dashboard: ${error.message}`, error);
@@ -85,16 +94,22 @@ export class DashboardConfigurationService {
   async getDashboard(
     id: string,
     organizationId: string,
-    userId: string,
+    userId: string
   ): Promise<Dashboard> {
     try {
-      const dashboard = await this.dashboardRepository.findById(id, organizationId, userId);
+      const dashboard = await this.dashboardRepository.findById(
+        id,
+        organizationId,
+        userId
+      );
 
       if (!dashboard) {
         throw new NotFoundException('Dashboard not found or access denied');
       }
 
-      this.logger.log(`Retrieved dashboard: ${dashboard.id} for user: ${userId}`);
+      this.logger.log(
+        `Retrieved dashboard: ${dashboard.id} for user: ${userId}`
+      );
       return dashboard;
     } catch (error) {
       this.logger.error(`Failed to get dashboard: ${error.message}`, error);
@@ -108,16 +123,18 @@ export class DashboardConfigurationService {
   async getDashboards(
     organizationId: string,
     userId: string,
-    includePrivate = false,
+    includePrivate = false
   ): Promise<Dashboard[]> {
     try {
       const dashboards = await this.dashboardRepository.findByOrganization(
         organizationId,
         userId,
-        includePrivate,
+        includePrivate
       );
 
-      this.logger.log(`Retrieved ${dashboards.length} dashboards for organization: ${organizationId}`);
+      this.logger.log(
+        `Retrieved ${dashboards.length} dashboards for organization: ${organizationId}`
+      );
       return dashboards;
     } catch (error) {
       this.logger.error(`Failed to get dashboards: ${error.message}`, error);
@@ -130,15 +147,21 @@ export class DashboardConfigurationService {
    */
   async getDefaultDashboard(organizationId: string): Promise<Dashboard | null> {
     try {
-      const dashboard = await this.dashboardRepository.findDefault(organizationId);
+      const dashboard =
+        await this.dashboardRepository.findDefault(organizationId);
 
       if (dashboard) {
-        this.logger.log(`Retrieved default dashboard: ${dashboard.id} for organization: ${organizationId}`);
+        this.logger.log(
+          `Retrieved default dashboard: ${dashboard.id} for organization: ${organizationId}`
+        );
       }
 
       return dashboard;
     } catch (error) {
-      this.logger.error(`Failed to get default dashboard: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get default dashboard: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -156,33 +179,43 @@ export class DashboardConfigurationService {
       isPublic?: boolean;
       layout?: any;
       settings?: any;
-    },
+    }
   ): Promise<Dashboard> {
     try {
       // Check if user has edit permission
       const hasPermission = await this.dashboardRepository.hasPermission(
         id,
         userId,
-        DashboardPermissionType.EDIT,
+        DashboardPermissionType.EDIT
       );
 
       if (!hasPermission) {
-        throw new ForbiddenException('Insufficient permissions to edit dashboard');
+        throw new ForbiddenException(
+          'Insufficient permissions to edit dashboard'
+        );
       }
 
       // Validate name if provided
-      if (data.name !== undefined && (!data.name || data.name.trim().length === 0)) {
+      if (
+        data.name !== undefined &&
+        (!data.name || data.name.trim().length === 0)
+      ) {
         throw new BadRequestException('Dashboard name cannot be empty');
       }
 
       const updateData: any = {};
       if (data.name !== undefined) updateData.name = data.name.trim();
-      if (data.description !== undefined) updateData.description = data.description?.trim();
+      if (data.description !== undefined)
+        updateData.description = data.description?.trim();
       if (data.isPublic !== undefined) updateData.isPublic = data.isPublic;
       if (data.layout !== undefined) updateData.layout = data.layout;
       if (data.settings !== undefined) updateData.settings = data.settings;
 
-      const dashboard = await this.dashboardRepository.update(id, organizationId, updateData);
+      const dashboard = await this.dashboardRepository.update(
+        id,
+        organizationId,
+        updateData
+      );
 
       this.logger.log(`Updated dashboard: ${dashboard.id}`);
       return dashboard;
@@ -198,22 +231,28 @@ export class DashboardConfigurationService {
   async deleteDashboard(
     id: string,
     organizationId: string,
-    userId: string,
+    userId: string
   ): Promise<void> {
     try {
       // Check if user has admin permission
       const hasPermission = await this.dashboardRepository.hasPermission(
         id,
         userId,
-        DashboardPermissionType.ADMIN,
+        DashboardPermissionType.ADMIN
       );
 
       if (!hasPermission) {
-        throw new ForbiddenException('Insufficient permissions to delete dashboard');
+        throw new ForbiddenException(
+          'Insufficient permissions to delete dashboard'
+        );
       }
 
       // Check if it's the default dashboard
-      const dashboard = await this.dashboardRepository.findById(id, organizationId, userId);
+      const dashboard = await this.dashboardRepository.findById(
+        id,
+        organizationId,
+        userId
+      );
       if (dashboard?.isDefault) {
         throw new BadRequestException('Cannot delete the default dashboard');
       }
@@ -233,26 +272,36 @@ export class DashboardConfigurationService {
   async setAsDefault(
     id: string,
     organizationId: string,
-    userId: string,
+    userId: string
   ): Promise<Dashboard> {
     try {
       // Check if user has admin permission
       const hasPermission = await this.dashboardRepository.hasPermission(
         id,
         userId,
-        DashboardPermissionType.ADMIN,
+        DashboardPermissionType.ADMIN
       );
 
       if (!hasPermission) {
-        throw new ForbiddenException('Insufficient permissions to set default dashboard');
+        throw new ForbiddenException(
+          'Insufficient permissions to set default dashboard'
+        );
       }
 
-      const dashboard = await this.dashboardRepository.setAsDefault(id, organizationId);
+      const dashboard = await this.dashboardRepository.setAsDefault(
+        id,
+        organizationId
+      );
 
-      this.logger.log(`Set dashboard as default: ${dashboard.id} for organization: ${organizationId}`);
+      this.logger.log(
+        `Set dashboard as default: ${dashboard.id} for organization: ${organizationId}`
+      );
       return dashboard;
     } catch (error) {
-      this.logger.error(`Failed to set dashboard as default: ${error.message}`, error);
+      this.logger.error(
+        `Failed to set dashboard as default: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -264,11 +313,15 @@ export class DashboardConfigurationService {
     id: string,
     organizationId: string,
     userId: string,
-    newName?: string,
+    newName?: string
   ): Promise<Dashboard> {
     try {
       // Get original dashboard
-      const originalDashboard = await this.getDashboard(id, organizationId, userId);
+      const originalDashboard = await this.getDashboard(
+        id,
+        organizationId,
+        userId
+      );
 
       // Create new dashboard with copied data
       const duplicatedDashboard = await this.createDashboard(
@@ -281,13 +334,18 @@ export class DashboardConfigurationService {
           isPublic: false, // Start as private
           layout: originalDashboard.layout,
           settings: originalDashboard.settings,
-        },
+        }
       );
 
-      this.logger.log(`Duplicated dashboard: ${originalDashboard.id} to ${duplicatedDashboard.id}`);
+      this.logger.log(
+        `Duplicated dashboard: ${originalDashboard.id} to ${duplicatedDashboard.id}`
+      );
       return duplicatedDashboard;
     } catch (error) {
-      this.logger.error(`Failed to duplicate dashboard: ${error.message}`, error);
+      this.logger.error(
+        `Failed to duplicate dashboard: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -295,7 +353,10 @@ export class DashboardConfigurationService {
   /**
    * Create default dashboard for new organization
    */
-  async createDefaultDashboard(organizationId: string, userId: string): Promise<Dashboard> {
+  async createDefaultDashboard(
+    organizationId: string,
+    userId: string
+  ): Promise<Dashboard> {
     try {
       const defaultLayout = {
         gridColumns: 12,
@@ -309,27 +370,29 @@ export class DashboardConfigurationService {
         autoResize: true,
       };
 
-      const dashboard = await this.createDashboard(
-        organizationId,
-        userId,
-        {
-          name: 'Financial Overview',
-          description: 'Default dashboard with key financial metrics and insights',
-          isDefault: true,
-          isPublic: true,
-          layout: defaultLayout,
-          settings: {
-            theme: 'light',
-            refreshInterval: 300, // 5 minutes
-            autoRefresh: true,
-          },
+      const dashboard = await this.createDashboard(organizationId, userId, {
+        name: 'Financial Overview',
+        description:
+          'Default dashboard with key financial metrics and insights',
+        isDefault: true,
+        isPublic: true,
+        layout: defaultLayout,
+        settings: {
+          theme: 'light',
+          refreshInterval: 300, // 5 minutes
+          autoRefresh: true,
         },
-      );
+      });
 
-      this.logger.log(`Created default dashboard for organization: ${organizationId}`);
+      this.logger.log(
+        `Created default dashboard for organization: ${organizationId}`
+      );
       return dashboard;
     } catch (error) {
-      this.logger.error(`Failed to create default dashboard: ${error.message}`, error);
+      this.logger.error(
+        `Failed to create default dashboard: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -340,12 +403,19 @@ export class DashboardConfigurationService {
   async checkPermission(
     dashboardId: string,
     userId: string,
-    permission: DashboardPermissionType,
+    permission: DashboardPermissionType
   ): Promise<boolean> {
     try {
-      return await this.dashboardRepository.hasPermission(dashboardId, userId, permission);
+      return await this.dashboardRepository.hasPermission(
+        dashboardId,
+        userId,
+        permission
+      );
     } catch (error) {
-      this.logger.error(`Failed to check dashboard permission: ${error.message}`, error);
+      this.logger.error(
+        `Failed to check dashboard permission: ${error.message}`,
+        error
+      );
       return false;
     }
   }
@@ -357,12 +427,15 @@ export class DashboardConfigurationService {
     id: string,
     organizationId: string,
     userId: string,
-    layout: any,
+    layout: any
   ): Promise<Dashboard> {
     try {
       return await this.updateDashboard(id, organizationId, userId, { layout });
     } catch (error) {
-      this.logger.error(`Failed to update dashboard layout: ${error.message}`, error);
+      this.logger.error(
+        `Failed to update dashboard layout: ${error.message}`,
+        error
+      );
       throw error;
     }
   }

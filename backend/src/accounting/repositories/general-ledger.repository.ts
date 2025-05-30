@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
-import { GeneralLedgerEntry, SourceType, Prisma } from '@prisma/client';
+import { GeneralLedgerEntry, Prisma, SourceType, AccountType } from '@prisma/client';
 
 export interface CreateGeneralLedgerEntryDto {
   accountId: string;
@@ -79,12 +79,16 @@ export class GeneralLedgerRepository {
 
       for (const entry of entries) {
         // Get current account balance
-        const currentBalance = await this.getAccountBalance(organizationId, entry.accountId, entry.entryDate);
-        
+        const currentBalance = await this.getAccountBalance(
+          organizationId,
+          entry.accountId,
+          entry.entryDate
+        );
+
         // Calculate new running balance
         const debitAmount = entry.debitAmount || 0;
         const creditAmount = entry.creditAmount || 0;
-        
+
         // Get account normal balance to determine how to calculate running balance
         const account = await this.prisma.account.findUnique({
           where: { id: entry.accountId },
@@ -108,8 +112,8 @@ export class GeneralLedgerRepository {
             accountId: entry.accountId,
             journalEntryId: entry.journalEntryId,
             entryDate: entry.entryDate,
-            debitAmount: debitAmount,
-            creditAmount: creditAmount,
+            debitAmount,
+            creditAmount,
             runningBalance: newRunningBalance,
             description: entry.description,
             reference: entry.reference,
@@ -129,7 +133,10 @@ export class GeneralLedgerRepository {
 
       return createdEntries;
     } catch (error) {
-      this.logger.error(`Failed to create general ledger entries: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to create general ledger entries: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -137,7 +144,10 @@ export class GeneralLedgerRepository {
   /**
    * Get general ledger entries with filtering and pagination
    */
-  async findMany(organizationId: string, query: GeneralLedgerQueryDto): Promise<{
+  async findMany(
+    organizationId: string,
+    query: GeneralLedgerQueryDto
+  ): Promise<{
     entries: GeneralLedgerEntryWithAccount[];
     total: number;
     page: number;
@@ -154,12 +164,13 @@ export class GeneralLedgerRepository {
         ...(query.accountId && { accountId: query.accountId }),
         ...(query.sourceType && { sourceType: query.sourceType }),
         ...(query.sourceId && { sourceId: query.sourceId }),
-        ...(query.dateFrom && query.dateTo && {
-          entryDate: {
-            gte: query.dateFrom,
-            lte: query.dateTo,
-          },
-        }),
+        ...(query.dateFrom &&
+          query.dateTo && {
+            entryDate: {
+              gte: query.dateFrom,
+              lte: query.dateTo,
+            },
+          }),
       };
 
       const orderBy: Prisma.GeneralLedgerEntryOrderByWithRelationInput = {};
@@ -204,7 +215,10 @@ export class GeneralLedgerRepository {
         totalPages: Math.ceil(total / limit),
       };
     } catch (error) {
-      this.logger.error(`Failed to find general ledger entries: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to find general ledger entries: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -222,12 +236,13 @@ export class GeneralLedgerRepository {
       const where: Prisma.GeneralLedgerEntryWhereInput = {
         organizationId,
         accountId,
-        ...(dateFrom && dateTo && {
-          entryDate: {
-            gte: dateFrom,
-            lte: dateTo,
-          },
-        }),
+        ...(dateFrom &&
+          dateTo && {
+            entryDate: {
+              gte: dateFrom,
+              lte: dateTo,
+            },
+          }),
       };
 
       return await this.prisma.generalLedgerEntry.findMany({
@@ -249,13 +264,13 @@ export class GeneralLedgerRepository {
             },
           },
         },
-        orderBy: [
-          { entryDate: 'asc' },
-          { createdAt: 'asc' },
-        ],
+        orderBy: [{ entryDate: 'asc' }, { createdAt: 'asc' }],
       });
     } catch (error) {
-      this.logger.error(`Failed to get account ledger: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to get account ledger: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -263,7 +278,11 @@ export class GeneralLedgerRepository {
   /**
    * Get account balance as of a specific date
    */
-  async getAccountBalance(organizationId: string, accountId: string, asOfDate?: Date): Promise<number> {
+  async getAccountBalance(
+    organizationId: string,
+    accountId: string,
+    asOfDate?: Date
+  ): Promise<number> {
     try {
       const where: Prisma.GeneralLedgerEntryWhereInput = {
         organizationId,
@@ -277,10 +296,7 @@ export class GeneralLedgerRepository {
 
       const lastEntry = await this.prisma.generalLedgerEntry.findFirst({
         where,
-        orderBy: [
-          { entryDate: 'desc' },
-          { createdAt: 'desc' },
-        ],
+        orderBy: [{ entryDate: 'desc' }, { createdAt: 'desc' }],
         select: {
           runningBalance: true,
         },
@@ -288,7 +304,10 @@ export class GeneralLedgerRepository {
 
       return lastEntry?.runningBalance || 0;
     } catch (error) {
-      this.logger.error(`Failed to get account balance: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to get account balance: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -296,7 +315,10 @@ export class GeneralLedgerRepository {
   /**
    * Generate trial balance
    */
-  async generateTrialBalance(organizationId: string, asOfDate: Date): Promise<TrialBalance> {
+  async generateTrialBalance(
+    organizationId: string,
+    asOfDate: Date
+  ): Promise<TrialBalance> {
     try {
       // Get all accounts with their balances
       const accounts = await this.prisma.account.findMany({
@@ -346,7 +368,11 @@ export class GeneralLedgerRepository {
           balance = creditTotal - debitTotal;
         }
 
-        const runningBalance = await this.getAccountBalance(organizationId, account.id, asOfDate);
+        const runningBalance = await this.getAccountBalance(
+          organizationId,
+          account.id,
+          asOfDate
+        );
 
         const accountBalance: AccountBalance = {
           accountId: account.id,
@@ -378,7 +404,10 @@ export class GeneralLedgerRepository {
         asOfDate,
       };
     } catch (error) {
-      this.logger.error(`Failed to generate trial balance: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to generate trial balance: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -388,14 +417,14 @@ export class GeneralLedgerRepository {
    */
   async getAccountBalancesByType(
     organizationId: string,
-    accountType: string,
+    accountType: AccountType,
     asOfDate?: Date
   ): Promise<AccountBalance[]> {
     try {
       const accounts = await this.prisma.account.findMany({
         where: {
           organizationId,
-          accountType: accountType as any,
+          accountType,
           deletedAt: null,
           isActive: true,
         },
@@ -438,7 +467,11 @@ export class GeneralLedgerRepository {
           balance = creditTotal - debitTotal;
         }
 
-        const runningBalance = await this.getAccountBalance(organizationId, account.id, asOfDate);
+        const runningBalance = await this.getAccountBalance(
+          organizationId,
+          account.id,
+          asOfDate
+        );
 
         balances.push({
           accountId: account.id,
@@ -455,7 +488,10 @@ export class GeneralLedgerRepository {
 
       return balances;
     } catch (error) {
-      this.logger.error(`Failed to get account balances by type: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to get account balances by type: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -463,7 +499,10 @@ export class GeneralLedgerRepository {
   /**
    * Delete general ledger entries for a journal entry (when reversing)
    */
-  async deleteByJournalEntry(organizationId: string, journalEntryId: string): Promise<void> {
+  async deleteByJournalEntry(
+    organizationId: string,
+    journalEntryId: string
+  ): Promise<void> {
     try {
       // Get all entries to reverse account balances
       const entries = await this.prisma.generalLedgerEntry.findMany({
@@ -511,7 +550,10 @@ export class GeneralLedgerRepository {
         },
       });
     } catch (error) {
-      this.logger.error(`Failed to delete general ledger entries: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to delete general ledger entries: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }

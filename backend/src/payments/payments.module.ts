@@ -11,12 +11,7 @@ import { MobileMoneyPaymentService } from './services/mobile-money-payment.servi
 import { PaymentTaxIntegrationService } from './services/payment-tax-integration.service';
 
 @Module({
-  imports: [
-    DatabaseModule,
-    ConfigModule,
-    InvoicesModule,
-    TaxManagementModule,
-  ],
+  imports: [DatabaseModule, ConfigModule, InvoicesModule, TaxManagementModule],
   controllers: [PaymentController],
   providers: [
     PaymentService,

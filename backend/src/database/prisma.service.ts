@@ -1,9 +1,17 @@
-import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaClient } from '@prisma/client';
 
 @Injectable()
-export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+export class PrismaService
+  extends PrismaClient
+  implements OnModuleInit, OnModuleDestroy
+{
   private readonly logger = new Logger(PrismaService.name);
 
   constructor(private configService: ConfigService) {
@@ -84,7 +92,10 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       await this.$executeRaw`SELECT create_tenant_schema(${tenantId}::uuid)`;
       this.logger.log(`✅ Created tenant schema: ${schemaName}`);
     } catch (error) {
-      this.logger.error(`❌ Failed to create tenant schema: ${schemaName}`, error);
+      this.logger.error(
+        `❌ Failed to create tenant schema: ${schemaName}`,
+        error
+      );
       throw error;
     }
   }
@@ -100,7 +111,10 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       await this.$executeRaw`SELECT drop_tenant_schema(${tenantId}::uuid)`;
       this.logger.log(`✅ Dropped tenant schema: ${schemaName}`);
     } catch (error) {
-      this.logger.error(`❌ Failed to drop tenant schema: ${schemaName}`, error);
+      this.logger.error(
+        `❌ Failed to drop tenant schema: ${schemaName}`,
+        error
+      );
       throw error;
     }
   }
@@ -123,7 +137,10 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
       return result[0]?.exists || false;
     } catch (error) {
-      this.logger.error(`❌ Failed to check tenant schema existence: ${schemaName}`, error);
+      this.logger.error(
+        `❌ Failed to check tenant schema existence: ${schemaName}`,
+        error
+      );
       return false;
     }
   }

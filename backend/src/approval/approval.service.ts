@@ -1,19 +1,31 @@
-import { Injectable, Logger, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
-import { 
-  ApprovalRequest, 
-  ApprovalTask, 
-  ApprovalRequestStatus, 
-  ApprovalTaskStatus,
-  ApprovalDecision,
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import {
   ApprovalAction,
+  ApprovalDecision,
   ApprovalPriority,
-  UserRole,
-  Expense,
+  ApprovalRequest,
+  ApprovalRequestStatus,
+  ApprovalTask,
+  ApprovalTaskStatus,
   ExpenseStatus,
+  UserRole,
 } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
-import { ApprovalRulesEngine, ExpenseContext, ApprovalRequirement } from './approval-rules.engine';
-import { ApprovalRequestRepository, ApprovalRequestWithDetails } from './approval-request.repository';
+import {
+  ApprovalRequirement,
+  ApprovalRulesEngine,
+  ExpenseContext,
+} from './approval-rules.engine';
+import {
+  ApprovalRequestRepository,
+  ApprovalRequestWithDetails,
+} from './approval-request.repository';
 import { ApprovalTaskRepository } from './approval-task.repository';
 import { NotificationService } from '../notifications/notification.service';
 
@@ -48,13 +60,15 @@ export class ApprovalService {
     private readonly rulesEngine: ApprovalRulesEngine,
     private readonly approvalRequestRepo: ApprovalRequestRepository,
     private readonly approvalTaskRepo: ApprovalTaskRepository,
-    private readonly notificationService: NotificationService,
+    private readonly notificationService: NotificationService
   ) {}
 
   /**
    * Submit an expense for approval
    */
-  async submitExpenseForApproval(dto: CreateApprovalRequestDto): Promise<ApprovalRequest> {
+  async submitExpenseForApproval(
+    dto: CreateApprovalRequestDto
+  ): Promise<ApprovalRequest> {
     try {
       // Get expense details
       const expense = await this.getExpenseWithDetails(dto.expenseId);
@@ -63,13 +77,19 @@ export class ApprovalService {
       }
 
       if (expense.status !== ExpenseStatus.DRAFT) {
-        throw new BadRequestException('Only draft expenses can be submitted for approval');
+        throw new BadRequestException(
+          'Only draft expenses can be submitted for approval'
+        );
       }
 
       // Check if approval request already exists
-      const existingRequest = await this.approvalRequestRepo.findByExpenseId(dto.expenseId);
+      const existingRequest = await this.approvalRequestRepo.findByExpenseId(
+        dto.expenseId
+      );
       if (existingRequest) {
-        throw new BadRequestException('Approval request already exists for this expense');
+        throw new BadRequestException(
+          'Approval request already exists for this expense'
+        );
       }
 
       // Build expense context for rule evaluation
@@ -89,7 +109,8 @@ export class ApprovalService {
       };
 
       // Evaluate approval rules
-      const requirements = await this.rulesEngine.evaluateExpense(expenseContext);
+      const requirements =
+        await this.rulesEngine.evaluateExpense(expenseContext);
 
       if (requirements.length === 0) {
         // No approval required, auto-approve
@@ -98,13 +119,20 @@ export class ApprovalService {
       }
 
       // Create approval request
-      const approvalRequest = await this.createApprovalRequest(dto, expense, requirements);
+      const approvalRequest = await this.createApprovalRequest(
+        dto,
+        expense,
+        requirements
+      );
 
       // Create approval tasks
       await this.createApprovalTasks(approvalRequest.id, requirements);
 
       // Update expense status
-      await this.updateExpenseStatus(expense.id, ExpenseStatus.PENDING_APPROVAL);
+      await this.updateExpenseStatus(
+        expense.id,
+        ExpenseStatus.PENDING_APPROVAL
+      );
 
       // Send notifications
       await this.sendApprovalNotifications(approvalRequest.id);
@@ -116,13 +144,18 @@ export class ApprovalService {
         ApprovalAction.SUBMITTED,
         null,
         ApprovalRequestStatus.PENDING,
-        'Expense submitted for approval',
+        'Expense submitted for approval'
       );
 
-      this.logger.log(`Submitted expense ${dto.expenseId} for approval: ${approvalRequest.id}`);
+      this.logger.log(
+        `Submitted expense ${dto.expenseId} for approval: ${approvalRequest.id}`
+      );
       return approvalRequest;
     } catch (error) {
-      this.logger.error(`Failed to submit expense for approval: ${error.message}`, error);
+      this.logger.error(
+        `Failed to submit expense for approval: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -130,7 +163,9 @@ export class ApprovalService {
   /**
    * Process approval decision
    */
-  async processApprovalDecision(dto: ApprovalDecisionDto): Promise<ApprovalTask> {
+  async processApprovalDecision(
+    dto: ApprovalDecisionDto
+  ): Promise<ApprovalTask> {
     try {
       // Get approval task with details
       const task = await this.approvalTaskRepo.findByIdWithDetails(dto.taskId);
@@ -143,34 +178,44 @@ export class ApprovalService {
       }
 
       if (task.approverId !== dto.approverId) {
-        throw new ForbiddenException('You are not authorized to approve this task');
+        throw new ForbiddenException(
+          'You are not authorized to approve this task'
+        );
       }
 
       // Complete the approval task
       const completedTask = await this.approvalTaskRepo.completeTask(
         dto.taskId,
         dto.decision,
-        dto.comments,
+        dto.comments
       );
 
       // Log approval history
       await this.logApprovalAction(
         task.approvalRequestId,
         dto.approverId,
-        dto.decision === ApprovalDecision.APPROVED ? ApprovalAction.APPROVED : 
-        dto.decision === ApprovalDecision.REJECTED ? ApprovalAction.REJECTED : ApprovalAction.RETURNED,
+        dto.decision === ApprovalDecision.APPROVED
+          ? ApprovalAction.APPROVED
+          : dto.decision === ApprovalDecision.REJECTED
+            ? ApprovalAction.REJECTED
+            : ApprovalAction.RETURNED,
         null,
         null,
-        dto.comments,
+        dto.comments
       );
 
       // Check if all required tasks are completed
       await this.checkApprovalCompletion(task.approvalRequestId);
 
-      this.logger.log(`Processed approval decision for task ${dto.taskId}: ${dto.decision}`);
+      this.logger.log(
+        `Processed approval decision for task ${dto.taskId}: ${dto.decision}`
+      );
       return completedTask;
     } catch (error) {
-      this.logger.error(`Failed to process approval decision: ${error.message}`, error);
+      this.logger.error(
+        `Failed to process approval decision: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -192,14 +237,21 @@ export class ApprovalService {
           });
           completedTasks.push(task);
         } catch (error) {
-          this.logger.warn(`Failed to process bulk approval for task ${taskId}: ${error.message}`);
+          this.logger.warn(
+            `Failed to process bulk approval for task ${taskId}: ${error.message}`
+          );
         }
       }
 
-      this.logger.log(`Processed bulk approval for ${completedTasks.length}/${dto.taskIds.length} tasks`);
+      this.logger.log(
+        `Processed bulk approval for ${completedTasks.length}/${dto.taskIds.length} tasks`
+      );
       return completedTasks;
     } catch (error) {
-      this.logger.error(`Failed to process bulk approval: ${error.message}`, error);
+      this.logger.error(
+        `Failed to process bulk approval: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -208,7 +260,8 @@ export class ApprovalService {
    * Get approval request by ID
    */
   async getApprovalRequest(id: string): Promise<ApprovalRequestWithDetails> {
-    const approvalRequest = await this.approvalRequestRepo.findByIdWithDetails(id);
+    const approvalRequest =
+      await this.approvalRequestRepo.findByIdWithDetails(id);
     if (!approvalRequest) {
       throw new NotFoundException('Approval request not found');
     }
@@ -222,41 +275,66 @@ export class ApprovalService {
     organizationId: string,
     filters: any = {},
     page: number = 1,
-    limit: number = 20,
+    limit: number = 20
   ) {
     return await this.approvalRequestRepo.findMany(
       { organizationId, ...filters },
       page,
-      limit,
+      limit
     );
   }
 
   /**
    * Get pending approvals for an approver
    */
-  async getPendingApprovals(approverId: string, organizationId: string, page: number = 1, limit: number = 20) {
-    return await this.approvalTaskRepo.findPendingByApproverId(approverId, organizationId, page, limit);
+  async getPendingApprovals(
+    approverId: string,
+    organizationId: string,
+    page: number = 1,
+    limit: number = 20
+  ) {
+    return await this.approvalTaskRepo.findPendingByApproverId(
+      approverId,
+      organizationId,
+      page,
+      limit
+    );
   }
 
   /**
    * Get approval statistics
    */
-  async getApprovalStats(organizationId: string, dateFrom?: Date, dateTo?: Date) {
-    return await this.approvalRequestRepo.getStats(organizationId, dateFrom, dateTo);
+  async getApprovalStats(
+    organizationId: string,
+    dateFrom?: Date,
+    dateTo?: Date
+  ) {
+    return await this.approvalRequestRepo.getStats(
+      organizationId,
+      dateFrom,
+      dateTo
+    );
   }
 
   /**
    * Cancel approval request
    */
-  async cancelApprovalRequest(requestId: string, userId: string, reason?: string): Promise<ApprovalRequest> {
+  async cancelApprovalRequest(
+    requestId: string,
+    userId: string,
+    reason?: string
+  ): Promise<ApprovalRequest> {
     try {
-      const approvalRequest = await this.approvalRequestRepo.findByIdWithDetails(requestId);
+      const approvalRequest =
+        await this.approvalRequestRepo.findByIdWithDetails(requestId);
       if (!approvalRequest) {
         throw new NotFoundException('Approval request not found');
       }
 
       if (approvalRequest.status !== ApprovalRequestStatus.PENDING) {
-        throw new BadRequestException('Only pending approval requests can be cancelled');
+        throw new BadRequestException(
+          'Only pending approval requests can be cancelled'
+        );
       }
 
       // Update approval request status
@@ -266,7 +344,10 @@ export class ApprovalService {
       });
 
       // Update expense status back to draft
-      await this.updateExpenseStatus(approvalRequest.expenseId, ExpenseStatus.DRAFT);
+      await this.updateExpenseStatus(
+        approvalRequest.expenseId,
+        ExpenseStatus.DRAFT
+      );
 
       // Log approval history
       await this.logApprovalAction(
@@ -275,13 +356,16 @@ export class ApprovalService {
         ApprovalAction.CANCELLED,
         ApprovalRequestStatus.PENDING,
         ApprovalRequestStatus.CANCELLED,
-        reason,
+        reason
       );
 
       this.logger.log(`Cancelled approval request: ${requestId}`);
       return updatedRequest;
     } catch (error) {
-      this.logger.error(`Failed to cancel approval request: ${error.message}`, error);
+      this.logger.error(
+        `Failed to cancel approval request: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -321,7 +405,7 @@ export class ApprovalService {
   private async createApprovalRequest(
     dto: CreateApprovalRequestDto,
     expense: any,
-    requirements: ApprovalRequirement[],
+    requirements: ApprovalRequirement[]
   ): Promise<ApprovalRequest> {
     const priority = dto.priority || this.determinePriority(requirements);
     const dueDate = this.calculateDueDate(requirements);
@@ -341,7 +425,7 @@ export class ApprovalService {
 
   private async createApprovalTasks(
     approvalRequestId: string,
-    requirements: ApprovalRequirement[],
+    requirements: ApprovalRequirement[]
   ): Promise<void> {
     const tasks = [];
     let sequence = 0;
@@ -349,7 +433,7 @@ export class ApprovalService {
     for (const requirement of requirements) {
       // Create tasks for each approver role/user
       const approvers = await this.getApprovers(requirement);
-      
+
       for (const approverId of approvers) {
         tasks.push({
           approvalRequestId,
@@ -366,7 +450,9 @@ export class ApprovalService {
     }
   }
 
-  private async getApprovers(requirement: ApprovalRequirement): Promise<string[]> {
+  private async getApprovers(
+    requirement: ApprovalRequirement
+  ): Promise<string[]> {
     const approvers: string[] = [];
 
     // Add specific users
@@ -389,7 +475,9 @@ export class ApprovalService {
     return [...new Set(approvers)]; // Remove duplicates
   }
 
-  private determinePriority(requirements: ApprovalRequirement[]): ApprovalPriority {
+  private determinePriority(
+    requirements: ApprovalRequirement[]
+  ): ApprovalPriority {
     const priorities = requirements.map(r => r.requirementPriority);
     if (priorities.includes('URGENT')) return ApprovalPriority.URGENT;
     if (priorities.includes('HIGH')) return ApprovalPriority.HIGH;
@@ -401,7 +489,7 @@ export class ApprovalService {
     const escalationTimes = requirements
       .map(r => r.escalationTimeHours)
       .filter(t => t !== undefined);
-    
+
     if (escalationTimes.length === 0) return null;
 
     const minEscalationTime = Math.min(...escalationTimes);
@@ -410,62 +498,90 @@ export class ApprovalService {
     return dueDate;
   }
 
-  private async updateExpenseStatus(expenseId: string, status: ExpenseStatus): Promise<void> {
+  private async updateExpenseStatus(
+    expenseId: string,
+    status: ExpenseStatus
+  ): Promise<void> {
     await this.prisma.expense.update({
       where: { id: expenseId },
       data: { status },
     });
   }
 
-  private async checkApprovalCompletion(approvalRequestId: string): Promise<void> {
-    const tasks = await this.approvalTaskRepo.findByApprovalRequestId(approvalRequestId);
+  private async checkApprovalCompletion(
+    approvalRequestId: string
+  ): Promise<void> {
+    const tasks =
+      await this.approvalTaskRepo.findByApprovalRequestId(approvalRequestId);
     const requiredTasks = tasks.filter(t => t.isRequired);
-    const completedTasks = requiredTasks.filter(t => t.status === ApprovalTaskStatus.COMPLETED);
-    const rejectedTasks = completedTasks.filter(t => t.decision === ApprovalDecision.REJECTED);
+    const completedTasks = requiredTasks.filter(
+      t => t.status === ApprovalTaskStatus.COMPLETED
+    );
+    const rejectedTasks = completedTasks.filter(
+      t => t.decision === ApprovalDecision.REJECTED
+    );
 
     if (rejectedTasks.length > 0) {
       // At least one rejection - reject the entire request
-      await this.finalizeApprovalRequest(approvalRequestId, ApprovalRequestStatus.REJECTED);
+      await this.finalizeApprovalRequest(
+        approvalRequestId,
+        ApprovalRequestStatus.REJECTED
+      );
     } else if (completedTasks.length === requiredTasks.length) {
       // All required tasks completed with approval
-      await this.finalizeApprovalRequest(approvalRequestId, ApprovalRequestStatus.APPROVED);
+      await this.finalizeApprovalRequest(
+        approvalRequestId,
+        ApprovalRequestStatus.APPROVED
+      );
     }
     // Otherwise, still pending
   }
 
   private async finalizeApprovalRequest(
     approvalRequestId: string,
-    status: ApprovalRequestStatus,
+    status: ApprovalRequestStatus
   ): Promise<void> {
-    const approvalRequest = await this.approvalRequestRepo.update(approvalRequestId, {
-      status,
-      completedAt: new Date(),
-    });
+    const approvalRequest = await this.approvalRequestRepo.update(
+      approvalRequestId,
+      {
+        status,
+        completedAt: new Date(),
+      }
+    );
 
     // Update expense status
-    const expenseStatus = status === ApprovalRequestStatus.APPROVED 
-      ? ExpenseStatus.APPROVED 
-      : ExpenseStatus.REJECTED;
-    
+    const expenseStatus =
+      status === ApprovalRequestStatus.APPROVED
+        ? ExpenseStatus.APPROVED
+        : ExpenseStatus.REJECTED;
+
     await this.updateExpenseStatus(approvalRequest.expenseId, expenseStatus);
 
     // Send completion notifications
     await this.sendCompletionNotifications(approvalRequestId, status);
 
-    this.logger.log(`Finalized approval request ${approvalRequestId} with status: ${status}`);
+    this.logger.log(
+      `Finalized approval request ${approvalRequestId} with status: ${status}`
+    );
   }
 
-  private async sendApprovalNotifications(approvalRequestId: string): Promise<void> {
+  private async sendApprovalNotifications(
+    approvalRequestId: string
+  ): Promise<void> {
     // Implementation will be added when notification service is complete
-    this.logger.log(`Sending approval notifications for request: ${approvalRequestId}`);
+    this.logger.log(
+      `Sending approval notifications for request: ${approvalRequestId}`
+    );
   }
 
   private async sendCompletionNotifications(
     approvalRequestId: string,
-    status: ApprovalRequestStatus,
+    status: ApprovalRequestStatus
   ): Promise<void> {
     // Implementation will be added when notification service is complete
-    this.logger.log(`Sending completion notifications for request: ${approvalRequestId}, status: ${status}`);
+    this.logger.log(
+      `Sending completion notifications for request: ${approvalRequestId}, status: ${status}`
+    );
   }
 
   private async logApprovalAction(
@@ -474,7 +590,7 @@ export class ApprovalService {
     action: ApprovalAction,
     fromStatus?: ApprovalRequestStatus,
     toStatus?: ApprovalRequestStatus,
-    comments?: string,
+    comments?: string
   ): Promise<void> {
     await this.prisma.approvalHistory.create({
       data: {

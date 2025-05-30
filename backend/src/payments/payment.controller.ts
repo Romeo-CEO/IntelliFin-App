@@ -1,26 +1,26 @@
 import {
+  Body,
   Controller,
+  Delete,
   Get,
+  HttpStatus,
+  Param,
+  ParseUUIDPipe,
+  Patch,
   Post,
   Put,
-  Delete,
-  Body,
-  Param,
   Query,
   UseGuards,
   ValidationPipe,
-  ParseUUIDPipe,
-  HttpStatus,
-  Patch,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiParam,
-  ApiQuery,
   ApiBearerAuth,
   ApiBody,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -28,14 +28,14 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/auth.interface';
 import { PaymentService } from './payment.service';
 import {
+  BulkReconcileDto,
   CreatePaymentDto,
-  UpdatePaymentDto,
+  PaymentListResponseDto,
   PaymentQueryDto,
   PaymentResponseDto,
-  PaymentListResponseDto,
   PaymentStatsDto,
   ReconcilePaymentDto,
-  BulkReconcileDto,
+  UpdatePaymentDto,
 } from './dto/payment.dto';
 
 @ApiTags('Payments')
@@ -49,7 +49,8 @@ export class PaymentController {
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 requests per minute
   @ApiOperation({
     summary: 'Create a new payment',
-    description: 'Record a new payment from a customer, optionally linking to an invoice or transaction',
+    description:
+      'Record a new payment from a customer, optionally linking to an invoice or transaction',
   })
   @ApiBody({ type: CreatePaymentDto })
   @ApiResponse({
@@ -63,12 +64,12 @@ export class PaymentController {
   })
   async createPayment(
     @CurrentUser() user: AuthenticatedUser,
-    @Body(ValidationPipe) createPaymentDto: CreatePaymentDto,
+    @Body(ValidationPipe) createPaymentDto: CreatePaymentDto
   ) {
     return await this.paymentService.createPayment(
       user.organizationId,
       user.id,
-      createPaymentDto,
+      createPaymentDto
     );
   }
 
@@ -86,7 +87,7 @@ export class PaymentController {
   })
   async getPayments(
     @CurrentUser() user: AuthenticatedUser,
-    @Query(ValidationPipe) query: PaymentQueryDto,
+    @Query(ValidationPipe) query: PaymentQueryDto
   ) {
     return await this.paymentService.getPayments(user.organizationId, query);
   }
@@ -95,7 +96,8 @@ export class PaymentController {
   @Throttle({ default: { limit: 20, ttl: 60000 } }) // 20 requests per minute
   @ApiOperation({
     summary: 'Get payment statistics',
-    description: 'Get statistical overview of payments by method and time period',
+    description:
+      'Get statistical overview of payments by method and time period',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -118,14 +120,17 @@ export class PaymentController {
     type: [PaymentResponseDto],
   })
   async getUnreconciledPayments(@CurrentUser() user: AuthenticatedUser) {
-    return await this.paymentService.getUnreconciledPayments(user.organizationId);
+    return await this.paymentService.getUnreconciledPayments(
+      user.organizationId
+    );
   }
 
   @Get('reconcile')
   @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 requests per minute
   @ApiOperation({
     summary: 'Get reconciliation suggestions',
-    description: 'Get automatic and suggested matches between payments and transactions',
+    description:
+      'Get automatic and suggested matches between payments and transactions',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -154,9 +159,12 @@ export class PaymentController {
   })
   async getPaymentsByInvoiceId(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('invoiceId', ParseUUIDPipe) invoiceId: string,
+    @Param('invoiceId', ParseUUIDPipe) invoiceId: string
   ) {
-    return await this.paymentService.getPaymentsByInvoiceId(invoiceId, user.organizationId);
+    return await this.paymentService.getPaymentsByInvoiceId(
+      invoiceId,
+      user.organizationId
+    );
   }
 
   @Get(':id')
@@ -182,7 +190,7 @@ export class PaymentController {
   })
   async getPaymentById(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ParseUUIDPipe) id: string
   ) {
     return await this.paymentService.getPaymentById(id, user.organizationId);
   }
@@ -216,9 +224,13 @@ export class PaymentController {
   async updatePayment(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,
-    @Body(ValidationPipe) updatePaymentDto: UpdatePaymentDto,
+    @Body(ValidationPipe) updatePaymentDto: UpdatePaymentDto
   ) {
-    return await this.paymentService.updatePayment(id, user.organizationId, updatePaymentDto);
+    return await this.paymentService.updatePayment(
+      id,
+      user.organizationId,
+      updatePaymentDto
+    );
   }
 
   @Delete(':id')
@@ -243,7 +255,7 @@ export class PaymentController {
   })
   async deletePayment(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ParseUUIDPipe) id: string
   ) {
     await this.paymentService.deletePayment(id, user.organizationId);
     return { message: 'Payment deleted successfully' };
@@ -274,12 +286,12 @@ export class PaymentController {
   async reconcilePayment(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,
-    @Body(ValidationPipe) reconcileDto: ReconcilePaymentDto,
+    @Body(ValidationPipe) reconcileDto: ReconcilePaymentDto
   ) {
     return await this.paymentService.manualReconcile(
       user.organizationId,
       id,
-      reconcileDto.transactionId,
+      reconcileDto.transactionId
     );
   }
 
@@ -287,7 +299,8 @@ export class PaymentController {
   @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 requests per minute
   @ApiOperation({
     summary: 'Bulk reconcile payments',
-    description: 'Reconcile multiple payments with transactions in a single operation',
+    description:
+      'Reconcile multiple payments with transactions in a single operation',
   })
   @ApiBody({ type: BulkReconcileDto })
   @ApiResponse({
@@ -304,11 +317,11 @@ export class PaymentController {
   })
   async bulkReconcile(
     @CurrentUser() user: AuthenticatedUser,
-    @Body(ValidationPipe) bulkReconcileDto: BulkReconcileDto,
+    @Body(ValidationPipe) bulkReconcileDto: BulkReconcileDto
   ) {
     return await this.paymentService.bulkReconcile(
       user.organizationId,
-      bulkReconcileDto.mappings,
+      bulkReconcileDto.mappings
     );
   }
 
@@ -316,7 +329,8 @@ export class PaymentController {
   @Throttle({ default: { limit: 3, ttl: 60000 } }) // 3 requests per minute
   @ApiOperation({
     summary: 'Apply automatic reconciliation matches',
-    description: 'Apply high-confidence automatic matches between payments and transactions',
+    description:
+      'Apply high-confidence automatic matches between payments and transactions',
   })
   @ApiBody({
     description: 'Array of automatic matches to apply',
@@ -351,11 +365,11 @@ export class PaymentController {
   })
   async applyAutomaticMatches(
     @CurrentUser() user: AuthenticatedUser,
-    @Body() body: { matches: any[] },
+    @Body() body: { matches: any[] }
   ) {
     const appliedCount = await this.paymentService.applyAutomaticMatches(
       user.organizationId,
-      body.matches,
+      body.matches
     );
     return {
       appliedCount,

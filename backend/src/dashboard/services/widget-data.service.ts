@@ -30,7 +30,7 @@ export class WidgetDataService {
     private readonly customerService: CustomerService,
     private readonly invoiceService: InvoiceService,
     private readonly paymentService: PaymentService,
-    private readonly cacheService: DashboardCacheService,
+    private readonly cacheService: DashboardCacheService
   ) {}
 
   /**
@@ -39,7 +39,7 @@ export class WidgetDataService {
   async getWidgetData(
     widgetId: string,
     organizationId: string,
-    forceRefresh: boolean = false,
+    forceRefresh: boolean = false
   ) {
     try {
       // Get widget configuration
@@ -54,7 +54,7 @@ export class WidgetDataService {
       }
 
       const cacheKey = `widget_data_${widgetId}`;
-      
+
       // Check cache unless force refresh is requested
       if (!forceRefresh) {
         const cached = await this.cacheService.get(cacheKey);
@@ -71,7 +71,9 @@ export class WidgetDataService {
       const cacheTime = widget.refreshInterval || 300; // Default 5 minutes
       await this.cacheService.set(cacheKey, data, cacheTime);
 
-      this.logger.log(`Generated data for widget: ${widgetId} (${widget.widgetType})`);
+      this.logger.log(
+        `Generated data for widget: ${widgetId} (${widget.widgetType})`
+      );
       return data;
     } catch (error) {
       this.logger.error(`Failed to get widget data: ${error.message}`, error);
@@ -88,34 +90,34 @@ export class WidgetDataService {
     switch (widgetType) {
       case WidgetType.METRIC_CARD:
         return this.generateMetricCardData(organizationId, configuration);
-      
+
       case WidgetType.CHART:
         return this.generateChartData(organizationId, configuration);
-      
+
       case WidgetType.TABLE:
         return this.generateTableData(organizationId, configuration);
-      
+
       case WidgetType.LIST:
         return this.generateListData(organizationId, configuration);
-      
+
       case WidgetType.CASH_FLOW:
         return this.generateCashFlowData(organizationId, configuration);
-      
+
       case WidgetType.REVENUE_EXPENSES:
         return this.generateRevenueExpensesData(organizationId, configuration);
-      
+
       case WidgetType.KPI_SUMMARY:
         return this.generateKpiSummaryData(organizationId, configuration);
-      
+
       case WidgetType.RECEIVABLES:
         return this.generateReceivablesData(organizationId, configuration);
-      
+
       case WidgetType.EXPENSE_TRENDS:
         return this.generateExpenseTrendsData(organizationId, configuration);
-      
+
       case WidgetType.PROFITABILITY:
         return this.generateProfitabilityData(organizationId, configuration);
-      
+
       default:
         throw new Error(`Unsupported widget type: ${widgetType}`);
     }
@@ -128,9 +130,17 @@ export class WidgetDataService {
     const metric = config.metric || 'total_revenue';
     const period = config.period || 'month';
 
+    let revenue: number;
+    let expenses: number;
+    let profit: number;
+    let customerCount: number;
+
     switch (metric) {
       case 'total_revenue':
-        const revenue = await this.baseAnalyticsService.getTotalRevenue(organizationId, period);
+        revenue = await this.baseAnalyticsService.getTotalRevenue(
+          organizationId,
+          period
+        );
         return {
           value: revenue.amount,
           trend: revenue.trend,
@@ -138,9 +148,12 @@ export class WidgetDataService {
           period,
           lastUpdated: new Date().toISOString(),
         };
-      
+
       case 'total_expenses':
-        const expenses = await this.baseAnalyticsService.getTotalExpenses(organizationId, period);
+        expenses = await this.baseAnalyticsService.getTotalExpenses(
+          organizationId,
+          period
+        );
         return {
           value: expenses.amount,
           trend: expenses.trend,
@@ -148,9 +161,12 @@ export class WidgetDataService {
           period,
           lastUpdated: new Date().toISOString(),
         };
-      
+
       case 'net_profit':
-        const profit = await this.baseAnalyticsService.getNetProfit(organizationId, period);
+        profit = await this.baseAnalyticsService.getNetProfit(
+          organizationId,
+          period
+        );
         return {
           value: profit.amount,
           trend: profit.trend,
@@ -158,16 +174,17 @@ export class WidgetDataService {
           period,
           lastUpdated: new Date().toISOString(),
         };
-      
+
       case 'customer_count':
-        const customerCount = await this.customerService.getCustomerCount(organizationId);
+        customerCount =
+          await this.customerService.getCustomerCount(organizationId);
         return {
           value: customerCount,
           trend: 0, // Would need historical data for trend
           period,
           lastUpdated: new Date().toISOString(),
         };
-      
+
       default:
         throw new Error(`Unsupported metric: ${metric}`);
     }
@@ -183,17 +200,33 @@ export class WidgetDataService {
 
     switch (dataType) {
       case 'revenue':
-        return this.analyticsService.getRevenueChartData(organizationId, period, chartType);
-      
+        return this.analyticsService.getRevenueChartData(
+          organizationId,
+          period,
+          chartType
+        );
+
       case 'expenses':
-        return this.expenseTrendService.getExpenseChartData(organizationId, period, chartType);
-      
+        return this.expenseTrendService.getExpenseChartData(
+          organizationId,
+          period,
+          chartType
+        );
+
       case 'profit':
-        return this.profitabilityService.getProfitChartData(organizationId, period, chartType);
-      
+        return this.profitabilityService.getProfitChartData(
+          organizationId,
+          period,
+          chartType
+        );
+
       case 'cash_flow':
-        return this.analyticsService.getCashFlowChartData(organizationId, period, chartType);
-      
+        return this.analyticsService.getCashFlowChartData(
+          organizationId,
+          period,
+          chartType
+        );
+
       default:
         throw new Error(`Unsupported chart data type: ${dataType}`);
     }
@@ -209,16 +242,19 @@ export class WidgetDataService {
     switch (tableType) {
       case 'recent_invoices':
         return this.invoiceService.getRecentInvoices(organizationId, limit);
-      
+
       case 'top_customers':
         return this.customerService.getTopCustomers(organizationId, limit);
-      
+
       case 'pending_payments':
         return this.paymentService.getPendingPayments(organizationId, limit);
-      
+
       case 'expense_breakdown':
-        return this.expenseTrendService.getExpenseBreakdown(organizationId, limit);
-      
+        return this.expenseTrendService.getExpenseBreakdown(
+          organizationId,
+          limit
+        );
+
       default:
         throw new Error(`Unsupported table type: ${tableType}`);
     }
@@ -234,13 +270,13 @@ export class WidgetDataService {
     switch (listType) {
       case 'alerts':
         return this.generateAlertsList(organizationId, limit);
-      
+
       case 'tasks':
         return this.generateTasksList(organizationId, limit);
-      
+
       case 'notifications':
         return this.generateNotificationsList(organizationId, limit);
-      
+
       default:
         throw new Error(`Unsupported list type: ${listType}`);
     }
@@ -251,22 +287,34 @@ export class WidgetDataService {
    */
   private async generateCashFlowData(organizationId: string, config: any) {
     const period = config.period || 'last_30_days';
-    return this.analyticsService.getCashFlowAnalysis(organizationId, { period });
+    return this.analyticsService.getCashFlowAnalysis(organizationId, {
+      period,
+    });
   }
 
   /**
    * Generate revenue vs expenses widget data
    */
-  private async generateRevenueExpensesData(organizationId: string, config: any) {
+  private async generateRevenueExpensesData(
+    organizationId: string,
+    config: any
+  ) {
     const period = config.period || 'last_6_months';
-    return this.analyticsService.getRevenueExpensesComparison(organizationId, { period });
+    return this.analyticsService.getRevenueExpensesComparison(organizationId, {
+      period,
+    });
   }
 
   /**
    * Generate KPI summary widget data
    */
   private async generateKpiSummaryData(organizationId: string, config: any) {
-    const metrics = config.metrics || ['revenue', 'expenses', 'profit', 'customers'];
+    const metrics = config.metrics || [
+      'revenue',
+      'expenses',
+      'profit',
+      'customers',
+    ];
     return this.baseAnalyticsService.getKpiSummary(organizationId, metrics);
   }
 
@@ -282,7 +330,9 @@ export class WidgetDataService {
    */
   private async generateExpenseTrendsData(organizationId: string, config: any) {
     const period = config.period || 'last_12_months';
-    return this.expenseTrendService.getExpenseTrendAnalysis(organizationId, { period });
+    return this.expenseTrendService.getExpenseTrendAnalysis(organizationId, {
+      period,
+    });
   }
 
   /**
@@ -290,7 +340,9 @@ export class WidgetDataService {
    */
   private async generateProfitabilityData(organizationId: string, config: any) {
     const analysisType = config.analysisType || 'overall';
-    return this.profitabilityService.getProfitabilityAnalysis(organizationId, { analysisType });
+    return this.profitabilityService.getProfitabilityAnalysis(organizationId, {
+      analysisType,
+    });
   }
 
   // Helper methods for list data
@@ -342,7 +394,10 @@ export class WidgetDataService {
     };
   }
 
-  private async generateNotificationsList(organizationId: string, limit: number) {
+  private async generateNotificationsList(
+    organizationId: string,
+    limit: number
+  ) {
     // Implementation would generate notifications
     return {
       items: [

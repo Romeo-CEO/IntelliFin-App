@@ -24,10 +24,11 @@ export class AirtelMoneyTokenRepository {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly configService: ConfigService,
+    private readonly configService: ConfigService
   ) {
     // Get encryption key from environment or generate one
-    this.encryptionKey = this.configService.get<string>('ENCRYPTION_KEY') || 
+    this.encryptionKey =
+      this.configService.get<string>('ENCRYPTION_KEY') ||
       this.configService.get<string>('JWT_SECRET') ||
       crypto.randomBytes(32).toString('hex');
 
@@ -41,7 +42,7 @@ export class AirtelMoneyTokenRepository {
    */
   async storeTokens(
     accountId: string,
-    tokenData: EncryptedTokenData,
+    tokenData: EncryptedTokenData
   ): Promise<void> {
     try {
       const encryptedAccessToken = this.encrypt(tokenData.accessToken);
@@ -60,7 +61,10 @@ export class AirtelMoneyTokenRepository {
 
       this.logger.debug(`Stored encrypted tokens for account: ${accountId}`);
     } catch (error) {
-      this.logger.error(`Failed to store tokens for account ${accountId}:`, error);
+      this.logger.error(
+        `Failed to store tokens for account ${accountId}:`,
+        error
+      );
       throw error;
     }
   }
@@ -85,7 +89,9 @@ export class AirtelMoneyTokenRepository {
       }
 
       const accessToken = this.decrypt(account.accessToken);
-      const refreshToken = account.refreshToken ? this.decrypt(account.refreshToken) : null;
+      const refreshToken = account.refreshToken
+        ? this.decrypt(account.refreshToken)
+        : null;
 
       return {
         accessToken,
@@ -93,7 +99,10 @@ export class AirtelMoneyTokenRepository {
         expiresAt: account.tokenExpiresAt,
       };
     } catch (error) {
-      this.logger.error(`Failed to retrieve tokens for account ${accountId}:`, error);
+      this.logger.error(
+        `Failed to retrieve tokens for account ${accountId}:`,
+        error
+      );
       throw error;
     }
   }
@@ -103,7 +112,7 @@ export class AirtelMoneyTokenRepository {
    */
   async updateTokens(
     accountId: string,
-    tokenData: TokenUpdateData,
+    tokenData: TokenUpdateData
   ): Promise<void> {
     try {
       const updateData: any = {
@@ -129,7 +138,10 @@ export class AirtelMoneyTokenRepository {
 
       this.logger.debug(`Updated tokens for account: ${accountId}`);
     } catch (error) {
-      this.logger.error(`Failed to update tokens for account ${accountId}:`, error);
+      this.logger.error(
+        `Failed to update tokens for account ${accountId}:`,
+        error
+      );
       throw error;
     }
   }
@@ -137,7 +149,10 @@ export class AirtelMoneyTokenRepository {
   /**
    * Check if tokens are expired or about to expire
    */
-  async areTokensExpired(accountId: string, bufferMinutes: number = 5): Promise<boolean> {
+  async areTokensExpired(
+    accountId: string,
+    bufferMinutes: number = 5
+  ): Promise<boolean> {
     try {
       const account = await this.prisma.mobileMoneyAccount.findUnique({
         where: { id: accountId },
@@ -149,11 +164,16 @@ export class AirtelMoneyTokenRepository {
       }
 
       const bufferTime = bufferMinutes * 60 * 1000; // Convert to milliseconds
-      const expirationWithBuffer = new Date(account.tokenExpiresAt.getTime() - bufferTime);
+      const expirationWithBuffer = new Date(
+        account.tokenExpiresAt.getTime() - bufferTime
+      );
 
       return new Date() >= expirationWithBuffer;
     } catch (error) {
-      this.logger.error(`Failed to check token expiration for account ${accountId}:`, error);
+      this.logger.error(
+        `Failed to check token expiration for account ${accountId}:`,
+        error
+      );
       return true; // Assume expired on error
     }
   }
@@ -176,7 +196,10 @@ export class AirtelMoneyTokenRepository {
 
       this.logger.debug(`Removed tokens for account: ${accountId}`);
     } catch (error) {
-      this.logger.error(`Failed to remove tokens for account ${accountId}:`, error);
+      this.logger.error(
+        `Failed to remove tokens for account ${accountId}:`,
+        error
+      );
       throw error;
     }
   }
@@ -187,7 +210,7 @@ export class AirtelMoneyTokenRepository {
   async getAccountsWithExpiredTokens(): Promise<MobileMoneyAccount[]> {
     try {
       const now = new Date();
-      
+
       return await this.prisma.mobileMoneyAccount.findMany({
         where: {
           provider: MobileMoneyProvider.AIRTEL_MONEY,
@@ -206,11 +229,13 @@ export class AirtelMoneyTokenRepository {
   /**
    * Get accounts that need token refresh (expiring soon)
    */
-  async getAccountsNeedingRefresh(bufferMinutes: number = 10): Promise<MobileMoneyAccount[]> {
+  async getAccountsNeedingRefresh(
+    bufferMinutes: number = 10
+  ): Promise<MobileMoneyAccount[]> {
     try {
       const bufferTime = bufferMinutes * 60 * 1000;
       const expirationThreshold = new Date(Date.now() + bufferTime);
-      
+
       return await this.prisma.mobileMoneyAccount.findMany({
         where: {
           provider: MobileMoneyProvider.AIRTEL_MONEY,
@@ -234,12 +259,12 @@ export class AirtelMoneyTokenRepository {
       const iv = crypto.randomBytes(16);
       const key = crypto.scryptSync(this.encryptionKey, 'salt', 32);
       const cipher = crypto.createCipherGCM(this.algorithm, key, iv);
-      
+
       let encrypted = cipher.update(text, 'utf8', 'hex');
       encrypted += cipher.final('hex');
-      
+
       const authTag = cipher.getAuthTag();
-      
+
       // Combine IV, auth tag, and encrypted data
       return `${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted}`;
     } catch (error) {
@@ -254,21 +279,21 @@ export class AirtelMoneyTokenRepository {
   private decrypt(encryptedData: string): string {
     try {
       const [ivHex, authTagHex, encrypted] = encryptedData.split(':');
-      
+
       if (!ivHex || !authTagHex || !encrypted) {
         throw new Error('Invalid encrypted data format');
       }
-      
+
       const iv = Buffer.from(ivHex, 'hex');
       const authTag = Buffer.from(authTagHex, 'hex');
       const key = crypto.scryptSync(this.encryptionKey, 'salt', 32);
-      
+
       const decipher = crypto.createDecipherGCM(this.algorithm, key, iv);
       decipher.setAuthTag(authTag);
-      
+
       let decrypted = decipher.update(encrypted, 'hex', 'utf8');
       decrypted += decipher.final('utf8');
-      
+
       return decrypted;
     } catch (error) {
       this.logger.error('Failed to decrypt data:', error);
@@ -281,10 +306,10 @@ export class AirtelMoneyTokenRepository {
    */
   async validateEncryption(): Promise<boolean> {
     try {
-      const testData = 'test-token-data-' + Date.now();
+      const testData = `test-token-data-${  Date.now()}`;
       const encrypted = this.encrypt(testData);
       const decrypted = this.decrypt(encrypted);
-      
+
       return testData === decrypted;
     } catch (error) {
       this.logger.error('Encryption validation failed:', error);

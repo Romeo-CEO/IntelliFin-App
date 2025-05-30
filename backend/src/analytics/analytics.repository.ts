@@ -1,5 +1,4 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
 
 export interface CashFlowData {
@@ -189,7 +188,7 @@ export class AnalyticsRepository {
     organizationId: string,
     startDate: Date,
     endDate: Date,
-    groupBy: 'day' | 'week' | 'month' = 'month',
+    groupBy: 'day' | 'week' | 'month' = 'month'
   ): Promise<CashFlowData[]> {
     try {
       // Get payment inflows (revenue)
@@ -215,10 +214,16 @@ export class AnalyticsRepository {
         orderBy: { expenseDate: 'asc' },
       });
 
-      const [inflows, outflows] = await Promise.all([inflowQuery, outflowQuery]);
+      const [inflows, outflows] = await Promise.all([
+        inflowQuery,
+        outflowQuery,
+      ]);
 
       // Group data by specified period
-      const cashFlowMap = new Map<string, { inflow: number; outflow: number }>();
+      const cashFlowMap = new Map<
+        string,
+        { inflow: number; outflow: number }
+      >();
 
       // Process inflows
       inflows.forEach(item => {
@@ -257,10 +262,15 @@ export class AnalyticsRepository {
         });
       });
 
-      this.logger.log(`Retrieved cash flow data for organization: ${organizationId}, periods: ${result.length}`);
+      this.logger.log(
+        `Retrieved cash flow data for organization: ${organizationId}, periods: ${result.length}`
+      );
       return result;
     } catch (error) {
-      this.logger.error(`Failed to get cash flow data: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get cash flow data: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -272,7 +282,7 @@ export class AnalyticsRepository {
     organizationId: string,
     startDate: Date,
     endDate: Date,
-    groupBy: 'day' | 'week' | 'month' = 'month',
+    groupBy: 'day' | 'week' | 'month' = 'month'
   ): Promise<RevenueExpensesData[]> {
     try {
       // Get revenue from paid invoices
@@ -299,7 +309,10 @@ export class AnalyticsRepository {
         orderBy: { expenseDate: 'asc' },
       });
 
-      const [revenues, expenses] = await Promise.all([revenueQuery, expensesQuery]);
+      const [revenues, expenses] = await Promise.all([
+        revenueQuery,
+        expensesQuery,
+      ]);
 
       // Group data by specified period
       const dataMap = new Map<string, { revenue: number; expenses: number }>();
@@ -327,7 +340,8 @@ export class AnalyticsRepository {
       sortedPeriods.forEach(period => {
         const data = dataMap.get(period)!;
         const profit = data.revenue - data.expenses;
-        const profitMargin = data.revenue > 0 ? (profit / data.revenue) * 100 : 0;
+        const profitMargin =
+          data.revenue > 0 ? (profit / data.revenue) * 100 : 0;
 
         result.push({
           period,
@@ -338,10 +352,15 @@ export class AnalyticsRepository {
         });
       });
 
-      this.logger.log(`Retrieved revenue vs expenses data for organization: ${organizationId}, periods: ${result.length}`);
+      this.logger.log(
+        `Retrieved revenue vs expenses data for organization: ${organizationId}, periods: ${result.length}`
+      );
       return result;
     } catch (error) {
-      this.logger.error(`Failed to get revenue vs expenses data: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get revenue vs expenses data: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -352,7 +371,7 @@ export class AnalyticsRepository {
   async getKpiMetrics(
     organizationId: string,
     startDate: Date,
-    endDate: Date,
+    endDate: Date
   ): Promise<KpiMetrics> {
     try {
       // Calculate previous period dates for trend comparison
@@ -368,23 +387,42 @@ export class AnalyticsRepository {
         paymentCycleData,
       ] = await Promise.all([
         this.getBasicFinancialMetrics(organizationId, startDate, endDate),
-        this.getBasicFinancialMetrics(organizationId, prevStartDate, prevEndDate),
+        this.getBasicFinancialMetrics(
+          organizationId,
+          prevStartDate,
+          prevEndDate
+        ),
         this.getCustomerCount(organizationId),
         this.getInvoiceStats(organizationId, startDate, endDate),
         this.getPaymentCycleTime(organizationId, startDate, endDate),
       ]);
 
       // Calculate trends (percentage change from previous period)
-      const revenueTrend = this.calculateTrend(currentMetrics.revenue, previousMetrics.revenue);
-      const expensesTrend = this.calculateTrend(currentMetrics.expenses, previousMetrics.expenses);
-      const profitTrend = this.calculateTrend(currentMetrics.profit, previousMetrics.profit);
-      const receivablesTrend = this.calculateTrend(currentMetrics.accountsReceivable, previousMetrics.accountsReceivable);
+      const revenueTrend = this.calculateTrend(
+        currentMetrics.revenue,
+        previousMetrics.revenue
+      );
+      const expensesTrend = this.calculateTrend(
+        currentMetrics.expenses,
+        previousMetrics.expenses
+      );
+      const profitTrend = this.calculateTrend(
+        currentMetrics.profit,
+        previousMetrics.profit
+      );
+      const receivablesTrend = this.calculateTrend(
+        currentMetrics.accountsReceivable,
+        previousMetrics.accountsReceivable
+      );
 
       const result: KpiMetrics = {
         totalRevenue: currentMetrics.revenue,
         totalExpenses: currentMetrics.expenses,
         netProfit: currentMetrics.profit,
-        profitMargin: currentMetrics.revenue > 0 ? (currentMetrics.profit / currentMetrics.revenue) * 100 : 0,
+        profitMargin:
+          currentMetrics.revenue > 0
+            ? (currentMetrics.profit / currentMetrics.revenue) * 100
+            : 0,
         cashBalance: currentMetrics.cashBalance,
         accountsReceivable: currentMetrics.accountsReceivable,
         averageInvoiceValue: invoiceStats.averageValue,
@@ -397,7 +435,9 @@ export class AnalyticsRepository {
         receivablesTrend,
       };
 
-      this.logger.log(`Retrieved KPI metrics for organization: ${organizationId}`);
+      this.logger.log(
+        `Retrieved KPI metrics for organization: ${organizationId}`
+      );
       return result;
     } catch (error) {
       this.logger.error(`Failed to get KPI metrics: ${error.message}`, error);
@@ -408,7 +448,9 @@ export class AnalyticsRepository {
   /**
    * Get accounts receivable aging data
    */
-  async getReceivablesAging(organizationId: string): Promise<ReceivablesAgingData> {
+  async getReceivablesAging(
+    organizationId: string
+  ): Promise<ReceivablesAgingData> {
     try {
       const today = new Date();
 
@@ -445,10 +487,17 @@ export class AnalyticsRepository {
       };
 
       receivables.forEach(invoice => {
-        const outstandingAmount = invoice.totalAmount.toNumber() - invoice.paidAmount.toNumber();
+        const outstandingAmount =
+          invoice.totalAmount.toNumber() - invoice.paidAmount.toNumber();
         if (outstandingAmount <= 0) return;
 
-        const daysOverdue = Math.max(0, Math.floor((today.getTime() - invoice.dueDate.getTime()) / (1000 * 60 * 60 * 24)));
+        const daysOverdue = Math.max(
+          0,
+          Math.floor(
+            (today.getTime() - invoice.dueDate.getTime()) /
+              (1000 * 60 * 60 * 24)
+          )
+        );
 
         let category: 'current' | '30days' | '60days' | '90days' | '90plus';
 
@@ -482,10 +531,15 @@ export class AnalyticsRepository {
         });
       });
 
-      this.logger.log(`Retrieved receivables aging for organization: ${organizationId}, total: ${agingData.total}`);
+      this.logger.log(
+        `Retrieved receivables aging for organization: ${organizationId}, total: ${agingData.total}`
+      );
       return agingData;
     } catch (error) {
-      this.logger.error(`Failed to get receivables aging: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get receivables aging: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -496,8 +550,14 @@ export class AnalyticsRepository {
   private async getBasicFinancialMetrics(
     organizationId: string,
     startDate: Date,
-    endDate: Date,
-  ): Promise<{ revenue: number; expenses: number; profit: number; cashBalance: number; accountsReceivable: number }> {
+    endDate: Date
+  ): Promise<{
+    revenue: number;
+    expenses: number;
+    profit: number;
+    cashBalance: number;
+    accountsReceivable: number;
+  }> {
     const [revenueData, expenseData, receivablesData] = await Promise.all([
       this.prisma.invoice.aggregate({
         where: {
@@ -554,7 +614,7 @@ export class AnalyticsRepository {
   private async getInvoiceStats(
     organizationId: string,
     startDate: Date,
-    endDate: Date,
+    endDate: Date
   ): Promise<{ count: number; averageValue: number }> {
     const stats = await this.prisma.invoice.aggregate({
       where: {
@@ -578,7 +638,7 @@ export class AnalyticsRepository {
   private async getPaymentCycleTime(
     organizationId: string,
     startDate: Date,
-    endDate: Date,
+    endDate: Date
   ): Promise<number> {
     const paidInvoices = await this.prisma.invoice.findMany({
       where: {
@@ -601,7 +661,9 @@ export class AnalyticsRepository {
     const totalDays = paidInvoices.reduce((sum, invoice) => {
       if (invoice.payments.length > 0) {
         const daysDiff = Math.floor(
-          (invoice.payments[0].paymentDate.getTime() - invoice.issueDate.getTime()) / (1000 * 60 * 60 * 24)
+          (invoice.payments[0].paymentDate.getTime() -
+            invoice.issueDate.getTime()) /
+            (1000 * 60 * 60 * 24)
         );
         return sum + Math.max(0, daysDiff);
       }
@@ -625,11 +687,12 @@ export class AnalyticsRepository {
   private formatPeriod(date: Date, groupBy: 'day' | 'week' | 'month'): string {
     const d = new Date(date);
 
+    const weekStart: Date = new Date(d);
+
     switch (groupBy) {
       case 'day':
         return d.toISOString().split('T')[0]; // YYYY-MM-DD
       case 'week':
-        const weekStart = new Date(d);
         weekStart.setDate(d.getDate() - d.getDay());
         return weekStart.toISOString().split('T')[0];
       case 'month':

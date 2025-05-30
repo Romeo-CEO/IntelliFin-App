@@ -7,13 +7,7 @@ import { TenantDatabaseProvider } from './providers/tenant-database.provider';
 
 @Module({
   controllers: [TenantController],
-  providers: [
-    TenantService,
-    TenantDatabaseProvider,
-  ],
-  exports: [
-    TenantService,
-    TenantDatabaseProvider,
-  ],
+  providers: [TenantService, TenantDatabaseProvider],
+  exports: [TenantService, TenantDatabaseProvider],
 })
 export class TenantModule {}

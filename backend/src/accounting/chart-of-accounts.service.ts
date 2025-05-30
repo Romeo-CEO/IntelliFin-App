@@ -185,8 +185,8 @@ export class ChartOfAccountsService {
       // EQUITY
       {
         code: '3000',
-        name: 'Owner\'s Equity',
-        description: 'Owner\'s investment in the business',
+        name: "Owner's Equity",
+        description: "Owner's investment in the business",
         category: 'EQUITY',
         subcategory: 'Equity',
       },
@@ -405,7 +405,9 @@ export class ChartOfAccountsService {
    * Get account by code
    */
   getAccountByCode(code: string): ZambianAccountCode | undefined {
-    return this.getZambianChartOfAccounts().find(account => account.code === code);
+    return this.getZambianChartOfAccounts().find(
+      account => account.code === code
+    );
   }
 
   /**
@@ -427,14 +429,20 @@ export class ChartOfAccountsService {
   /**
    * Get accounts by category
    */
-  getAccountsByCategory(category: 'ASSET' | 'LIABILITY' | 'EQUITY' | 'REVENUE' | 'EXPENSE'): ZambianAccountCode[] {
-    return this.getZambianChartOfAccounts().filter(account => account.category === category);
+  getAccountsByCategory(
+    category: 'ASSET' | 'LIABILITY' | 'EQUITY' | 'REVENUE' | 'EXPENSE'
+  ): ZambianAccountCode[] {
+    return this.getZambianChartOfAccounts().filter(
+      account => account.category === category
+    );
   }
 
   /**
    * Get child accounts for a parent account
    */
   getChildAccounts(parentCode: string): ZambianAccountCode[] {
-    return this.getZambianChartOfAccounts().filter(account => account.parentCode === parentCode);
+    return this.getZambianChartOfAccounts().filter(
+      account => account.parentCode === parentCode
+    );
   }
 }

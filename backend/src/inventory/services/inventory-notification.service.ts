@@ -11,10 +11,20 @@ export interface StockAlertNotification {
   message: string;
 }
 
+export interface FullStockAlertNotification extends StockAlertNotification {
+  id: string;
+  createdAt: Date;
+  product?: { // Assuming product details might be nested based on usage
+    name: string;
+    sku: string;
+    unit: string;
+  };
+}
+
 export interface NotificationChannel {
   type: 'email' | 'sms' | 'push';
   enabled: boolean;
-  config?: any;
+  config?: Record<string, any>;
 }
 
 export interface NotificationTemplate {
@@ -34,7 +44,7 @@ export class InventoryNotificationService {
   private readonly isNotificationEnabled: boolean;
 
   // Notification templates for different alert types
-  private readonly ALERT_TEMPLATES = {
+  private readonly ALERT_TEMPLATES: Record<string, Partial<Record<'email' | 'sms' | 'push', NotificationTemplate>>> = {
     OUT_OF_STOCK: {
       email: {
         subject: '🚨 URGENT: Product Out of Stock - {{productName}}',
@@ -50,10 +60,12 @@ export class InventoryNotificationService {
           
           <p>Best regards,<br>IntelliFin Inventory System</p>
         `,
+        variables: {},
       },
       sms: {
         subject: 'Stock Alert',
         body: 'URGENT: {{productName}} ({{productSku}}) is OUT OF STOCK. Immediate restocking required. - IntelliFin',
+        variables: {},
       },
     },
     LOW_STOCK: {
@@ -71,10 +83,12 @@ export class InventoryNotificationService {
           
           <p>Best regards,<br>IntelliFin Inventory System</p>
         `,
+        variables: {},
       },
       sms: {
         subject: 'Stock Alert',
         body: 'LOW STOCK: {{productName}} ({{productSku}}) - {{currentStock}}/{{thresholdValue}} {{unit}}. Consider reordering. - IntelliFin',
+        variables: {},
       },
     },
     REORDER_POINT: {
@@ -92,10 +106,12 @@ export class InventoryNotificationService {
           
           <p>Best regards,<br>IntelliFin Inventory System</p>
         `,
+        variables: {},
       },
       sms: {
         subject: 'Reorder Alert',
         body: 'REORDER: {{productName}} ({{productSku}}) reached reorder point. Current: {{currentStock}} {{unit}}. - IntelliFin',
+        variables: {},
       },
     },
     OVERSTOCK: {
@@ -113,16 +129,19 @@ export class InventoryNotificationService {
           
           <p>Best regards,<br>IntelliFin Inventory System</p>
         `,
+        variables: {},
       },
       sms: {
         subject: 'Overstock Alert',
         body: 'OVERSTOCK: {{productName}} ({{productSku}}) - {{currentStock}}/{{thresholdValue}} {{unit}}. Consider promotion. - IntelliFin',
+        variables: {},
       },
     },
   };
 
   constructor(private readonly configService: ConfigService) {
-    this.isNotificationEnabled = this.configService.get<boolean>('notifications.enabled') || false;
+    this.isNotificationEnabled =
+      this.configService.get<boolean>('notifications.enabled') || false;
   }
 
   /**
@@ -131,7 +150,7 @@ export class InventoryNotificationService {
   async sendStockAlert(
     alert: StockAlertNotification,
     recipients: string[],
-    channel: 'email' | 'sms' | 'push',
+    channel: 'email' | 'sms' | 'push'
   ): Promise<boolean> {
     try {
       if (!this.isNotificationEnabled) {
@@ -147,7 +166,9 @@ export class InventoryNotificationService {
       // Get notification template
       const template = this.getAlertTemplate(alert.alertType, channel);
       if (!template) {
-        this.logger.warn(`No template found for alert type ${alert.alertType} and channel ${channel}`);
+        this.logger.warn(
+          `No template found for alert type ${alert.alertType} and channel ${channel}`
+        );
         return false;
       }
 
@@ -162,15 +183,18 @@ export class InventoryNotificationService {
         case 'email':
           return await this.sendEmailNotification(recipients, renderedTemplate);
         case 'sms':
-          return await this.sendSmsNotification(recipients, renderedTemplate);
+          return await this.sendSmsNotification(recipients);
         case 'push':
-          return await this.sendPushNotification(recipients, renderedTemplate);
+          return await this.sendPushNotification(recipients);
         default:
           this.logger.warn(`Unsupported notification channel: ${channel}`);
           return false;
       }
     } catch (error) {
-      this.logger.error(`Failed to send stock alert notification: ${error.message}`, error);
+      this.logger.error(
+        `Failed to send stock alert notification: ${(error as Error).message}`,
+        error
+      );
       return false;
     }
   }
@@ -178,20 +202,28 @@ export class InventoryNotificationService {
   /**
    * Send alert escalation
    */
-  async sendAlertEscalation(alert: any, organizationId: string): Promise<boolean> {
+  async sendAlertEscalation(
+    alert: FullStockAlertNotification,
+    organizationId: string
+  ): Promise<boolean> {
     try {
-      this.logger.log(`Sending alert escalation for alert ${alert.id} in organization ${organizationId}`);
+      this.logger.log(
+        `Sending alert escalation for alert ${alert.id} in organization ${organizationId}`
+      );
 
       // Get escalation recipients (managers, admins)
-      const escalationRecipients = await this.getEscalationRecipients(organizationId);
+      const escalationRecipients =
+        await this.getEscalationRecipients();
 
       if (escalationRecipients.length === 0) {
-        this.logger.warn(`No escalation recipients found for organization ${organizationId}`);
+        this.logger.warn(
+          `No escalation recipients found for organization ${organizationId}`
+        );
         return false;
       }
 
       // Prepare escalation message
-      const escalationTemplate = {
+      const escalationTemplate: NotificationTemplate = {
         subject: '🚨 ESCALATED: Unacknowledged Stock Alert - {{productName}}',
         body: `
           <h2>Escalated Stock Alert</h2>
@@ -209,6 +241,7 @@ export class InventoryNotificationService {
           
           <p>Best regards,<br>IntelliFin Inventory System</p>
         `,
+        variables: {},
       };
 
       const variables = {
@@ -220,16 +253,26 @@ export class InventoryNotificationService {
         currentStock: alert.currentStock,
         unit: alert.product?.unit || 'units',
         alertCreated: alert.createdAt.toLocaleString(),
-        hoursUnacknowledged: Math.round((Date.now() - alert.createdAt.getTime()) / (1000 * 60 * 60)),
+        hoursUnacknowledged: Math.round(
+          (Date.now() - alert.createdAt.getTime()) / (1000 * 60 * 60)
+        ),
       };
 
-      const renderedTemplate = this.renderTemplate(escalationTemplate, variables);
+      const renderedTemplate = this.renderTemplate(
+        escalationTemplate,
+        variables
+      );
 
       // Send escalation via email (high priority)
-      return await this.sendEmailNotification(escalationRecipients, renderedTemplate, true);
-
+      return await this.sendEmailNotification(
+        escalationRecipients,
+        renderedTemplate
+      );
     } catch (error) {
-      this.logger.error(`Failed to send alert escalation: ${error.message}`, error);
+      this.logger.error(
+        `Failed to send alert escalation: ${(error as Error).message}`,
+        error
+      );
       return false;
     }
   }
@@ -239,15 +282,15 @@ export class InventoryNotificationService {
    */
   async sendBulkNotificationSummary(
     organizationId: string,
-    alerts: any[],
-    recipients: string[],
+    alerts: FullStockAlertNotification[],
+    recipients: string[]
   ): Promise<boolean> {
     try {
       if (alerts.length === 0) {
         return true;
       }
 
-      const summaryTemplate = {
+      const summaryTemplate: NotificationTemplate = {
         subject: '📊 Daily Stock Alert Summary - {{alertCount}} Alerts',
         body: `
           <h2>Daily Stock Alert Summary</h2>
@@ -274,6 +317,7 @@ export class InventoryNotificationService {
           
           <p>Best regards,<br>IntelliFin Inventory System</p>
         `,
+        variables: {},
       };
 
       const variables = {
@@ -283,18 +327,22 @@ export class InventoryNotificationService {
         urgentCount: alerts.filter(a => a.alertLevel === 'URGENT').length,
         warningCount: alerts.filter(a => a.alertLevel === 'WARNING').length,
         infoCount: alerts.filter(a => a.alertLevel === 'INFO').length,
-        outOfStockCount: alerts.filter(a => a.alertType === 'OUT_OF_STOCK').length,
+        outOfStockCount: alerts.filter(a => a.alertType === 'OUT_OF_STOCK')
+          .length,
         lowStockCount: alerts.filter(a => a.alertType === 'LOW_STOCK').length,
-        reorderCount: alerts.filter(a => a.alertType === 'REORDER_POINT').length,
+        reorderCount: alerts.filter(a => a.alertType === 'REORDER_POINT')
+          .length,
         overstockCount: alerts.filter(a => a.alertType === 'OVERSTOCK').length,
       };
 
       const renderedTemplate = this.renderTemplate(summaryTemplate, variables);
 
       return await this.sendEmailNotification(recipients, renderedTemplate);
-
     } catch (error) {
-      this.logger.error(`Failed to send bulk notification summary: ${error.message}`, error);
+      this.logger.error(
+        `Failed to send bulk notification summary: ${(error as Error).message}`,
+        error
+      );
       return false;
     }
   }
@@ -302,15 +350,18 @@ export class InventoryNotificationService {
   /**
    * Get alert template for specific type and channel
    */
-  private getAlertTemplate(alertType: string, channel: string): any {
-    const templates = this.ALERT_TEMPLATES[alertType as keyof typeof this.ALERT_TEMPLATES];
+  private getAlertTemplate(alertType: string, channel: string): NotificationTemplate | undefined {
+    const templates =
+      this.ALERT_TEMPLATES[alertType as keyof typeof this.ALERT_TEMPLATES];
     return templates?.[channel as keyof typeof templates];
   }
 
   /**
    * Prepare template variables
    */
-  private async prepareTemplateVariables(alert: StockAlertNotification): Promise<Record<string, any>> {
+  private async prepareTemplateVariables(
+    alert: StockAlertNotification
+  ): Promise<Record<string, any>> {
     // In a real implementation, this would fetch product details
     return {
       productName: 'Product Name', // Would fetch from product service
@@ -327,7 +378,10 @@ export class InventoryNotificationService {
   /**
    * Render template with variables
    */
-  private renderTemplate(template: any, variables: Record<string, any>): NotificationTemplate {
+  private renderTemplate(
+    template: NotificationTemplate,
+    variables: Record<string, any>
+  ): NotificationTemplate {
     let subject = template.subject;
     let body = template.body;
 
@@ -350,19 +404,23 @@ export class InventoryNotificationService {
    */
   private async sendEmailNotification(
     recipients: string[],
-    template: NotificationTemplate,
-    highPriority = false,
+    template: NotificationTemplate
   ): Promise<boolean> {
     try {
       // In a real implementation, this would use the email service
-      this.logger.log(`Sending email notification to ${recipients.length} recipients: ${template.subject}`);
-      
+      this.logger.log(
+        `Sending email notification to ${recipients.length} recipients: ${template.subject}`
+      );
+
       // Mock email sending
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       return true;
     } catch (error) {
-      this.logger.error(`Failed to send email notification: ${error.message}`, error);
+      this.logger.error(
+        `Failed to send email notification: ${(error as Error).message}`,
+        error
+      );
       return false;
     }
   }
@@ -370,17 +428,24 @@ export class InventoryNotificationService {
   /**
    * Send SMS notification
    */
-  private async sendSmsNotification(recipients: string[], template: NotificationTemplate): Promise<boolean> {
+  private async sendSmsNotification(
+    recipients: string[]
+  ): Promise<boolean> {
     try {
       // In a real implementation, this would use an SMS service
-      this.logger.log(`Sending SMS notification to ${recipients.length} recipients`);
-      
+      this.logger.log(
+        `Sending SMS notification to ${recipients.length} recipients`
+      );
+
       // Mock SMS sending
       await new Promise(resolve => setTimeout(resolve, 200));
-      
+
       return true;
     } catch (error) {
-      this.logger.error(`Failed to send SMS notification: ${error.message}`, error);
+      this.logger.error(
+        `Failed to send SMS notification: ${(error as Error).message}`,
+        error
+      );
       return false;
     }
   }
@@ -388,17 +453,24 @@ export class InventoryNotificationService {
   /**
    * Send push notification
    */
-  private async sendPushNotification(recipients: string[], template: NotificationTemplate): Promise<boolean> {
+  private async sendPushNotification(
+    recipients: string[]
+  ): Promise<boolean> {
     try {
       // In a real implementation, this would use a push notification service
-      this.logger.log(`Sending push notification to ${recipients.length} recipients`);
-      
+      this.logger.log(
+        `Sending push notification to ${recipients.length} recipients`
+      );
+
       // Mock push notification sending
       await new Promise(resolve => setTimeout(resolve, 50));
-      
+
       return true;
     } catch (error) {
-      this.logger.error(`Failed to send push notification: ${error.message}`, error);
+      this.logger.error(
+        `Failed to send push notification: ${(error as Error).message}`,
+        error
+      );
       return false;
     }
   }
@@ -406,7 +478,8 @@ export class InventoryNotificationService {
   /**
    * Get escalation recipients
    */
-  private async getEscalationRecipients(organizationId: string): Promise<string[]> {
+  private async getEscalationRecipients(
+  ): Promise<string[]> {
     // In a real implementation, this would fetch managers and admins
     return ['manager@example.com', 'admin@example.com'];
   }

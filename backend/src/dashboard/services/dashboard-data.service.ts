@@ -1,4 +1,4 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { AnalyticsService } from '../../analytics/analytics.service';
 import { BaseAnalyticsService } from '../../analytics/services/base-analytics.service';
 import { EnhancedRevenueForecastingService } from '../../analytics/services/enhanced-revenue-forecasting.service';
@@ -25,7 +25,7 @@ export class DashboardDataService {
     private readonly reportService: ReportService,
     private readonly taxManagementService: TaxManagementService,
     private readonly paymentService: PaymentService,
-    private readonly cacheService: DashboardCacheService,
+    private readonly cacheService: DashboardCacheService
   ) {}
 
   /**
@@ -34,13 +34,15 @@ export class DashboardDataService {
   async getDashboardOverview(
     organizationId: string,
     period: string = 'month',
-    includeComparison: boolean = true,
+    includeComparison: boolean = true
   ) {
     try {
       const cacheKey = `dashboard_overview_${organizationId}_${period}_${includeComparison}`;
       const cached = await this.cacheService.get(cacheKey);
       if (cached) {
-        this.logger.log(`Returning cached dashboard overview for organization: ${organizationId}`);
+        this.logger.log(
+          `Returning cached dashboard overview for organization: ${organizationId}`
+        );
         return cached;
       }
 
@@ -78,16 +80,24 @@ export class DashboardDataService {
 
       // Add period comparison if requested
       if (includeComparison) {
-        overview['comparison'] = await this.getPeriodComparison(organizationId, period);
+        overview['comparison'] = await this.getPeriodComparison(
+          organizationId,
+          period
+        );
       }
 
       // Cache for 5 minutes
       await this.cacheService.set(cacheKey, overview, 300);
 
-      this.logger.log(`Dashboard overview generated for organization: ${organizationId}`);
+      this.logger.log(
+        `Dashboard overview generated for organization: ${organizationId}`
+      );
       return overview;
     } catch (error) {
-      this.logger.error(`Failed to get dashboard overview: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get dashboard overview: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -104,34 +114,42 @@ export class DashboardDataService {
       }
 
       // Get base analytics data
-      const analyticsData = await this.baseAnalyticsService.getOrganizationAnalytics(organizationId);
-      
+      const analyticsData =
+        await this.baseAnalyticsService.getOrganizationAnalytics(
+          organizationId
+        );
+
       const kpis = {
         // Financial KPIs
         totalRevenue: analyticsData.totalRevenue || 0,
         totalExpenses: analyticsData.totalExpenses || 0,
-        netProfit: (analyticsData.totalRevenue || 0) - (analyticsData.totalExpenses || 0),
-        profitMargin: this.calculateProfitMargin(analyticsData.totalRevenue, analyticsData.totalExpenses),
-        
+        netProfit:
+          (analyticsData.totalRevenue || 0) -
+          (analyticsData.totalExpenses || 0),
+        profitMargin: this.calculateProfitMargin(
+          analyticsData.totalRevenue,
+          analyticsData.totalExpenses
+        ),
+
         // Cash Flow KPIs
         cashBalance: analyticsData.cashBalance || 0,
         accountsReceivable: analyticsData.accountsReceivable || 0,
         accountsPayable: analyticsData.accountsPayable || 0,
-        
+
         // Business KPIs
         customerCount: analyticsData.customerCount || 0,
         invoiceCount: analyticsData.invoiceCount || 0,
         averageInvoiceValue: analyticsData.averageInvoiceValue || 0,
         paymentCycleTime: analyticsData.paymentCycleTime || 0,
-        
+
         // Growth KPIs
         revenueGrowth: analyticsData.revenueGrowth || 0,
         customerGrowth: analyticsData.customerGrowth || 0,
-        
+
         // Zambian-specific KPIs
         zraComplianceScore: analyticsData.zraComplianceScore || 0,
         mobileMoneySales: analyticsData.mobileMoneySales || 0,
-        
+
         // Metadata
         lastUpdated: new Date().toISOString(),
         currency: 'ZMW',
@@ -147,7 +165,7 @@ export class DashboardDataService {
         });
         filteredKpis['lastUpdated'] = kpis.lastUpdated;
         filteredKpis['currency'] = kpis.currency;
-        
+
         // Cache for 3 minutes
         await this.cacheService.set(cacheKey, filteredKpis, 180);
         return filteredKpis;
@@ -173,12 +191,7 @@ export class DashboardDataService {
         return cached;
       }
 
-      const [
-        profitLoss,
-        cashFlow,
-        balanceSheet,
-        ratios,
-      ] = await Promise.all([
+      const [profitLoss, cashFlow, balanceSheet, ratios] = await Promise.all([
         this.reportService.getProfitLossStatement(organizationId, { period }),
         this.reportService.getCashFlowStatement(organizationId, { period }),
         this.reportService.getBalanceSheet(organizationId),
@@ -199,7 +212,10 @@ export class DashboardDataService {
       await this.cacheService.set(cacheKey, summary, 600);
       return summary;
     } catch (error) {
-      this.logger.error(`Failed to get financial summary: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get financial summary: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -210,7 +226,7 @@ export class DashboardDataService {
   async getAnalyticsSummary(
     organizationId: string,
     includeForecasts: boolean = true,
-    includeAnomalies: boolean = true,
+    includeAnomalies: boolean = true
   ) {
     try {
       const cacheKey = `analytics_summary_${organizationId}_${includeForecasts}_${includeAnomalies}`;
@@ -227,15 +243,21 @@ export class DashboardDataService {
       // Add forecasts if requested
       if (includeForecasts) {
         const [revenueForecast, expenseForecast] = await Promise.all([
-          this.enhancedForecastingService.generateRevenueForecast(organizationId, {
-            periods: 6,
-            confidence: 0.85,
-            includeSeasonality: true,
-          }),
-          this.enhancedForecastingService.generateExpenseForecast(organizationId, {
-            periods: 6,
-            confidence: 0.85,
-          }),
+          this.enhancedForecastingService.generateRevenueForecast(
+            organizationId,
+            {
+              periods: 6,
+              confidence: 0.85,
+              includeSeasonality: true,
+            }
+          ),
+          this.enhancedForecastingService.generateExpenseForecast(
+            organizationId,
+            {
+              periods: 6,
+              confidence: 0.85,
+            }
+          ),
         ]);
 
         summary.forecasts = {
@@ -246,10 +268,13 @@ export class DashboardDataService {
 
       // Add anomalies if requested
       if (includeAnomalies) {
-        const anomalies = await this.anomalyEngine.detectAnomalies(organizationId, {
-          sensitivity: 'MEDIUM',
-          lookbackPeriods: 12,
-        });
+        const anomalies = await this.anomalyEngine.detectAnomalies(
+          organizationId,
+          {
+            sensitivity: 'MEDIUM',
+            lookbackPeriods: 12,
+          }
+        );
 
         summary.anomalies = anomalies;
       }
@@ -261,7 +286,10 @@ export class DashboardDataService {
       await this.cacheService.set(cacheKey, summary, 900);
       return summary;
     } catch (error) {
-      this.logger.error(`Failed to get analytics summary: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get analytics summary: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -277,11 +305,7 @@ export class DashboardDataService {
         return cached;
       }
 
-      const [
-        taxCompliance,
-        zraStatus,
-        vatSummary,
-      ] = await Promise.all([
+      const [taxCompliance, zraStatus, vatSummary] = await Promise.all([
         this.taxManagementService.getComplianceStatus(organizationId),
         this.taxManagementService.getZraIntegrationStatus(organizationId),
         this.taxManagementService.getVatSummary(organizationId),
@@ -292,7 +316,10 @@ export class DashboardDataService {
         taxCompliance,
         zraStatus,
         vatSummary,
-        recommendations: this.generateComplianceRecommendations(taxCompliance, zraStatus),
+        recommendations: this.generateComplianceRecommendations(
+          taxCompliance,
+          zraStatus
+        ),
         lastUpdated: new Date().toISOString(),
       };
 
@@ -300,7 +327,10 @@ export class DashboardDataService {
       await this.cacheService.set(cacheKey, summary, 1800);
       return summary;
     } catch (error) {
-      this.logger.error(`Failed to get Zambian compliance summary: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get Zambian compliance summary: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -308,7 +338,10 @@ export class DashboardDataService {
   /**
    * Get mobile money summary
    */
-  async getMobileMoneySummary(organizationId: string, provider: string = 'all') {
+  async getMobileMoneySummary(
+    organizationId: string,
+    provider: string = 'all'
+  ) {
     try {
       const cacheKey = `mobile_money_summary_${organizationId}_${provider}`;
       const cached = await this.cacheService.get(cacheKey);
@@ -316,16 +349,20 @@ export class DashboardDataService {
         return cached;
       }
 
-      const mobileMoneySummary = await this.paymentService.getMobileMoneySummary(
-        organizationId,
-        provider,
-      );
+      const mobileMoneySummary =
+        await this.paymentService.getMobileMoneySummary(
+          organizationId,
+          provider
+        );
 
       // Cache for 5 minutes
       await this.cacheService.set(cacheKey, mobileMoneySummary, 300);
       return mobileMoneySummary;
     } catch (error) {
-      this.logger.error(`Failed to get mobile money summary: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get mobile money summary: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -338,7 +375,10 @@ export class DashboardDataService {
 
   private async getFinancialMetrics(organizationId: string, period: string) {
     // Implementation would call analytics service for financial metrics
-    return this.baseAnalyticsService.getFinancialMetrics(organizationId, period);
+    return this.baseAnalyticsService.getFinancialMetrics(
+      organizationId,
+      period
+    );
   }
 
   private async getCashFlowData(organizationId: string, period: string) {
@@ -353,7 +393,10 @@ export class DashboardDataService {
 
   private async getPeriodComparison(organizationId: string, period: string) {
     // Implementation would compare current period with previous period
-    return this.baseAnalyticsService.getPeriodComparison(organizationId, period);
+    return this.baseAnalyticsService.getPeriodComparison(
+      organizationId,
+      period
+    );
   }
 
   private async getTrendAnalysis(organizationId: string) {
@@ -361,7 +404,10 @@ export class DashboardDataService {
     return this.analyticsService.getTrendAnalysis(organizationId);
   }
 
-  private async generateFinancialInsights(organizationId: string, period: string) {
+  private async generateFinancialInsights(
+    organizationId: string,
+    period: string
+  ) {
     // Implementation would generate AI-powered financial insights
     return {
       insights: [],
@@ -375,7 +421,10 @@ export class DashboardDataService {
     return 85; // Placeholder
   }
 
-  private generateComplianceRecommendations(taxCompliance: any, zraStatus: any): string[] {
+  private generateComplianceRecommendations(
+    taxCompliance: any,
+    zraStatus: any
+  ): string[] {
     // Implementation would generate compliance recommendations
     return [
       'Ensure VAT returns are filed on time',

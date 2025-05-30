@@ -1,56 +1,76 @@
-import { 
-  Injectable, 
-  Logger, 
-  NotFoundException, 
-  ConflictException, 
-  BadRequestException 
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
 } from '@nestjs/common';
 import { Customer } from '@prisma/client';
-import { CustomerRepository, CreateCustomerData, UpdateCustomerData, CustomerFilters } from './customer.repository';
-import { CreateCustomerDto, UpdateCustomerDto, CustomerQueryDto } from './dto/customer.dto';
+import {
+  CreateCustomerData,
+  CustomerFilters,
+  CustomerRepository,
+  UpdateCustomerData,
+} from './customer.repository';
+import {
+  CreateCustomerDto,
+  CustomerQueryDto,
+  UpdateCustomerDto,
+} from './dto/customer.dto';
 import { ZraTinValidator } from './validators/customer-zra-tin.validator';
 
 @Injectable()
 export class CustomerService {
   private readonly logger = new Logger(CustomerService.name);
 
-  constructor(
-    private readonly customerRepository: CustomerRepository,
-  ) {}
+  constructor(private readonly customerRepository: CustomerRepository) {}
 
   /**
    * Create a new customer
    */
-  async createCustomer(organizationId: string, createCustomerDto: CreateCustomerDto): Promise<Customer> {
+  async createCustomer(
+    organizationId: string,
+    createCustomerDto: CreateCustomerDto
+  ): Promise<Customer> {
     try {
       // Validate ZRA TIN if provided
       if (createCustomerDto.zraTin) {
-        const tinValidation = ZraTinValidator.validateWithDetails(createCustomerDto.zraTin);
+        const tinValidation = ZraTinValidator.validateWithDetails(
+          createCustomerDto.zraTin
+        );
         if (!tinValidation.isValid) {
-          throw new BadRequestException(`Invalid ZRA TIN: ${tinValidation.errors.join(', ')}`);
+          throw new BadRequestException(
+            `Invalid ZRA TIN: ${tinValidation.errors.join(', ')}`
+          );
         }
         createCustomerDto.zraTin = tinValidation.cleaned;
       }
 
       // Check for duplicate email within organization
       if (createCustomerDto.email) {
-        const existingCustomerByEmail = await this.customerRepository.findByEmail(
-          createCustomerDto.email,
-          organizationId,
-        );
+        const existingCustomerByEmail =
+          await this.customerRepository.findByEmail(
+            createCustomerDto.email,
+            organizationId
+          );
         if (existingCustomerByEmail) {
-          throw new ConflictException('A customer with this email already exists');
+          throw new ConflictException(
+            'A customer with this email already exists'
+          );
         }
       }
 
       // Check for duplicate ZRA TIN within organization
       if (createCustomerDto.zraTin) {
-        const existingCustomerByTin = await this.customerRepository.findByZraTin(
-          createCustomerDto.zraTin,
-          organizationId,
-        );
+        const existingCustomerByTin =
+          await this.customerRepository.findByZraTin(
+            createCustomerDto.zraTin,
+            organizationId
+          );
         if (existingCustomerByTin) {
-          throw new ConflictException('A customer with this ZRA TIN already exists');
+          throw new ConflictException(
+            'A customer with this ZRA TIN already exists'
+          );
         }
       }
 
@@ -60,8 +80,10 @@ export class CustomerService {
       };
 
       const customer = await this.customerRepository.create(customerData);
-      
-      this.logger.log(`Created customer: ${customer.name} (${customer.id}) for organization ${organizationId}`);
+
+      this.logger.log(
+        `Created customer: ${customer.name} (${customer.id}) for organization ${organizationId}`
+      );
       return customer;
     } catch (error) {
       this.logger.error(`Failed to create customer: ${error.message}`, error);
@@ -74,7 +96,7 @@ export class CustomerService {
    */
   async getCustomerById(id: string, organizationId: string): Promise<Customer> {
     const customer = await this.customerRepository.findById(id, organizationId);
-    
+
     if (!customer) {
       throw new NotFoundException(`Customer with ID ${id} not found`);
     }
@@ -86,8 +108,11 @@ export class CustomerService {
    * Get customer by ID with statistics
    */
   async getCustomerByIdWithStats(id: string, organizationId: string) {
-    const customer = await this.customerRepository.findByIdWithStats(id, organizationId);
-    
+    const customer = await this.customerRepository.findByIdWithStats(
+      id,
+      organizationId
+    );
+
     if (!customer) {
       throw new NotFoundException(`Customer with ID ${id} not found`);
     }
@@ -137,7 +162,7 @@ export class CustomerService {
   async updateCustomer(
     id: string,
     organizationId: string,
-    updateCustomerDto: UpdateCustomerDto,
+    updateCustomerDto: UpdateCustomerDto
   ): Promise<Customer> {
     try {
       // Check if customer exists
@@ -145,38 +170,58 @@ export class CustomerService {
 
       // Validate ZRA TIN if provided
       if (updateCustomerDto.zraTin) {
-        const tinValidation = ZraTinValidator.validateWithDetails(updateCustomerDto.zraTin);
+        const tinValidation = ZraTinValidator.validateWithDetails(
+          updateCustomerDto.zraTin
+        );
         if (!tinValidation.isValid) {
-          throw new BadRequestException(`Invalid ZRA TIN: ${tinValidation.errors.join(', ')}`);
+          throw new BadRequestException(
+            `Invalid ZRA TIN: ${tinValidation.errors.join(', ')}`
+          );
         }
         updateCustomerDto.zraTin = tinValidation.cleaned;
       }
 
       // Check for duplicate email within organization (excluding current customer)
-      if (updateCustomerDto.email && updateCustomerDto.email !== existingCustomer.email) {
-        const existingCustomerByEmail = await this.customerRepository.findByEmail(
-          updateCustomerDto.email,
-          organizationId,
-        );
+      if (
+        updateCustomerDto.email &&
+        updateCustomerDto.email !== existingCustomer.email
+      ) {
+        const existingCustomerByEmail =
+          await this.customerRepository.findByEmail(
+            updateCustomerDto.email,
+            organizationId
+          );
         if (existingCustomerByEmail && existingCustomerByEmail.id !== id) {
-          throw new ConflictException('A customer with this email already exists');
+          throw new ConflictException(
+            'A customer with this email already exists'
+          );
         }
       }
 
       // Check for duplicate ZRA TIN within organization (excluding current customer)
-      if (updateCustomerDto.zraTin && updateCustomerDto.zraTin !== existingCustomer.zraTin) {
-        const existingCustomerByTin = await this.customerRepository.findByZraTin(
-          updateCustomerDto.zraTin,
-          organizationId,
-        );
+      if (
+        updateCustomerDto.zraTin &&
+        updateCustomerDto.zraTin !== existingCustomer.zraTin
+      ) {
+        const existingCustomerByTin =
+          await this.customerRepository.findByZraTin(
+            updateCustomerDto.zraTin,
+            organizationId
+          );
         if (existingCustomerByTin && existingCustomerByTin.id !== id) {
-          throw new ConflictException('A customer with this ZRA TIN already exists');
+          throw new ConflictException(
+            'A customer with this ZRA TIN already exists'
+          );
         }
       }
 
       const updateData: UpdateCustomerData = updateCustomerDto;
-      const customer = await this.customerRepository.update(id, organizationId, updateData);
-      
+      const customer = await this.customerRepository.update(
+        id,
+        organizationId,
+        updateData
+      );
+
       this.logger.log(`Updated customer: ${customer.name} (${customer.id})`);
       return customer;
     } catch (error) {
@@ -198,7 +243,7 @@ export class CustomerService {
       // deletion of customers with financial records
 
       await this.customerRepository.softDelete(id, organizationId);
-      
+
       this.logger.log(`Deleted customer: ${id}`);
     } catch (error) {
       this.logger.error(`Failed to delete customer: ${error.message}`, error);
@@ -216,7 +261,11 @@ export class CustomerService {
   /**
    * Search customers by name, email, or phone
    */
-  async searchCustomers(organizationId: string, searchTerm: string, limit = 10) {
+  async searchCustomers(
+    organizationId: string,
+    searchTerm: string,
+    limit = 10
+  ) {
     const filters: CustomerFilters = {
       organizationId,
       search: searchTerm,
@@ -227,7 +276,7 @@ export class CustomerService {
       filters,
       { name: 'asc' },
       0,
-      limit,
+      limit
     );
   }
 
@@ -240,10 +289,9 @@ export class CustomerService {
       isActive: true,
     };
 
-    const customers = await this.customerRepository.findMany(
-      filters,
-      { name: 'asc' },
-    );
+    const customers = await this.customerRepository.findMany(filters, {
+      name: 'asc',
+    });
 
     return customers.map(customer => ({
       id: customer.id,
@@ -257,7 +305,10 @@ export class CustomerService {
   /**
    * Validate customer data for import
    */
-  async validateCustomerData(organizationId: string, customerData: any[]): Promise<{
+  async validateCustomerData(
+    organizationId: string,
+    customerData: any[]
+  ): Promise<{
     valid: any[];
     invalid: any[];
     errors: string[];
@@ -289,7 +340,12 @@ export class CustomerService {
       }
 
       // Validate payment terms
-      if (row.paymentTerms && (isNaN(row.paymentTerms) || row.paymentTerms < 0 || row.paymentTerms > 365)) {
+      if (
+        row.paymentTerms &&
+        (isNaN(row.paymentTerms) ||
+          row.paymentTerms < 0 ||
+          row.paymentTerms > 365)
+      ) {
         rowErrors.push('Payment terms must be a number between 0 and 365');
       }
 

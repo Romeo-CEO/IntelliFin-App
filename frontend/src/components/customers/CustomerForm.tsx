@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
 import { X, Save, AlertCircle, CheckCircle, Building, User, Mail, Phone, MapPin, CreditCard, FileText } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+
 import { Customer, CreateCustomerData, UpdateCustomerData, customerService } from '../../services/customer.service';
 
 interface CustomerFormProps {

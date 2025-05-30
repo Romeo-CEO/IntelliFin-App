@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Prisma, Dashboard, DashboardPermissionType } from '@prisma/client';
+import { Dashboard, DashboardPermissionType, Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
 
 /**
@@ -44,7 +44,9 @@ export class DashboardConfigurationRepository {
         },
       });
 
-      this.logger.log(`Created dashboard: ${dashboard.id} for organization: ${dashboard.organizationId}`);
+      this.logger.log(
+        `Created dashboard: ${dashboard.id} for organization: ${dashboard.organizationId}`
+      );
       return dashboard;
     } catch (error) {
       this.logger.error(`Failed to create dashboard: ${error.message}`, error);
@@ -58,7 +60,7 @@ export class DashboardConfigurationRepository {
   async findById(
     id: string,
     organizationId: string,
-    userId?: string,
+    userId?: string
   ): Promise<Dashboard | null> {
     try {
       const dashboard = await this.prisma.dashboard.findFirst({
@@ -87,10 +89,7 @@ export class DashboardConfigurationRepository {
         include: {
           widgets: {
             where: { isVisible: true },
-            orderBy: [
-              { position: 'asc' },
-              { createdAt: 'asc' },
-            ],
+            orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
           },
           permissions: {
             include: {
@@ -121,7 +120,10 @@ export class DashboardConfigurationRepository {
 
       return dashboard;
     } catch (error) {
-      this.logger.error(`Failed to find dashboard by ID: ${error.message}`, error);
+      this.logger.error(
+        `Failed to find dashboard by ID: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -132,7 +134,7 @@ export class DashboardConfigurationRepository {
   async findByOrganization(
     organizationId: string,
     userId?: string,
-    includePrivate = false,
+    includePrivate = false
   ): Promise<Dashboard[]> {
     try {
       const whereCondition: Prisma.DashboardWhereInput = {
@@ -187,16 +189,18 @@ export class DashboardConfigurationRepository {
             },
           },
         },
-        orderBy: [
-          { isDefault: 'desc' },
-          { updatedAt: 'desc' },
-        ],
+        orderBy: [{ isDefault: 'desc' }, { updatedAt: 'desc' }],
       });
 
-      this.logger.log(`Retrieved ${dashboards.length} dashboards for organization: ${organizationId}`);
+      this.logger.log(
+        `Retrieved ${dashboards.length} dashboards for organization: ${organizationId}`
+      );
       return dashboards;
     } catch (error) {
-      this.logger.error(`Failed to find dashboards by organization: ${error.message}`, error);
+      this.logger.error(
+        `Failed to find dashboards by organization: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -214,21 +218,23 @@ export class DashboardConfigurationRepository {
         include: {
           widgets: {
             where: { isVisible: true },
-            orderBy: [
-              { position: 'asc' },
-              { createdAt: 'asc' },
-            ],
+            orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
           },
         },
       });
 
       if (dashboard) {
-        this.logger.log(`Retrieved default dashboard: ${dashboard.id} for organization: ${organizationId}`);
+        this.logger.log(
+          `Retrieved default dashboard: ${dashboard.id} for organization: ${organizationId}`
+        );
       }
 
       return dashboard;
     } catch (error) {
-      this.logger.error(`Failed to find default dashboard: ${error.message}`, error);
+      this.logger.error(
+        `Failed to find default dashboard: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -239,7 +245,7 @@ export class DashboardConfigurationRepository {
   async update(
     id: string,
     organizationId: string,
-    data: Prisma.DashboardUpdateInput,
+    data: Prisma.DashboardUpdateInput
   ): Promise<Dashboard> {
     try {
       const dashboard = await this.prisma.dashboard.update({
@@ -298,7 +304,7 @@ export class DashboardConfigurationRepository {
   async setAsDefault(id: string, organizationId: string): Promise<Dashboard> {
     try {
       // Use transaction to ensure atomicity
-      const dashboard = await this.prisma.$transaction(async (tx) => {
+      const dashboard = await this.prisma.$transaction(async tx => {
         // Unset all other default dashboards
         await tx.dashboard.updateMany({
           where: {
@@ -319,10 +325,15 @@ export class DashboardConfigurationRepository {
         });
       });
 
-      this.logger.log(`Set dashboard as default: ${id} for organization: ${organizationId}`);
+      this.logger.log(
+        `Set dashboard as default: ${id} for organization: ${organizationId}`
+      );
       return dashboard;
     } catch (error) {
-      this.logger.error(`Failed to set dashboard as default: ${error.message}`, error);
+      this.logger.error(
+        `Failed to set dashboard as default: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -333,7 +344,7 @@ export class DashboardConfigurationRepository {
   async hasPermission(
     dashboardId: string,
     userId: string,
-    permission: DashboardPermissionType,
+    permission: DashboardPermissionType
   ): Promise<boolean> {
     try {
       const dashboard = await this.prisma.dashboard.findFirst({
@@ -347,11 +358,19 @@ export class DashboardConfigurationRepository {
                 some: {
                   userId,
                   permission: {
-                    in: permission === DashboardPermissionType.ADMIN
-                      ? [DashboardPermissionType.ADMIN]
-                      : permission === DashboardPermissionType.EDIT
-                      ? [DashboardPermissionType.EDIT, DashboardPermissionType.ADMIN]
-                      : [DashboardPermissionType.VIEW, DashboardPermissionType.EDIT, DashboardPermissionType.ADMIN],
+                    in:
+                      permission === DashboardPermissionType.ADMIN
+                        ? [DashboardPermissionType.ADMIN]
+                        : permission === DashboardPermissionType.EDIT
+                          ? [
+                              DashboardPermissionType.EDIT,
+                              DashboardPermissionType.ADMIN,
+                            ]
+                          : [
+                              DashboardPermissionType.VIEW,
+                              DashboardPermissionType.EDIT,
+                              DashboardPermissionType.ADMIN,
+                            ],
                   },
                 },
               },
@@ -362,7 +381,10 @@ export class DashboardConfigurationRepository {
 
       return !!dashboard;
     } catch (error) {
-      this.logger.error(`Failed to check dashboard permission: ${error.message}`, error);
+      this.logger.error(
+        `Failed to check dashboard permission: ${error.message}`,
+        error
+      );
       return false;
     }
   }

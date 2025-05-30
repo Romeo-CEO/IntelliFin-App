@@ -1,6 +1,11 @@
-import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
-import { TaxType, TaxPeriodStatus, TaxPeriod } from '@prisma/client';
+import { TaxPeriod, TaxPeriodStatus, TaxType } from '@prisma/client';
 
 export interface CreateTaxPeriodDto {
   organizationId: string;
@@ -87,7 +92,10 @@ export class TaxPeriodService {
       }
 
       const { periodStart, periodEnd } = this.calculatePeriodDates(dto, config);
-      const { filingDeadline, paymentDeadline } = this.calculateDeadlines(periodEnd, config);
+      const { filingDeadline, paymentDeadline } = this.calculateDeadlines(
+        periodEnd,
+        config
+      );
 
       // Check if period already exists
       const existingPeriod = await this.prisma.taxPeriod.findFirst({
@@ -100,7 +108,9 @@ export class TaxPeriodService {
       });
 
       if (existingPeriod) {
-        throw new BadRequestException('Tax period already exists for this date range');
+        throw new BadRequestException(
+          'Tax period already exists for this date range'
+        );
       }
 
       const taxPeriod = await this.prisma.taxPeriod.create({
@@ -120,8 +130,11 @@ export class TaxPeriodService {
 
       this.logger.log(`Tax period created: ${taxPeriod.id}`);
       return taxPeriod;
-    } catch (error) {
-      this.logger.error(`Failed to create tax period: ${error.message}`, error.stack);
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to create tax period: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -133,7 +146,7 @@ export class TaxPeriodService {
     organizationId: string,
     taxType?: TaxType,
     year?: number,
-    status?: TaxPeriodStatus,
+    status?: TaxPeriodStatus
   ): Promise<TaxPeriodWithObligations[]> {
     try {
       const where: any = { organizationId };
@@ -158,9 +171,22 @@ export class TaxPeriodService {
         orderBy: [{ year: 'desc' }, { quarter: 'desc' }, { month: 'desc' }],
       });
 
-      return periods;
-    } catch (error) {
-      this.logger.error(`Failed to get tax periods: ${error.message}`, error.stack);
+      // Map periods to convert Decimal to number for obligations
+      const periodsWithNumbers = periods.map(period => ({
+        ...period,
+        obligations: period.obligations.map(obligation => ({
+          ...obligation,
+          amountDue: obligation.amountDue.toNumber(),
+          amountPaid: obligation.amountPaid.toNumber(),
+        })),
+      }));
+
+      return periodsWithNumbers;
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to get tax periods: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -168,16 +194,26 @@ export class TaxPeriodService {
   /**
    * Get tax calendar for organization
    */
-  async getTaxCalendar(organizationId: string, year?: number): Promise<TaxCalendarEntry[]> {
+  async getTaxCalendar(
+    organizationId: string,
+    year?: number
+  ): Promise<TaxCalendarEntry[]> {
     try {
       const currentYear = year || new Date().getFullYear();
-      const periods = await this.getTaxPeriods(organizationId, undefined, currentYear);
+      const periods = await this.getTaxPeriods(
+        organizationId,
+        undefined,
+        currentYear
+      );
 
       const calendar: TaxCalendarEntry[] = periods.map(period => {
         const now = new Date();
-        const isOverdue = period.filingDeadline < now && period.status !== TaxPeriodStatus.FILED;
+        const isOverdue =
+          period.filingDeadline < now &&
+          period.status !== TaxPeriodStatus.FILED;
         const daysUntilDeadline = Math.ceil(
-          (period.filingDeadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+          (period.filingDeadline.getTime() - now.getTime()) /
+            (1000 * 60 * 60 * 24)
         );
 
         return {
@@ -192,9 +228,14 @@ export class TaxPeriodService {
         };
       });
 
-      return calendar.sort((a, b) => a.filingDeadline.getTime() - b.filingDeadline.getTime());
-    } catch (error) {
-      this.logger.error(`Failed to get tax calendar: ${error.message}`, error.stack);
+      return calendar.sort(
+        (a, b) => a.filingDeadline.getTime() - b.filingDeadline.getTime()
+      );
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to get tax calendar: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -202,7 +243,10 @@ export class TaxPeriodService {
   /**
    * Close tax period
    */
-  async closeTaxPeriod(organizationId: string, periodId: string): Promise<TaxPeriod> {
+  async closeTaxPeriod(
+    organizationId: string,
+    periodId: string
+  ): Promise<TaxPeriod> {
     try {
       const period = await this.prisma.taxPeriod.findFirst({
         where: { id: periodId, organizationId },
@@ -223,8 +267,11 @@ export class TaxPeriodService {
 
       this.logger.log(`Tax period closed: ${periodId}`);
       return updatedPeriod;
-    } catch (error) {
-      this.logger.error(`Failed to close tax period: ${error.message}`, error.stack);
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to close tax period: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -236,7 +283,7 @@ export class TaxPeriodService {
     organizationId: string,
     periodId: string,
     filingReference?: string,
-    filedBy?: string,
+    filedBy?: string
   ): Promise<TaxPeriod> {
     try {
       const period = await this.prisma.taxPeriod.findFirst({
@@ -259,8 +306,11 @@ export class TaxPeriodService {
 
       this.logger.log(`Tax period marked as filed: ${periodId}`);
       return updatedPeriod;
-    } catch (error) {
-      this.logger.error(`Failed to mark period as filed: ${error.message}`, error.stack);
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to mark period as filed: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -268,11 +318,16 @@ export class TaxPeriodService {
   /**
    * Generate tax periods for a year
    */
-  async generatePeriodsForYear(organizationId: string, year: number, taxTypes?: TaxType[]): Promise<TaxPeriod[]> {
+  async generatePeriodsForYear(
+    organizationId: string,
+    year: number,
+    taxTypes?: TaxType[]
+  ): Promise<TaxPeriod[]> {
     try {
       this.logger.log(`Generating tax periods for year ${year}`);
 
-      const typesToGenerate = taxTypes || Object.keys(this.TAX_PERIOD_CONFIG) as TaxType[];
+      const typesToGenerate =
+        taxTypes || (Object.keys(this.TAX_PERIOD_CONFIG) as TaxType[]);
       const createdPeriods: TaxPeriod[] = [];
 
       for (const taxType of typesToGenerate) {
@@ -292,7 +347,9 @@ export class TaxPeriodService {
               createdPeriods.push(period);
             } catch (error) {
               // Period might already exist, continue
-              this.logger.warn(`Period already exists for ${taxType} ${year}-${month}`);
+              this.logger.warn(
+                `Period already exists for ${taxType} ${year}-${month}`
+              );
             }
           }
         } else if (config.frequency === 'quarterly') {
@@ -308,7 +365,9 @@ export class TaxPeriodService {
               createdPeriods.push(period);
             } catch (error) {
               // Period might already exist, continue
-              this.logger.warn(`Period already exists for ${taxType} ${year}-Q${quarter}`);
+              this.logger.warn(
+                `Period already exists for ${taxType} ${year}-Q${quarter}`
+              );
             }
           }
         } else if (config.frequency === 'annually') {
@@ -327,10 +386,15 @@ export class TaxPeriodService {
         }
       }
 
-      this.logger.log(`Generated ${createdPeriods.length} tax periods for year ${year}`);
+      this.logger.log(
+        `Generated ${createdPeriods.length} tax periods for year ${year}`
+      );
       return createdPeriods;
-    } catch (error) {
-      this.logger.error(`Failed to generate periods for year: ${error.message}`, error.stack);
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to generate periods for year: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -338,7 +402,10 @@ export class TaxPeriodService {
   /**
    * Calculate period start and end dates
    */
-  private calculatePeriodDates(dto: CreateTaxPeriodDto, config: any): { periodStart: Date; periodEnd: Date } {
+  private calculatePeriodDates(
+    dto: CreateTaxPeriodDto,
+    config: any
+  ): { periodStart: Date; periodEnd: Date } {
     if (dto.customPeriodStart && dto.customPeriodEnd) {
       return {
         periodStart: dto.customPeriodStart,
@@ -375,13 +442,17 @@ export class TaxPeriodService {
    */
   private calculateDeadlines(
     periodEnd: Date,
-    config: any,
+    config: any
   ): { filingDeadline: Date; paymentDeadline: Date } {
     const filingDeadline = new Date(periodEnd);
-    filingDeadline.setDate(filingDeadline.getDate() + config.filingDaysAfterPeriod);
+    filingDeadline.setDate(
+      filingDeadline.getDate() + config.filingDaysAfterPeriod
+    );
 
     const paymentDeadline = new Date(periodEnd);
-    paymentDeadline.setDate(paymentDeadline.getDate() + config.paymentDaysAfterPeriod);
+    paymentDeadline.setDate(
+      paymentDeadline.getDate() + config.paymentDaysAfterPeriod
+    );
 
     return { filingDeadline, paymentDeadline };
   }

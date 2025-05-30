@@ -21,14 +21,14 @@ export class AnalyticsCacheService {
 
   // Cache TTL configuration (in seconds)
   private readonly CACHE_TTL = {
-    FORECASTING: 3600,      // 1 hour - forecasts change less frequently
-    TRENDS: 1800,           // 30 minutes - trends need regular updates
-    RATIOS: 7200,           // 2 hours - ratios are more stable
-    TAX_ANALYTICS: 3600,    // 1 hour - tax data changes less frequently
-    PROFITABILITY: 1800,    // 30 minutes - profitability needs regular updates
+    FORECASTING: 3600, // 1 hour - forecasts change less frequently
+    TRENDS: 1800, // 30 minutes - trends need regular updates
+    RATIOS: 7200, // 2 hours - ratios are more stable
+    TAX_ANALYTICS: 3600, // 1 hour - tax data changes less frequently
+    PROFITABILITY: 1800, // 30 minutes - profitability needs regular updates
     FINANCIAL_SUMMARY: 900, // 15 minutes - summary data for dashboards
     CUSTOMER_ANALYTICS: 1800, // 30 minutes
-    EXPENSE_ANALYTICS: 1800   // 30 minutes
+    EXPENSE_ANALYTICS: 1800, // 30 minutes
   };
 
   constructor(private readonly databaseService: DatabaseService) {}
@@ -68,8 +68,8 @@ export class AnalyticsCacheService {
       const cached = await this.databaseService.analyticsCache.findFirst({
         where: {
           organizationId,
-          cacheKey
-        }
+          cacheKey,
+        },
       });
 
       if (!cached) {
@@ -87,7 +87,10 @@ export class AnalyticsCacheService {
       this.logger.debug(`Cache hit for key: ${cacheKey}`);
       return cached.cacheData as T;
     } catch (error) {
-      this.logger.error(`Failed to get cached data: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to get cached data: ${error.message}`,
+        error.stack
+      );
       return null;
     }
   }
@@ -102,15 +105,17 @@ export class AnalyticsCacheService {
     analyticsType: string
   ): Promise<void> {
     try {
-      const ttl = this.CACHE_TTL[analyticsType as keyof typeof this.CACHE_TTL] || this.CACHE_TTL.FINANCIAL_SUMMARY;
+      const ttl =
+        this.CACHE_TTL[analyticsType as keyof typeof this.CACHE_TTL] ||
+        this.CACHE_TTL.FINANCIAL_SUMMARY;
       const expiresAt = new Date(Date.now() + ttl * 1000);
 
       // Check if cache entry exists
       const existing = await this.databaseService.analyticsCache.findFirst({
         where: {
           organizationId,
-          cacheKey
-        }
+          cacheKey,
+        },
       });
 
       if (existing) {
@@ -119,8 +124,8 @@ export class AnalyticsCacheService {
           where: { id: existing.id },
           data: {
             cacheData: data as any,
-            expiresAt
-          }
+            expiresAt,
+          },
         });
       } else {
         // Create new entry
@@ -129,14 +134,19 @@ export class AnalyticsCacheService {
             organizationId,
             cacheKey,
             cacheData: data as any,
-            expiresAt
-          }
+            expiresAt,
+          },
         });
       }
 
-      this.logger.debug(`Cached data for key: ${cacheKey}, expires at: ${expiresAt.toISOString()}`);
+      this.logger.debug(
+        `Cached data for key: ${cacheKey}, expires at: ${expiresAt.toISOString()}`
+      );
     } catch (error) {
-      this.logger.error(`Failed to set cached data: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to set cached data: ${error.message}`,
+        error.stack
+      );
       // Don't throw error - caching failure shouldn't break analytics
     }
   }
@@ -144,18 +154,24 @@ export class AnalyticsCacheService {
   /**
    * Delete specific cached data
    */
-  async deleteCachedData(organizationId: string, cacheKey: string): Promise<void> {
+  async deleteCachedData(
+    organizationId: string,
+    cacheKey: string
+  ): Promise<void> {
     try {
       await this.databaseService.analyticsCache.deleteMany({
         where: {
           organizationId,
-          cacheKey
-        }
+          cacheKey,
+        },
       });
 
       this.logger.debug(`Deleted cached data for key: ${cacheKey}`);
     } catch (error) {
-      this.logger.error(`Failed to delete cached data: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to delete cached data: ${error.message}`,
+        error.stack
+      );
     }
   }
 
@@ -171,17 +187,22 @@ export class AnalyticsCacheService {
 
       if (analyticsType) {
         whereClause.cacheKey = {
-          contains: `:${analyticsType}:`
+          contains: `:${analyticsType}:`,
         };
       }
 
       const result = await this.databaseService.analyticsCache.deleteMany({
-        where: whereClause
+        where: whereClause,
       });
 
-      this.logger.log(`Invalidated ${result.count} cache entries for organization ${organizationId}${analyticsType ? ` and type ${analyticsType}` : ''}`);
+      this.logger.log(
+        `Invalidated ${result.count} cache entries for organization ${organizationId}${analyticsType ? ` and type ${analyticsType}` : ''}`
+      );
     } catch (error) {
-      this.logger.error(`Failed to invalidate cache: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to invalidate cache: ${error.message}`,
+        error.stack
+      );
     }
   }
 
@@ -193,14 +214,17 @@ export class AnalyticsCacheService {
       const result = await this.databaseService.analyticsCache.deleteMany({
         where: {
           expiresAt: {
-            lt: new Date()
-          }
-        }
+            lt: new Date(),
+          },
+        },
       });
 
       this.logger.log(`Cleaned ${result.count} expired cache entries`);
     } catch (error) {
-      this.logger.error(`Failed to clean expired cache: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to clean expired cache: ${error.message}`,
+        error.stack
+      );
     }
   }
 
@@ -217,21 +241,21 @@ export class AnalyticsCacheService {
     try {
       const [totalEntries, expiredEntries, allEntries] = await Promise.all([
         this.databaseService.analyticsCache.count({
-          where: { organizationId }
+          where: { organizationId },
         }),
         this.databaseService.analyticsCache.count({
           where: {
             organizationId,
-            expiresAt: { lt: new Date() }
-          }
+            expiresAt: { lt: new Date() },
+          },
         }),
         this.databaseService.analyticsCache.findMany({
           where: { organizationId },
           select: {
             cacheKey: true,
-            createdAt: true
-          }
-        })
+            createdAt: true,
+          },
+        }),
       ]);
 
       // Analyze cache by type
@@ -261,16 +285,19 @@ export class AnalyticsCacheService {
         expiredEntries,
         cacheByType,
         oldestEntry,
-        newestEntry
+        newestEntry,
       };
     } catch (error) {
-      this.logger.error(`Failed to get cache statistics: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to get cache statistics: ${error.message}`,
+        error.stack
+      );
       return {
         totalEntries: 0,
         expiredEntries: 0,
         cacheByType: {},
         oldestEntry: null,
-        newestEntry: null
+        newestEntry: null,
       };
     }
   }
@@ -289,9 +316,14 @@ export class AnalyticsCacheService {
       // Actual implementation would call various analytics services
       // to generate and cache common reports
 
-      this.logger.log(`Cache warm-up completed for organization ${organizationId}`);
+      this.logger.log(
+        `Cache warm-up completed for organization ${organizationId}`
+      );
     } catch (error) {
-      this.logger.error(`Failed to warm up cache: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to warm up cache: ${error.message}`,
+        error.stack
+      );
     }
   }
 
@@ -316,9 +348,9 @@ export class AnalyticsCacheService {
           organizationId,
           createdAt: {
             gte: timeRange.startDate,
-            lte: timeRange.endDate
-          }
-        }
+            lte: timeRange.endDate,
+          },
+        },
       });
 
       // Simplified calculation - in production, you'd track actual hits/misses
@@ -329,15 +361,18 @@ export class AnalyticsCacheService {
         hitRatio: Math.min(hitRatio, 1),
         totalRequests: Math.floor(estimatedRequests),
         cacheHits: cacheEntries,
-        cacheMisses: Math.floor(estimatedRequests - cacheEntries)
+        cacheMisses: Math.floor(estimatedRequests - cacheEntries),
       };
     } catch (error) {
-      this.logger.error(`Failed to calculate cache hit ratio: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to calculate cache hit ratio: ${error.message}`,
+        error.stack
+      );
       return {
         hitRatio: 0,
         totalRequests: 0,
         cacheHits: 0,
-        cacheMisses: 0
+        cacheMisses: 0,
       };
     }
   }
@@ -367,12 +402,14 @@ export class AnalyticsCacheService {
   private shouldCache(data: any, analyticsType: string): boolean {
     // Don't cache very small datasets (not worth the overhead)
     const dataSize = JSON.stringify(data).length;
-    if (dataSize < 1000) { // Less than 1KB
+    if (dataSize < 1000) {
+      // Less than 1KB
       return false;
     }
 
     // Don't cache extremely large datasets (might cause memory issues)
-    if (dataSize > 10 * 1024 * 1024) { // More than 10MB
+    if (dataSize > 10 * 1024 * 1024) {
+      // More than 10MB
       return false;
     }
 
@@ -387,12 +424,14 @@ export class AnalyticsCacheService {
     shouldCompress: boolean;
     maxSize: number;
   } {
-    const ttl = this.CACHE_TTL[analyticsType as keyof typeof this.CACHE_TTL] || this.CACHE_TTL.FINANCIAL_SUMMARY;
+    const ttl =
+      this.CACHE_TTL[analyticsType as keyof typeof this.CACHE_TTL] ||
+      this.CACHE_TTL.FINANCIAL_SUMMARY;
 
     return {
       ttl,
       shouldCompress: ttl > 3600, // Compress data cached for more than 1 hour
-      maxSize: 5 * 1024 * 1024 // 5MB max cache entry size
+      maxSize: 5 * 1024 * 1024, // 5MB max cache entry size
     };
   }
 }

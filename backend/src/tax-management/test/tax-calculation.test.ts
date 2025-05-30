@@ -1,11 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { TaxCalculationService, TaxCalculationRequest } from '../services/tax-calculation.service';
+import {
+  TaxCalculationRequest,
+  TaxCalculationService,
+} from '../services/tax-calculation.service';
 import { PrismaService } from '../../database/prisma.service';
 import { TaxType } from '@prisma/client';
 
 describe('TaxCalculationService', () => {
   let service: TaxCalculationService;
-  let prismaService: PrismaService;
 
   const mockPrismaService = {
     taxRate: {
@@ -25,7 +27,6 @@ describe('TaxCalculationService', () => {
     }).compile();
 
     service = module.get<TaxCalculationService>(TaxCalculationService);
-    prismaService = module.get<PrismaService>(PrismaService);
   });
 
   it('should be defined', () => {
@@ -159,7 +160,7 @@ describe('TaxCalculationService', () => {
     it('should use custom organization tax rate when available', async () => {
       // Mock custom VAT rate
       mockPrismaService.taxRate.findFirst.mockResolvedValue({
-        rate: { toNumber: () => 0.20 }, // 20% custom rate
+        rate: { toNumber: () => 0.2 }, // 20% custom rate
       });
 
       const request: TaxCalculationRequest = {
@@ -171,7 +172,7 @@ describe('TaxCalculationService', () => {
 
       const result = await service.calculateTax(request);
 
-      expect(result.taxRate).toBe(0.20);
+      expect(result.taxRate).toBe(0.2);
       expect(result.taxAmount).toBe(200); // 20% of 1000
     });
 
@@ -196,7 +197,9 @@ describe('TaxCalculationService', () => {
   describe('Error Handling', () => {
     it('should handle database errors gracefully', async () => {
       // Mock database error
-      mockPrismaService.taxRate.findFirst.mockRejectedValue(new Error('Database error'));
+      mockPrismaService.taxRate.findFirst.mockRejectedValue(
+        new Error('Database error')
+      );
 
       const request: TaxCalculationRequest = {
         organizationId: 'test-org-id',

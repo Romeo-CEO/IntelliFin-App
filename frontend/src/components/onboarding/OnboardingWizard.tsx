@@ -1,13 +1,15 @@
 'use client';
 
 import React from 'react';
+
 import { useOnboarding } from '../../contexts/OnboardingContext';
-import { BusinessInfoForm } from './BusinessInfoForm';
-import { ContactDetailsForm } from './ContactDetailsForm';
+
 import { BankingInfoForm } from './BankingInfoForm';
 import { BrandingForm } from './BrandingForm';
-import { OnboardingProgress } from './OnboardingProgress';
+import { BusinessInfoForm } from './BusinessInfoForm';
+import { ContactDetailsForm } from './ContactDetailsForm';
 import { OnboardingNavigation } from './OnboardingNavigation';
+import { OnboardingProgress } from './OnboardingProgress';
 
 interface OnboardingWizardProps {
   className?: string;

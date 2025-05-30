@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Prisma, Expense, ExpenseStatus, PaymentMethod } from '@prisma/client';
+import { Expense, ExpenseStatus, PaymentMethod, Prisma } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
 
 export interface ExpenseFilters {
@@ -63,7 +63,9 @@ export class ExpenseRepository {
         },
       });
 
-      this.logger.log(`Created expense: ${expense.id} for organization: ${expense.organizationId}`);
+      this.logger.log(
+        `Created expense: ${expense.id} for organization: ${expense.organizationId}`
+      );
       return expense;
     } catch (error) {
       this.logger.error(`Failed to create expense: ${error.message}`, error);
@@ -124,7 +126,10 @@ export class ExpenseRepository {
         },
       });
     } catch (error) {
-      this.logger.error(`Failed to find expense by ID: ${error.message}`, error);
+      this.logger.error(
+        `Failed to find expense by ID: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -132,7 +137,11 @@ export class ExpenseRepository {
   /**
    * Update expense
    */
-  async update(id: string, organizationId: string, data: Prisma.ExpenseUpdateInput): Promise<Expense> {
+  async update(
+    id: string,
+    organizationId: string,
+    data: Prisma.ExpenseUpdateInput
+  ): Promise<Expense> {
     try {
       const expense = await this.prisma.expense.update({
         where: {
@@ -258,17 +267,22 @@ export class ExpenseRepository {
   /**
    * Get expense statistics
    */
-  async getStats(organizationId: string, dateFrom?: Date, dateTo?: Date): Promise<ExpenseStats> {
+  async getStats(
+    organizationId: string,
+    dateFrom?: Date,
+    dateTo?: Date
+  ): Promise<ExpenseStats> {
     try {
       const where: Prisma.ExpenseWhereInput = {
         organizationId,
         deletedAt: null,
-        ...(dateFrom && dateTo && {
-          date: {
-            gte: dateFrom,
-            lte: dateTo,
-          },
-        }),
+        ...(dateFrom &&
+          dateTo && {
+            date: {
+              gte: dateFrom,
+              lte: dateTo,
+            },
+          }),
       };
 
       const [
@@ -321,14 +335,20 @@ export class ExpenseRepository {
         totalExpenses,
         totalAmount: Number(totalAmountResult._sum.amount || 0),
         averageAmount: Number(totalAmountResult._avg.amount || 0),
-        expensesByStatus: expensesByStatus.reduce((acc, item) => {
-          acc[item.status] = item._count._all;
-          return acc;
-        }, {} as Record<ExpenseStatus, number>),
-        expensesByPaymentMethod: expensesByPaymentMethod.reduce((acc, item) => {
-          acc[item.paymentMethod] = item._count._all;
-          return acc;
-        }, {} as Record<PaymentMethod, number>),
+        expensesByStatus: expensesByStatus.reduce(
+          (acc, item) => {
+            acc[item.status] = item._count._all;
+            return acc;
+          },
+          {} as Record<ExpenseStatus, number>
+        ),
+        expensesByPaymentMethod: expensesByPaymentMethod.reduce(
+          (acc, item) => {
+            acc[item.paymentMethod] = item._count._all;
+            return acc;
+          },
+          {} as Record<PaymentMethod, number>
+        ),
         expensesByCategory: expensesByCategory.map(item => ({
           categoryId: item.categoryId,
           categoryName: categoryMap.get(item.categoryId) || 'Unknown',

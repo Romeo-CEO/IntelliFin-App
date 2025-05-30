@@ -1,14 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { 
-  Prisma, 
-  ApprovalRequest, 
-  ApprovalTask, 
+import {
+  // ApprovalAction,
+  // ApprovalDecision,
   ApprovalHistory,
-  ApprovalRequestStatus,
-  ApprovalTaskStatus,
-  ApprovalDecision,
-  ApprovalAction,
   ApprovalPriority,
+  ApprovalRequest,
+  ApprovalRequestStatus,
+  ApprovalTask,
+  ApprovalTaskStatus,
+  Prisma,
 } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
 
@@ -53,23 +53,27 @@ export interface ApprovalRequestWithDetails extends ApprovalRequest {
     email: string;
     role: string;
   };
-  approvalTasks: Array<ApprovalTask & {
-    approver: {
-      id: string;
-      firstName: string;
-      lastName: string;
-      email: string;
-      role: string;
-    };
-  }>;
-  approvalHistory: Array<ApprovalHistory & {
-    user: {
-      id: string;
-      firstName: string;
-      lastName: string;
-      email: string;
-    };
-  }>;
+  approvalTasks: Array<
+    ApprovalTask & {
+      approver: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+        role: string;
+      };
+    }
+  >;
+  approvalHistory: Array<
+    ApprovalHistory & {
+      user: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+      };
+    }
+  >;
 }
 
 @Injectable()
@@ -81,7 +85,9 @@ export class ApprovalRequestRepository {
   /**
    * Create a new approval request
    */
-  async create(data: Prisma.ApprovalRequestCreateInput): Promise<ApprovalRequest> {
+  async create(
+    data: Prisma.ApprovalRequestCreateInput
+  ): Promise<ApprovalRequest> {
     try {
       const approvalRequest = await this.prisma.approvalRequest.create({
         data,
@@ -114,10 +120,15 @@ export class ApprovalRequestRepository {
         },
       });
 
-      this.logger.log(`Created approval request: ${approvalRequest.id} for expense: ${approvalRequest.expenseId}`);
+      this.logger.log(
+        `Created approval request: ${approvalRequest.id} for expense: ${approvalRequest.expenseId}`
+      );
       return approvalRequest;
     } catch (error) {
-      this.logger.error(`Failed to create approval request: ${error.message}`, error);
+      this.logger.error(
+        `Failed to create approval request: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -125,9 +136,11 @@ export class ApprovalRequestRepository {
   /**
    * Find approval request by ID with full details
    */
-  async findByIdWithDetails(id: string): Promise<ApprovalRequestWithDetails | null> {
+  async findByIdWithDetails(
+    id: string
+  ): Promise<ApprovalRequestWithDetails | null> {
     try {
-      return await this.prisma.approvalRequest.findUnique({
+      return (await this.prisma.approvalRequest.findUnique({
         where: { id },
         include: {
           expense: {
@@ -183,9 +196,12 @@ export class ApprovalRequestRepository {
             orderBy: { createdAt: 'desc' },
           },
         },
-      }) as ApprovalRequestWithDetails | null;
+      })) as ApprovalRequestWithDetails | null;
     } catch (error) {
-      this.logger.error(`Failed to find approval request by ID: ${error.message}`, error);
+      this.logger.error(
+        `Failed to find approval request by ID: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -200,7 +216,10 @@ export class ApprovalRequestRepository {
         orderBy: { createdAt: 'desc' },
       });
     } catch (error) {
-      this.logger.error(`Failed to find approval request by expense ID: ${error.message}`, error);
+      this.logger.error(
+        `Failed to find approval request by expense ID: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -208,7 +227,10 @@ export class ApprovalRequestRepository {
   /**
    * Update approval request
    */
-  async update(id: string, data: Prisma.ApprovalRequestUpdateInput): Promise<ApprovalRequest> {
+  async update(
+    id: string,
+    data: Prisma.ApprovalRequestUpdateInput
+  ): Promise<ApprovalRequest> {
     try {
       const approvalRequest = await this.prisma.approvalRequest.update({
         where: { id },
@@ -218,7 +240,10 @@ export class ApprovalRequestRepository {
       this.logger.log(`Updated approval request: ${approvalRequest.id}`);
       return approvalRequest;
     } catch (error) {
-      this.logger.error(`Failed to update approval request: ${error.message}`, error);
+      this.logger.error(
+        `Failed to update approval request: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -230,7 +255,9 @@ export class ApprovalRequestRepository {
     filters: ApprovalRequestFilters,
     page: number = 1,
     limit: number = 20,
-    orderBy: Prisma.ApprovalRequestOrderByWithRelationInput = { submittedAt: 'desc' },
+    orderBy: Prisma.ApprovalRequestOrderByWithRelationInput = {
+      submittedAt: 'desc',
+    }
   ): Promise<{
     approvalRequests: ApprovalRequestWithDetails[];
     total: number;
@@ -315,7 +342,10 @@ export class ApprovalRequestRepository {
         totalPages: Math.ceil(total / limit),
       };
     } catch (error) {
-      this.logger.error(`Failed to find approval requests: ${error.message}`, error);
+      this.logger.error(
+        `Failed to find approval requests: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -328,7 +358,7 @@ export class ApprovalRequestRepository {
     organizationId: string,
     status?: ApprovalTaskStatus,
     page: number = 1,
-    limit: number = 20,
+    limit: number = 20
   ): Promise<{
     approvalRequests: ApprovalRequestWithDetails[];
     total: number;
@@ -422,7 +452,10 @@ export class ApprovalRequestRepository {
         totalPages: Math.ceil(total / limit),
       };
     } catch (error) {
-      this.logger.error(`Failed to find approval requests by approver: ${error.message}`, error);
+      this.logger.error(
+        `Failed to find approval requests by approver: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -430,16 +463,21 @@ export class ApprovalRequestRepository {
   /**
    * Get approval request statistics
    */
-  async getStats(organizationId: string, dateFrom?: Date, dateTo?: Date): Promise<ApprovalRequestStats> {
+  async getStats(
+    organizationId: string,
+    dateFrom?: Date,
+    dateTo?: Date
+  ): Promise<ApprovalRequestStats> {
     try {
       const where: Prisma.ApprovalRequestWhereInput = {
         organizationId,
-        ...(dateFrom && dateTo && {
-          submittedAt: {
-            gte: dateFrom,
-            lte: dateTo,
-          },
-        }),
+        ...(dateFrom &&
+          dateTo && {
+            submittedAt: {
+              gte: dateFrom,
+              lte: dateTo,
+            },
+          }),
       };
 
       const [
@@ -462,7 +500,12 @@ export class ApprovalRequestRepository {
         this.prisma.approvalRequest.findMany({
           where: {
             ...where,
-            status: { in: [ApprovalRequestStatus.APPROVED, ApprovalRequestStatus.REJECTED] },
+            status: {
+              in: [
+                ApprovalRequestStatus.APPROVED,
+                ApprovalRequestStatus.REJECTED,
+              ],
+            },
             completedAt: { not: null },
           },
           select: {
@@ -476,28 +519,48 @@ export class ApprovalRequestRepository {
       const approvalTimesMs = approvalTimes
         .filter(req => req.completedAt)
         .map(req => req.completedAt!.getTime() - req.submittedAt.getTime());
-      
-      const averageApprovalTime = approvalTimesMs.length > 0
-        ? approvalTimesMs.reduce((sum, time) => sum + time, 0) / approvalTimesMs.length / (1000 * 60 * 60) // Convert to hours
-        : 0;
+
+      const averageApprovalTime =
+        approvalTimesMs.length > 0
+          ? approvalTimesMs.reduce((sum, time) => sum + time, 0) /
+            approvalTimesMs.length /
+            (1000 * 60 * 60) // Convert to hours
+          : 0;
 
       return {
         totalRequests,
-        pendingRequests: requestsByStatus.find(s => s.status === ApprovalRequestStatus.PENDING)?._count._all || 0,
-        approvedRequests: requestsByStatus.find(s => s.status === ApprovalRequestStatus.APPROVED)?._count._all || 0,
-        rejectedRequests: requestsByStatus.find(s => s.status === ApprovalRequestStatus.REJECTED)?._count._all || 0,
+        pendingRequests:
+          requestsByStatus.find(s => s.status === ApprovalRequestStatus.PENDING)
+            ?._count._all || 0,
+        approvedRequests:
+          requestsByStatus.find(
+            s => s.status === ApprovalRequestStatus.APPROVED
+          )?._count._all || 0,
+        rejectedRequests:
+          requestsByStatus.find(
+            s => s.status === ApprovalRequestStatus.REJECTED
+          )?._count._all || 0,
         averageApprovalTime,
-        requestsByStatus: requestsByStatus.reduce((acc, item) => {
-          acc[item.status] = item._count._all;
-          return acc;
-        }, {} as Record<ApprovalRequestStatus, number>),
-        requestsByPriority: requestsByPriority.reduce((acc, item) => {
-          acc[item.priority] = item._count._all;
-          return acc;
-        }, {} as Record<ApprovalPriority, number>),
+        requestsByStatus: requestsByStatus.reduce(
+          (acc, item) => {
+            acc[item.status] = item._count._all;
+            return acc;
+          },
+          {} as Record<ApprovalRequestStatus, number>
+        ),
+        requestsByPriority: requestsByPriority.reduce(
+          (acc, item) => {
+            acc[item.priority] = item._count._all;
+            return acc;
+          },
+          {} as Record<ApprovalPriority, number>
+        ),
       };
     } catch (error) {
-      this.logger.error(`Failed to get approval request stats: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get approval request stats: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -505,7 +568,9 @@ export class ApprovalRequestRepository {
   /**
    * Build where clause for filtering
    */
-  private buildWhereClause(filters: ApprovalRequestFilters): Prisma.ApprovalRequestWhereInput {
+  private buildWhereClause(
+    filters: ApprovalRequestFilters
+  ): Prisma.ApprovalRequestWhereInput {
     const where: Prisma.ApprovalRequestWhereInput = {};
 
     if (filters.organizationId) {

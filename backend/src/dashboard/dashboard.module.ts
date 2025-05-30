@@ -46,10 +46,7 @@ import { DashboardWidgetRepository } from './repositories/dashboard-widget.repos
     TaxManagementModule,
     ReportsModule,
   ],
-  controllers: [
-    DashboardController,
-    DashboardDataController,
-  ],
+  controllers: [DashboardController, DashboardDataController],
   providers: [
     // Repositories
     DashboardConfigurationRepository,

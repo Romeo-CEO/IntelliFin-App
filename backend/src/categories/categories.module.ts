@@ -14,10 +14,7 @@ import { TransactionCategorizationController } from './transaction-categorizatio
     // Note: We import TransactionsModule but need to be careful about circular dependencies
     // The TransactionCategorizationService uses PrismaService directly to avoid circular imports
   ],
-  controllers: [
-    CategoryController,
-    TransactionCategorizationController,
-  ],
+  controllers: [CategoryController, TransactionCategorizationController],
   providers: [
     CategoryRepository,
     CategorizationRuleRepository,

@@ -7,7 +7,10 @@ import { JournalEntryRepository } from './repositories/journal-entry.repository'
 import { GeneralLedgerRepository } from './repositories/general-ledger.repository';
 import { ChartOfAccountsService } from './chart-of-accounts.service';
 import { PrismaService } from '../database/prisma.service';
-import { AccountType, NormalBalance, JournalEntryType } from '@prisma/client';
+import { AccountType, JournalEntryType, NormalBalance } from '@prisma/client';
+import { Account, JournalEntry, JournalEntryLine } from '@prisma/client';
+import { CreateJournalEntryServiceDto } from './dto/create-journal-entry-service.dto';
+import { GeneralLedgerEntry } from '@prisma/client';
 
 describe('Accounting Integration Tests', () => {
   let module: TestingModule;
@@ -63,7 +66,8 @@ describe('Accounting Integration Tests', () => {
 
     accountService = module.get<AccountService>(AccountService);
     journalEntryService = module.get<JournalEntryService>(JournalEntryService);
-    generalLedgerService = module.get<GeneralLedgerService>(GeneralLedgerService);
+    generalLedgerService =
+      module.get<GeneralLedgerService>(GeneralLedgerService);
     prismaService = module.get<PrismaService>(PrismaService);
   });
 
@@ -99,7 +103,9 @@ describe('Accounting Integration Tests', () => {
       };
 
       jest.spyOn(prismaService.account, 'findFirst').mockResolvedValue(null);
-      jest.spyOn(prismaService.account, 'create').mockResolvedValue(mockAccount);
+      jest
+        .spyOn(prismaService.account, 'create')
+        .mockResolvedValue(mockAccount);
 
       const result = await accountService.initializeChartOfAccounts({
         organizationId: mockOrganizationId,
@@ -138,7 +144,9 @@ describe('Accounting Integration Tests', () => {
       };
 
       jest.spyOn(prismaService.account, 'findFirst').mockResolvedValue(null);
-      jest.spyOn(prismaService.account, 'create').mockResolvedValue(mockAccount);
+      jest
+        .spyOn(prismaService.account, 'create')
+        .mockResolvedValue(mockAccount);
 
       const createAccountDto = {
         accountCode: '1150',
@@ -148,7 +156,10 @@ describe('Accounting Integration Tests', () => {
         description: 'Small cash fund for minor expenses',
       };
 
-      const result = await accountService.createAccount(mockOrganizationId, createAccountDto);
+      const result = await accountService.createAccount(
+        mockOrganizationId,
+        createAccountDto
+      );
 
       expect(result).toBeDefined();
       expect(result.accountCode).toBe('1150');
@@ -219,10 +230,14 @@ describe('Accounting Integration Tests', () => {
       jest.spyOn(prismaService.account, 'findFirst').mockResolvedValue({
         id: '123e4567-e89b-12d3-a456-426614174002',
         accountCode: '1100',
-      } as any);
+      } as Account);
 
-      jest.spyOn(prismaService.journalEntry, 'findFirst').mockResolvedValue(null);
-      jest.spyOn(prismaService.journalEntry, 'create').mockResolvedValue(mockJournalEntry as any);
+      jest
+        .spyOn(prismaService.journalEntry, 'findFirst')
+        .mockResolvedValue(null);
+      jest
+        .spyOn(prismaService.journalEntry, 'create')
+        .mockResolvedValue(mockJournalEntry as JournalEntry & { lines: JournalEntryLine[] });
 
       const createJournalEntryDto = {
         entryDate: new Date(),
@@ -241,12 +256,12 @@ describe('Accounting Integration Tests', () => {
             description: 'Revenue earned',
           },
         ],
-        createdBy: mockUserId,
-      };
+        createdBy: mockUserId
+      } as CreateJournalEntryServiceDto;
 
       const result = await journalEntryService.createJournalEntry(
         mockOrganizationId,
-        createJournalEntryDto as any
+        createJournalEntryDto
       );
 
       expect(result).toBeDefined();
@@ -259,37 +274,6 @@ describe('Accounting Integration Tests', () => {
 
   describe('General Ledger', () => {
     it('should generate trial balance', async () => {
-      const mockTrialBalance = {
-        accounts: [
-          {
-            accountId: '123e4567-e89b-12d3-a456-426614174002',
-            accountCode: '1100',
-            accountName: 'Cash on Hand',
-            accountType: 'ASSET',
-            normalBalance: 'DEBIT',
-            debitTotal: 1000,
-            creditTotal: 0,
-            balance: 1000,
-            runningBalance: 1000,
-          },
-          {
-            accountId: '123e4567-e89b-12d3-a456-426614174007',
-            accountCode: '4100',
-            accountName: 'Sales Revenue',
-            accountType: 'REVENUE',
-            normalBalance: 'CREDIT',
-            debitTotal: 0,
-            creditTotal: 1000,
-            balance: 1000,
-            runningBalance: 1000,
-          },
-        ],
-        totalDebits: 1000,
-        totalCredits: 1000,
-        isBalanced: true,
-        asOfDate: new Date(),
-      };
-
       jest.spyOn(prismaService.account, 'findMany').mockResolvedValue([
         {
           id: '123e4567-e89b-12d3-a456-426614174002',
@@ -305,18 +289,22 @@ describe('Accounting Integration Tests', () => {
           accountType: 'REVENUE',
           normalBalance: 'CREDIT',
         },
-      ] as any);
+      ] as Account[]);
 
-      jest.spyOn(prismaService.generalLedgerEntry, 'aggregate').mockResolvedValue({
-        _sum: {
-          debitAmount: 1000,
-          creditAmount: 0,
-        },
-      } as any);
+      jest
+        .spyOn(prismaService.generalLedgerEntry, 'aggregate')
+        .mockResolvedValue({
+          _sum: {
+            debitAmount: 1000,
+            creditAmount: 0,
+          },
+        } as object);
 
-      jest.spyOn(prismaService.generalLedgerEntry, 'findFirst').mockResolvedValue({
-        runningBalance: 1000,
-      } as any);
+      jest
+        .spyOn(prismaService.generalLedgerEntry, 'findFirst')
+        .mockResolvedValue({
+          runningBalance: 1000,
+        } as GeneralLedgerEntry);
 
       const result = await generalLedgerService.generateTrialBalance(
         mockOrganizationId,

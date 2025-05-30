@@ -1,13 +1,3 @@
-import React, { useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import {
   Calculator,
   Shield,
@@ -20,15 +10,26 @@ import {
   Smartphone,
   Activity,
 } from 'lucide-react';
+import React, { useState } from 'react';
+
+import { AdvancedTaxReporting } from '@/components/tax-management/AdvancedTaxReporting';
+import { MobileTaxEntry } from '@/components/tax-management/MobileTaxEntry';
+import { PerformanceMonitoring } from '@/components/tax-management/PerformanceMonitoring';
+import { TaxAdjustments } from '@/components/tax-management/TaxAdjustments';
+import { TaxAnalyticsDashboard } from '@/components/tax-management/TaxAnalyticsDashboard';
 import { TaxCalculator } from '@/components/tax-management/TaxCalculator';
 import { TaxComplianceDashboard } from '@/components/tax-management/TaxComplianceDashboard';
 import { TaxConfigurationPanel } from '@/components/tax-management/TaxConfigurationPanel';
 import { WithholdingTaxCertificates } from '@/components/tax-management/WithholdingTaxCertificates';
-import { TaxAnalyticsDashboard } from '@/components/tax-management/TaxAnalyticsDashboard';
-import { TaxAdjustments } from '@/components/tax-management/TaxAdjustments';
-import { MobileTaxEntry } from '@/components/tax-management/MobileTaxEntry';
-import { AdvancedTaxReporting } from '@/components/tax-management/AdvancedTaxReporting';
-import { PerformanceMonitoring } from '@/components/tax-management/PerformanceMonitoring';
+import { Badge } from '@/components/ui/badge';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export function TaxManagementPage() {
   const [activeTab, setActiveTab] = useState('dashboard');

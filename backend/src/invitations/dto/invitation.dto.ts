@@ -1,15 +1,15 @@
-import { 
-  IsString, 
-  IsEmail, 
-  IsEnum, 
-  IsOptional, 
+import {
+  IsEmail,
+  IsEnum,
+  IsOptional,
+  IsString,
   IsUUID,
   Length,
-  MaxLength 
+  MaxLength,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { UserRole, InvitationStatus } from '@prisma/client';
+import { InvitationStatus, UserRole } from '@prisma/client';
 
 export class CreateInvitationDto {
   @ApiProperty({
@@ -76,7 +76,9 @@ export class AcceptInvitationDto {
     maxLength: 100,
   })
   @IsString()
-  @Length(1, 100, { message: 'First name must be between 1 and 100 characters' })
+  @Length(1, 100, {
+    message: 'First name must be between 1 and 100 characters',
+  })
   @Transform(({ value }) => value?.trim())
   firstName: string;
 
@@ -116,7 +118,10 @@ export class InvitationResponseDto {
   @ApiProperty({ description: 'Email address of the invited user' })
   email: string;
 
-  @ApiProperty({ description: 'Role assigned to the invitation', enum: UserRole })
+  @ApiProperty({
+    description: 'Role assigned to the invitation',
+    enum: UserRole,
+  })
   role: UserRole;
 
   @ApiProperty({ description: 'Invitation status', enum: InvitationStatus })
@@ -140,7 +145,9 @@ export class InvitationResponseDto {
   @ApiProperty({ description: 'ID of user who sent the invitation' })
   invitedBy: string;
 
-  @ApiPropertyOptional({ description: 'ID of user who accepted the invitation' })
+  @ApiPropertyOptional({
+    description: 'ID of user who accepted the invitation',
+  })
   invitedUser?: string;
 
   @ApiProperty({ description: 'Tenant ID' })
@@ -189,7 +196,10 @@ export class InvitationResponseDto {
 }
 
 export class InvitationListResponseDto {
-  @ApiProperty({ description: 'List of invitations', type: [InvitationResponseDto] })
+  @ApiProperty({
+    description: 'List of invitations',
+    type: [InvitationResponseDto],
+  })
   invitations: InvitationResponseDto[];
 
   @ApiProperty({ description: 'Total number of invitations' })
@@ -211,8 +221,13 @@ export class BulkInvitationDto {
     type: [String],
     example: ['user1@example.com', 'user2@example.com'],
   })
-  @IsEmail({}, { each: true, message: 'All emails must be valid email addresses' })
-  @Transform(({ value }) => value?.map((email: string) => email?.toLowerCase().trim()))
+  @IsEmail(
+    {},
+    { each: true, message: 'All emails must be valid email addresses' }
+  )
+  @Transform(({ value }) =>
+    value?.map((email: string) => email?.toLowerCase().trim())
+  )
   emails: string[];
 
   @ApiProperty({
@@ -244,7 +259,10 @@ export class BulkInvitationDto {
 }
 
 export class BulkInvitationResponseDto {
-  @ApiProperty({ description: 'Successfully sent invitations', type: [InvitationResponseDto] })
+  @ApiProperty({
+    description: 'Successfully sent invitations',
+    type: [InvitationResponseDto],
+  })
   successful: InvitationResponseDto[];
 
   @ApiProperty({

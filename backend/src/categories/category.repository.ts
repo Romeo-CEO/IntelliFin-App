@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
-import { Prisma, Category, CategoryType } from '@prisma/client';
+import { Category, CategoryType, Prisma } from '@prisma/client';
 
 type ErrorWithMessage = {
   message: string;
@@ -98,7 +98,10 @@ export class CategoryRepository {
       });
     } catch (error) {
       const errorMessage = this.getErrorMessage(error);
-      this.logger.error(`Failed to create category: ${errorMessage}`, error instanceof Error ? error.stack : error);
+      this.logger.error(
+        `Failed to create category: ${errorMessage}`,
+        error instanceof Error ? error.stack : error
+      );
       throw error;
     }
   }
@@ -123,7 +126,10 @@ export class CategoryRepository {
       });
     } catch (error) {
       const errorMessage = this.getErrorMessage(error);
-      this.logger.error(`Failed to find category by ID: ${errorMessage}`, error instanceof Error ? error.stack : error);
+      this.logger.error(
+        `Failed to find category by ID: ${errorMessage}`,
+        error instanceof Error ? error.stack : error
+      );
       throw error;
     }
   }
@@ -151,7 +157,10 @@ export class CategoryRepository {
       });
     } catch (error) {
       const errorMessage = this.getErrorMessage(error);
-      this.logger.error(`Failed to find categories: ${errorMessage}`, error instanceof Error ? error.stack : error);
+      this.logger.error(
+        `Failed to find categories: ${errorMessage}`,
+        error instanceof Error ? error.stack : error
+      );
       throw error;
     }
   }
@@ -159,7 +168,10 @@ export class CategoryRepository {
   /**
    * Get category hierarchy
    */
-  async getHierarchy(organizationId: string, type?: CategoryType): Promise<CategoryHierarchy[]> {
+  async getHierarchy(
+    organizationId: string,
+    type?: CategoryType
+  ): Promise<CategoryHierarchy[]> {
     try {
       const where: Prisma.CategoryWhereInput = {
         organizationId,
@@ -197,7 +209,10 @@ export class CategoryRepository {
       return this.buildHierarchy(rootCategories, 0, []);
     } catch (error) {
       const errorMessage = this.getErrorMessage(error);
-      this.logger.error(`Failed to get category hierarchy: ${errorMessage}`, error instanceof Error ? error.stack : error);
+      this.logger.error(
+        `Failed to get category hierarchy: ${errorMessage}`,
+        error instanceof Error ? error.stack : error
+      );
       throw error;
     }
   }
@@ -205,7 +220,9 @@ export class CategoryRepository {
   /**
    * Get categories with statistics
    */
-  async getCategoriesWithStats(organizationId: string): Promise<CategoryWithStats[]> {
+  async getCategoriesWithStats(
+    organizationId: string
+  ): Promise<CategoryWithStats[]> {
     try {
       const categories = await this.prisma.category.findMany({
         where: {
@@ -232,9 +249,16 @@ export class CategoryRepository {
           (sum, tx) => sum + parseFloat(tx.amount.toString()),
           0
         );
-        const lastUsed = category.transactions.length > 0
-          ? new Date(Math.max(...category.transactions.map(tx => tx.transactionDate.getTime())))
-          : null;
+        const lastUsed =
+          category.transactions.length > 0
+            ? new Date(
+                Math.max(
+                  ...category.transactions.map(tx =>
+                    tx.transactionDate.getTime()
+                  )
+                )
+              )
+            : null;
 
         return {
           ...category,
@@ -246,7 +270,10 @@ export class CategoryRepository {
       });
     } catch (error) {
       const errorMessage = this.getErrorMessage(error);
-      this.logger.error(`Failed to get categories with stats: ${errorMessage}`, error);
+      this.logger.error(
+        `Failed to get categories with stats: ${errorMessage}`,
+        error
+      );
       throw error;
     }
   }
@@ -254,7 +281,11 @@ export class CategoryRepository {
   /**
    * Update category
    */
-  async update(id: string, organizationId: string, data: UpdateCategoryData): Promise<Category> {
+  async update(
+    id: string,
+    organizationId: string,
+    data: UpdateCategoryData
+  ): Promise<Category> {
     try {
       return await this.prisma.category.update({
         where: {
@@ -275,7 +306,10 @@ export class CategoryRepository {
       });
     } catch (error) {
       const errorMessage = this.getErrorMessage(error);
-      this.logger.error(`Failed to update category: ${errorMessage}`, error instanceof Error ? error.stack : error);
+      this.logger.error(
+        `Failed to update category: ${errorMessage}`,
+        error instanceof Error ? error.stack : error
+      );
       throw error;
     }
   }
@@ -297,7 +331,10 @@ export class CategoryRepository {
       });
     } catch (error) {
       const errorMessage = this.getErrorMessage(error);
-      this.logger.error(`Failed to delete category: ${errorMessage}`, error instanceof Error ? error.stack : error);
+      this.logger.error(
+        `Failed to delete category: ${errorMessage}`,
+        error instanceof Error ? error.stack : error
+      );
       throw error;
     }
   }
@@ -317,11 +354,17 @@ export class CategoryRepository {
       return count > 0;
     } catch (error) {
       const errorMessage = this.getErrorMessage(error);
-      this.logger.error(`Failed to check if category name exists: ${errorMessage}`, error);
+      this.logger.error(
+        `Failed to check if category name exists: ${errorMessage}`,
+        error
+      );
       throw error;
     }
   }
-  async getCategoryPath(id: string, organizationId: string): Promise<Category[]> {
+  async getCategoryPath(
+    id: string,
+    organizationId: string
+  ): Promise<Category[]> {
     try {
       const path: Category[] = [];
       let currentCategory = await this.findById(id, organizationId);
@@ -329,7 +372,10 @@ export class CategoryRepository {
       while (currentCategory) {
         path.unshift(currentCategory);
         if (currentCategory.parentId) {
-          currentCategory = await this.findById(currentCategory.parentId, organizationId);
+          currentCategory = await this.findById(
+            currentCategory.parentId,
+            organizationId
+          );
         } else {
           break;
         }
@@ -338,7 +384,10 @@ export class CategoryRepository {
       return path;
     } catch (error) {
       const errorMessage = this.getErrorMessage(error);
-      this.logger.error(`Failed to get category path: ${errorMessage}`, error instanceof Error ? error.stack : error);
+      this.logger.error(
+        `Failed to get category path: ${errorMessage}`,
+        error instanceof Error ? error.stack : error
+      );
       throw error;
     }
   }
@@ -350,28 +399,101 @@ export class CategoryRepository {
     try {
       const defaultCategories = [
         // Income categories
-        { name: 'Sales Revenue', type: CategoryType.INCOME, color: '#10B981', icon: 'TrendingUp' },
-        { name: 'Service Revenue', type: CategoryType.INCOME, color: '#059669', icon: 'Briefcase' },
-        { name: 'Interest Income', type: CategoryType.INCOME, color: '#047857', icon: 'Percent' },
-        { name: 'Other Income', type: CategoryType.INCOME, color: '#065F46', icon: 'Plus' },
+        {
+          name: 'Sales Revenue',
+          type: CategoryType.INCOME,
+          color: '#10B981',
+          icon: 'TrendingUp',
+        },
+        {
+          name: 'Service Revenue',
+          type: CategoryType.INCOME,
+          color: '#059669',
+          icon: 'Briefcase',
+        },
+        {
+          name: 'Interest Income',
+          type: CategoryType.INCOME,
+          color: '#047857',
+          icon: 'Percent',
+        },
+        {
+          name: 'Other Income',
+          type: CategoryType.INCOME,
+          color: '#065F46',
+          icon: 'Plus',
+        },
 
         // Expense categories
-        { name: 'Office Supplies', type: CategoryType.EXPENSE, color: '#EF4444', icon: 'Package' },
-        { name: 'Marketing', type: CategoryType.EXPENSE, color: '#DC2626', icon: 'Megaphone' },
-        { name: 'Travel', type: CategoryType.EXPENSE, color: '#B91C1C', icon: 'Plane' },
-        { name: 'Utilities', type: CategoryType.EXPENSE, color: '#991B1B', icon: 'Zap' },
-        { name: 'Rent', type: CategoryType.EXPENSE, color: '#7F1D1D', icon: 'Home' },
-        { name: 'Professional Services', type: CategoryType.EXPENSE, color: '#F59E0B', icon: 'Users' },
-        { name: 'Insurance', type: CategoryType.EXPENSE, color: '#D97706', icon: 'Shield' },
-        { name: 'Bank Fees', type: CategoryType.EXPENSE, color: '#B45309', icon: 'CreditCard' },
-        { name: 'Taxes', type: CategoryType.EXPENSE, color: '#92400E', icon: 'FileText' },
-        { name: 'Other Expenses', type: CategoryType.EXPENSE, color: '#78350F', icon: 'Minus' },
+        {
+          name: 'Office Supplies',
+          type: CategoryType.EXPENSE,
+          color: '#EF4444',
+          icon: 'Package',
+        },
+        {
+          name: 'Marketing',
+          type: CategoryType.EXPENSE,
+          color: '#DC2626',
+          icon: 'Megaphone',
+        },
+        {
+          name: 'Travel',
+          type: CategoryType.EXPENSE,
+          color: '#B91C1C',
+          icon: 'Plane',
+        },
+        {
+          name: 'Utilities',
+          type: CategoryType.EXPENSE,
+          color: '#991B1B',
+          icon: 'Zap',
+        },
+        {
+          name: 'Rent',
+          type: CategoryType.EXPENSE,
+          color: '#7F1D1D',
+          icon: 'Home',
+        },
+        {
+          name: 'Professional Services',
+          type: CategoryType.EXPENSE,
+          color: '#F59E0B',
+          icon: 'Users',
+        },
+        {
+          name: 'Insurance',
+          type: CategoryType.EXPENSE,
+          color: '#D97706',
+          icon: 'Shield',
+        },
+        {
+          name: 'Bank Fees',
+          type: CategoryType.EXPENSE,
+          color: '#B45309',
+          icon: 'CreditCard',
+        },
+        {
+          name: 'Taxes',
+          type: CategoryType.EXPENSE,
+          color: '#92400E',
+          icon: 'FileText',
+        },
+        {
+          name: 'Other Expenses',
+          type: CategoryType.EXPENSE,
+          color: '#78350F',
+          icon: 'Minus',
+        },
       ];
 
       const createdCategories: Category[] = [];
 
       for (const categoryData of defaultCategories) {
-        const exists = await this.existsByName(organizationId, categoryData.name);
+        const exists = await this.existsByName(
+          organizationId,
+          categoryData.name
+        );
         if (!exists) {
           const category = await this.create({
             organizationId,
@@ -384,7 +506,10 @@ export class CategoryRepository {
       return createdCategories;
     } catch (error) {
       const errorMessage = this.getErrorMessage(error);
-      this.logger.error(`Failed to create default categories: ${errorMessage}`, error instanceof Error ? error.stack : error);
+      this.logger.error(
+        `Failed to create default categories: ${errorMessage}`,
+        error instanceof Error ? error.stack : error
+      );
       throw error;
     }
   }
@@ -392,7 +517,9 @@ export class CategoryRepository {
   /**
    * Build where clause for category queries
    */
-  private buildWhereClause(filters: CategoryFilters): Prisma.CategoryWhereInput {
+  private buildWhereClause(
+    filters: CategoryFilters
+  ): Prisma.CategoryWhereInput {
     const where: Prisma.CategoryWhereInput = {
       organizationId: filters.organizationId,
     };
@@ -429,12 +556,12 @@ export class CategoryRepository {
   ): CategoryHierarchy[] {
     return categories.map(category => {
       const currentPath = [...parentPath, category.name];
-      
+
       return {
         ...category,
         level,
         path: currentPath,
-        children: category.children 
+        children: category.children
           ? this.buildHierarchy(category.children, level + 1, currentPath)
           : [],
       };
@@ -444,7 +571,9 @@ export class CategoryRepository {
   /**
    * Get count of uncategorized transactions
    */
-  async getUncategorizedTransactionCount(organizationId: string): Promise<number> {
+  async getUncategorizedTransactionCount(
+    organizationId: string
+  ): Promise<number> {
     try {
       return await this.prisma.transaction.count({
         where: {
@@ -454,7 +583,10 @@ export class CategoryRepository {
       });
     } catch (error) {
       const errorMessage = this.getErrorMessage(error);
-      this.logger.error(`Failed to get uncategorized transaction count: ${errorMessage}`, error instanceof Error ? error.stack : error);
+      this.logger.error(
+        `Failed to get uncategorized transaction count: ${errorMessage}`,
+        error instanceof Error ? error.stack : error
+      );
       throw error;
     }
   }

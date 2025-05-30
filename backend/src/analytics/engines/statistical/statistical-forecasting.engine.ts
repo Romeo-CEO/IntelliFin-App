@@ -5,15 +5,15 @@ import * as regression from 'regression';
 import { SimpleLinearRegression } from 'ml-regression';
 import { Matrix } from 'ml-matrix';
 import {
-  IForecastingEngine,
-  TimeSeriesData,
-  ForecastingOptions,
-  ForecastResult,
-  ModelValidation,
-  ModelMetrics,
   AnalyticsCapability,
   ForecastPoint,
-  ModelAccuracy
+  ForecastResult,
+  ForecastingOptions,
+  IForecastingEngine,
+  ModelAccuracy,
+  ModelMetrics,
+  ModelValidation,
+  TimeSeriesData,
 } from '../../interfaces/analytics-engine.interface';
 
 /**
@@ -29,7 +29,7 @@ export class StatisticalForecastingEngine implements IForecastingEngine {
   readonly version = '2.0.0';
   readonly capabilities: AnalyticsCapability[] = [
     'FORECASTING',
-    'TREND_ANALYSIS'
+    'TREND_ANALYSIS',
   ];
 
   /**
@@ -49,28 +49,41 @@ export class StatisticalForecastingEngine implements IForecastingEngine {
       const processedData = this.preprocessData(data);
 
       // Generate forecast based on method
-      const predictions = await this.generatePredictions(processedData, options);
+      const predictions = await this.generatePredictions(
+        processedData,
+        options
+      );
 
       // Calculate confidence intervals
-      const confidence = this.calculateConfidenceIntervals(processedData, predictions, options.confidence);
+      const confidence = this.calculateConfidenceIntervals(
+        processedData,
+        predictions,
+        options.confidence
+      );
 
       // Calculate accuracy metrics
       const accuracy = this.calculateAccuracy(processedData, options);
 
       // Generate insights and recommendations
       const insights = this.generateInsights(processedData, predictions);
-      const recommendations = this.generateRecommendations(processedData, predictions, options);
+      const recommendations = this.generateRecommendations(
+        processedData,
+        predictions,
+        options
+      );
 
       return {
         predictions,
         confidence,
         accuracy,
         insights,
-        recommendations
+        recommendations,
       };
-
     } catch (error) {
-      this.logger.error(`Forecast generation failed: ${error.message}`, error.stack);
+      this.logger.error(
+        `Forecast generation failed: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -91,13 +104,19 @@ export class StatisticalForecastingEngine implements IForecastingEngine {
       // Stability test
       const stabilityScore = this.testModelStability(processedData);
 
-      const isValid = crossValidationScore > 0.6 && holdoutScore > 0.6 && stabilityScore > 0.7;
+      const isValid =
+        crossValidationScore > 0.6 &&
+        holdoutScore > 0.6 &&
+        stabilityScore > 0.7;
 
       const recommendations = [];
       if (!isValid) {
-        if (crossValidationScore < 0.6) recommendations.push('Increase data quality or quantity');
-        if (holdoutScore < 0.6) recommendations.push('Model may be overfitting');
-        if (stabilityScore < 0.7) recommendations.push('Data shows high volatility');
+        if (crossValidationScore < 0.6)
+          recommendations.push('Increase data quality or quantity');
+        if (holdoutScore < 0.6)
+          recommendations.push('Model may be overfitting');
+        if (stabilityScore < 0.7)
+          recommendations.push('Data shows high volatility');
       }
 
       return {
@@ -105,13 +124,15 @@ export class StatisticalForecastingEngine implements IForecastingEngine {
         metrics: {
           crossValidationScore,
           holdoutScore,
-          stabilityScore
+          stabilityScore,
         },
-        recommendations
+        recommendations,
       };
-
     } catch (error) {
-      this.logger.error(`Model validation failed: ${error.message}`, error.stack);
+      this.logger.error(
+        `Model validation failed: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -127,7 +148,7 @@ export class StatisticalForecastingEngine implements IForecastingEngine {
       recall: 0.88,
       f1Score: 0.85,
       mape: 15.2,
-      rmse: 0.12
+      rmse: 0.12,
     };
   }
 
@@ -177,19 +198,22 @@ export class StatisticalForecastingEngine implements IForecastingEngine {
   /**
    * Enhanced linear forecasting using ml-regression and simple-statistics
    */
-  private linearForecast(data: number[], options: ForecastingOptions): ForecastPoint[] {
+  private linearForecast(
+    data: number[],
+    options: ForecastingOptions
+  ): ForecastPoint[] {
     const x = data.map((_, i) => i);
     const y = data;
 
-    // Use ml-regression for more accurate linear regression
+    // Use ml-regression for linear regression
     const mlRegression = new SimpleLinearRegression(x, y);
 
-    // Also calculate using simple-statistics for comparison
+    // Calculate R² for model validation and confidence
     const ssRegression = ss.linearRegression(x.map((xi, i) => [xi, y[i]]));
-    const regressionLine = ss.linearRegressionLine(ssRegression);
-
-    // Calculate R² for model validation
-    const r2 = ss.rSquared(x.map((xi, i) => [xi, y[i]]), ssRegression);
+    const r2 = ss.rSquared(
+      x.map((xi, i) => [xi, y[i]]),
+      ssRegression
+    );
 
     const predictions: ForecastPoint[] = [];
     const baseDate = new Date();
@@ -197,14 +221,8 @@ export class StatisticalForecastingEngine implements IForecastingEngine {
     for (let i = 1; i <= options.periods; i++) {
       const xValue = data.length + i - 1;
 
-      // Use ml-regression prediction (more accurate)
-      const mlPrediction = mlRegression.predict(xValue);
-
-      // Fallback to simple-statistics if needed
-      const ssPrediction = regressionLine(xValue);
-
-      // Use ml-regression result with confidence based on R²
-      const predictedValue = r2 > 0.7 ? mlPrediction : ssPrediction;
+      // Use ml-regression prediction
+      const predictedValue = mlRegression.predict(xValue);
 
       const forecastDate = new Date(baseDate);
       forecastDate.setMonth(forecastDate.getMonth() + i);
@@ -212,7 +230,7 @@ export class StatisticalForecastingEngine implements IForecastingEngine {
       predictions.push({
         timestamp: forecastDate,
         value: Math.max(0, predictedValue),
-        confidence: this.calculateEnhancedConfidence(data, predictedValue, r2)
+        confidence: this.calculateEnhancedConfidence(data, predictedValue, r2),
       });
     }
 
@@ -222,7 +240,10 @@ export class StatisticalForecastingEngine implements IForecastingEngine {
   /**
    * Enhanced exponential smoothing using mathjs for optimization
    */
-  private exponentialSmoothing(data: number[], options: ForecastingOptions): ForecastPoint[] {
+  private exponentialSmoothing(
+    data: number[],
+    options: ForecastingOptions
+  ): ForecastPoint[] {
     // Optimize alpha parameter using mathematical optimization
     const alphaOptimal = this.optimizeAlpha(data);
 
@@ -243,18 +264,21 @@ export class StatisticalForecastingEngine implements IForecastingEngine {
 
     for (let i = 1; i <= options.periods; i++) {
       // Apply trend to forecast
-      const trendAdjustedValue = smoothed + (trend * i);
+      const trendAdjustedValue = smoothed + trend * i;
 
       const forecastDate = new Date(baseDate);
       forecastDate.setMonth(forecastDate.getMonth() + i);
 
       // Calculate confidence based on smoothing accuracy
-      const smoothingAccuracy = this.calculateSmoothingAccuracy(data, smoothedValues);
+      const smoothingAccuracy = this.calculateSmoothingAccuracy(
+        data,
+        smoothedValues
+      );
 
       predictions.push({
         timestamp: forecastDate,
         value: Math.max(0, trendAdjustedValue),
-        confidence: smoothingAccuracy
+        confidence: smoothingAccuracy,
       });
     }
 
@@ -264,7 +288,10 @@ export class StatisticalForecastingEngine implements IForecastingEngine {
   /**
    * Seasonal forecasting with trend decomposition
    */
-  private seasonalForecast(data: number[], options: ForecastingOptions): ForecastPoint[] {
+  private seasonalForecast(
+    data: number[],
+    options: ForecastingOptions
+  ): ForecastPoint[] {
     // Simple seasonal decomposition
     const seasonLength = 12; // Monthly seasonality
     const trend = this.calculateTrend(data);
@@ -274,7 +301,7 @@ export class StatisticalForecastingEngine implements IForecastingEngine {
     const baseDate = new Date();
 
     for (let i = 1; i <= options.periods; i++) {
-      const trendValue = trend + (i * this.calculateTrendSlope(data));
+      const trendValue = trend + i * this.calculateTrendSlope(data);
       const seasonalIndex = (data.length + i - 1) % seasonLength;
       const seasonalValue = seasonal[seasonalIndex] || 1;
       const predictedValue = trendValue * seasonalValue;
@@ -285,7 +312,7 @@ export class StatisticalForecastingEngine implements IForecastingEngine {
       predictions.push({
         timestamp: forecastDate,
         value: Math.max(0, predictedValue),
-        confidence: this.calculatePointConfidence(data, predictedValue)
+        confidence: this.calculatePointConfidence(data, predictedValue),
       });
     }
 
@@ -295,7 +322,10 @@ export class StatisticalForecastingEngine implements IForecastingEngine {
   /**
    * Adaptive forecasting - selects best method based on data characteristics
    */
-  private adaptiveForecast(data: number[], options: ForecastingOptions): ForecastPoint[] {
+  private adaptiveForecast(
+    data: number[],
+    options: ForecastingOptions
+  ): ForecastPoint[] {
     // Analyze data characteristics
     const trendStrength = this.calculateTrendStrength(data);
     const seasonalityStrength = this.calculateSeasonalityStrength(data);
@@ -331,7 +361,10 @@ export class StatisticalForecastingEngine implements IForecastingEngine {
     return regression.m;
   }
 
-  private calculateSeasonalComponent(data: number[], seasonLength: number): number[] {
+  private calculateSeasonalComponent(
+    data: number[],
+    seasonLength: number
+  ): number[] {
     const seasonal: number[] = [];
     const trend = this.calculateTrend(data);
 
@@ -367,13 +400,17 @@ export class StatisticalForecastingEngine implements IForecastingEngine {
   /**
    * Enhanced confidence calculation using statistical measures
    */
-  private calculateEnhancedConfidence(data: number[], predictedValue: number, r2: number): number {
+  private calculateEnhancedConfidence(
+    data: number[],
+    predictedValue: number,
+    r2: number
+  ): number {
     const mean = ss.mean(data);
     const stdDev = ss.standardDeviation(data);
     const zScore = Math.abs(predictedValue - mean) / stdDev;
 
     // Base confidence from z-score
-    const baseConfidence = Math.max(0.3, 1 - (zScore / 3));
+    const baseConfidence = Math.max(0.3, 1 - zScore / 3);
 
     // Adjust confidence based on R² (model fit quality)
     const r2Adjustment = r2 * 0.3; // R² contributes up to 30% to confidence
@@ -382,18 +419,22 @@ export class StatisticalForecastingEngine implements IForecastingEngine {
     const dataQuality = this.calculateDataQuality(data);
 
     // Combined confidence score
-    const enhancedConfidence = (baseConfidence * 0.5) + (r2Adjustment) + (dataQuality * 0.2);
+    const enhancedConfidence =
+      baseConfidence * 0.5 + r2Adjustment + dataQuality * 0.2;
 
     return Math.max(0.3, Math.min(0.95, enhancedConfidence));
   }
 
-  private calculatePointConfidence(data: number[], predictedValue: number): number {
+  private calculatePointConfidence(
+    data: number[],
+    predictedValue: number
+  ): number {
     const mean = ss.mean(data);
     const stdDev = ss.standardDeviation(data);
     const zScore = Math.abs(predictedValue - mean) / stdDev;
 
     // Convert z-score to confidence (inverse relationship)
-    return Math.max(0.5, 1 - (zScore / 3));
+    return Math.max(0.5, 1 - zScore / 3);
   }
 
   /**
@@ -418,7 +459,10 @@ export class StatisticalForecastingEngine implements IForecastingEngine {
   /**
    * Calculate MSE for exponential smoothing with given alpha
    */
-  private calculateExponentialSmoothingMSE(data: number[], alpha: number): number {
+  private calculateExponentialSmoothingMSE(
+    data: number[],
+    alpha: number
+  ): number {
     if (data.length < 2) return Infinity;
 
     let smoothed = data[0];
@@ -446,7 +490,9 @@ export class StatisticalForecastingEngine implements IForecastingEngine {
     const x = [0, 1, 2];
 
     try {
-      const regression = ss.linearRegression(x.map((xi, i) => [xi, recentValues[i]]));
+      const regression = ss.linearRegression(
+        x.map((xi, i) => [xi, recentValues[i]])
+      );
       return regression.m; // slope represents trend
     } catch (error) {
       return 0;
@@ -456,11 +502,14 @@ export class StatisticalForecastingEngine implements IForecastingEngine {
   /**
    * Calculate smoothing accuracy
    */
-  private calculateSmoothingAccuracy(original: number[], smoothed: number[]): number {
+  private calculateSmoothingAccuracy(
+    original: number[],
+    smoothed: number[]
+  ): number {
     if (original.length !== smoothed.length) return 0.5;
 
     const mape = this.calculateMAPE(original, smoothed);
-    return Math.max(0.3, 1 - (mape / 100));
+    return Math.max(0.3, 1 - mape / 100);
   }
 
   /**
@@ -472,7 +521,9 @@ export class StatisticalForecastingEngine implements IForecastingEngine {
 
     for (let i = 0; i < actual.length; i++) {
       if (actual[i] !== 0) {
-        totalPercentageError += Math.abs((actual[i] - predicted[i]) / actual[i]);
+        totalPercentageError += Math.abs(
+          (actual[i] - predicted[i]) / actual[i]
+        );
         validPoints++;
       }
     }
@@ -489,7 +540,7 @@ export class StatisticalForecastingEngine implements IForecastingEngine {
     const outlierRatio = outlierCount / data.length;
 
     // Data quality decreases with more outliers
-    const qualityScore = Math.max(0, 1 - (outlierRatio * 2));
+    const qualityScore = Math.max(0, 1 - outlierRatio * 2);
 
     return qualityScore;
   }
@@ -504,7 +555,8 @@ export class StatisticalForecastingEngine implements IForecastingEngine {
     const lowerBound = q1 - 1.5 * iqr;
     const upperBound = q3 + 1.5 * iqr;
 
-    return data.filter(value => value < lowerBound || value > upperBound).length;
+    return data.filter(value => value < lowerBound || value > upperBound)
+      .length;
   }
 
   private calculateConfidenceIntervals(
@@ -513,16 +565,20 @@ export class StatisticalForecastingEngine implements IForecastingEngine {
     confidence: number
   ): any[] {
     const stdDev = ss.standardDeviation(data);
-    const multiplier = confidence === 0.95 ? 1.96 : confidence === 0.9 ? 1.645 : 1.28;
+    const multiplier =
+      confidence === 0.95 ? 1.96 : confidence === 0.9 ? 1.645 : 1.28;
 
     return predictions.map(pred => ({
       lower: Math.max(0, pred.value - multiplier * stdDev),
       upper: pred.value + multiplier * stdDev,
-      probability: confidence
+      probability: confidence,
     }));
   }
 
-  private calculateAccuracy(data: number[], options: ForecastingOptions): ModelAccuracy {
+  private calculateAccuracy(
+    data: number[],
+    options: ForecastingOptions
+  ): ModelAccuracy {
     // Use cross-validation for accuracy estimation
     const testSize = Math.min(Math.floor(data.length * 0.2), 6);
     const trainData = data.slice(0, -testSize);
@@ -531,7 +587,7 @@ export class StatisticalForecastingEngine implements IForecastingEngine {
     // Generate predictions for test period
     const testPredictions = this.generatePredictions(trainData, {
       ...options,
-      periods: testSize
+      periods: testSize,
     });
 
     // Calculate MAPE
@@ -557,13 +613,16 @@ export class StatisticalForecastingEngine implements IForecastingEngine {
     // Calculate R²
     const x = trainData.map((_, i) => i);
     const regression = ss.linearRegression([x, trainData]);
-    const r2 = ss.rSquared(trainData.map((y, i) => [x[i], y]), regression);
+    const r2 = ss.rSquared(
+      trainData.map((y, i) => [x[i], y]),
+      regression
+    );
 
     return {
       mape,
       rmse,
       r2,
-      confidence: Math.max(0.5, 1 - (mape / 100))
+      confidence: Math.max(0.5, 1 - mape / 100),
     };
   }
 
@@ -584,7 +643,7 @@ export class StatisticalForecastingEngine implements IForecastingEngine {
           method: 'linear',
           periods: testData.length,
           confidence: 0.95,
-          includeSeasonality: false
+          includeSeasonality: false,
         });
 
         // Calculate accuracy for this fold
@@ -614,7 +673,7 @@ export class StatisticalForecastingEngine implements IForecastingEngine {
       method: 'linear',
       periods: testSize,
       confidence: 0.95,
-      includeSeasonality: false
+      includeSeasonality: false,
     });
 
     let accuracy = 0;
@@ -641,14 +700,14 @@ export class StatisticalForecastingEngine implements IForecastingEngine {
       method: 'linear',
       periods: 3,
       confidence: 0.95,
-      includeSeasonality: false
+      includeSeasonality: false,
     });
 
     const pred2 = this.linearForecast(subset2, {
       method: 'linear',
       periods: 3,
       confidence: 0.95,
-      includeSeasonality: false
+      includeSeasonality: false,
     });
 
     // Calculate similarity between predictions
@@ -657,14 +716,17 @@ export class StatisticalForecastingEngine implements IForecastingEngine {
       const diff = Math.abs(pred1[i].value - pred2[i].value);
       const avg = (pred1[i].value + pred2[i].value) / 2;
       if (avg > 0) {
-        similarity += 1 - (diff / avg);
+        similarity += 1 - diff / avg;
       }
     }
 
     return similarity / Math.min(pred1.length, pred2.length);
   }
 
-  private generateInsights(data: number[], predictions: ForecastPoint[]): string[] {
+  private generateInsights(
+    data: number[],
+    predictions: ForecastPoint[]
+  ): string[] {
     const insights: string[] = [];
 
     // Trend analysis
@@ -680,17 +742,23 @@ export class StatisticalForecastingEngine implements IForecastingEngine {
     // Volatility analysis
     const volatility = ss.standardDeviation(data) / ss.mean(data);
     if (volatility > 0.3) {
-      insights.push('High volatility detected - consider risk management strategies');
+      insights.push(
+        'High volatility detected - consider risk management strategies'
+      );
     } else if (volatility < 0.1) {
       insights.push('Low volatility indicates stable business performance');
     }
 
     // Forecast confidence
-    const avgConfidence = predictions.reduce((sum, p) => sum + p.confidence, 0) / predictions.length;
+    const avgConfidence =
+      predictions.reduce((sum, p) => sum + p.confidence, 0) /
+      predictions.length;
     if (avgConfidence > 0.8) {
       insights.push('High confidence in forecast accuracy');
     } else if (avgConfidence < 0.6) {
-      insights.push('Lower confidence due to data variability - monitor closely');
+      insights.push(
+        'Lower confidence due to data variability - monitor closely'
+      );
     }
 
     return insights;
@@ -705,28 +773,41 @@ export class StatisticalForecastingEngine implements IForecastingEngine {
 
     // Data quality recommendations
     if (data.length < 12) {
-      recommendations.push('Collect more historical data to improve forecast accuracy');
+      recommendations.push(
+        'Collect more historical data to improve forecast accuracy'
+      );
     }
 
     // Forecast period recommendations
     if (options.periods > data.length / 2) {
-      recommendations.push('Consider shorter forecast periods for better accuracy');
+      recommendations.push(
+        'Consider shorter forecast periods for better accuracy'
+      );
     }
 
     // Business recommendations based on predictions
-    const avgPredicted = predictions.reduce((sum, p) => sum + p.value, 0) / predictions.length;
+    const avgPredicted =
+      predictions.reduce((sum, p) => sum + p.value, 0) / predictions.length;
     const avgHistorical = ss.mean(data);
 
     if (avgPredicted > avgHistorical * 1.2) {
-      recommendations.push('Prepare for increased demand - consider scaling operations');
+      recommendations.push(
+        'Prepare for increased demand - consider scaling operations'
+      );
     } else if (avgPredicted < avgHistorical * 0.8) {
-      recommendations.push('Declining forecast - review business strategy and market conditions');
+      recommendations.push(
+        'Declining forecast - review business strategy and market conditions'
+      );
     }
 
     // Zambian context recommendations
     if (options.zambianContext) {
-      recommendations.push('Consider seasonal factors specific to Zambian market conditions');
-      recommendations.push('Monitor exchange rate impacts on business performance');
+      recommendations.push(
+        'Consider seasonal factors specific to Zambian market conditions'
+      );
+      recommendations.push(
+        'Monitor exchange rate impacts on business performance'
+      );
     }
 
     return recommendations;

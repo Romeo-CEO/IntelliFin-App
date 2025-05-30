@@ -1,6 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CategoryService } from '../../src/categories/category.service';
-import { CategoryRepository, CategoryWithStats } from '../../src/categories/category.repository';
+import {
+  CategoryRepository,
+  CategoryWithStats,
+} from '../../src/categories/category.repository';
 import { CategorizationRuleRepository } from '../../src/categories/categorization-rule.repository';
 import { TransactionCategorizationService } from '../../src/categories/transaction-categorization.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
@@ -10,7 +13,7 @@ import { Category, CategoryType } from '@prisma/client';
 const CategorizationConfidence = {
   LOW: 'LOW',
   MEDIUM: 'MEDIUM',
-  HIGH: 'HIGH'
+  HIGH: 'HIGH',
 } as const;
 
 describe('CategoryService', () => {
@@ -38,12 +41,10 @@ describe('CategoryService', () => {
   const mockCategoryWithStats: CategoryWithStats = {
     ...mockCategory,
     transactionCount: 25,
-    totalAmount: 1500.50,
+    totalAmount: 1500.5,
     childrenCount: 2,
     lastUsed: new Date(),
   };
-
-
 
   beforeEach(async () => {
     // Create mock repository with actual methods from the interface
@@ -55,7 +56,9 @@ describe('CategoryService', () => {
       delete: jest.fn().mockResolvedValue(undefined),
       existsByName: jest.fn().mockResolvedValue(false),
       getHierarchy: jest.fn().mockResolvedValue([]),
-      getCategoriesWithStats: jest.fn().mockResolvedValue([mockCategoryWithStats]),
+      getCategoriesWithStats: jest
+        .fn()
+        .mockResolvedValue([mockCategoryWithStats]),
       getCategoryPath: jest.fn().mockResolvedValue([mockCategory]),
       createDefaultCategories: jest.fn().mockResolvedValue([mockCategory]),
       getTransactionCountByCategory: jest.fn().mockResolvedValue(5),
@@ -67,30 +70,35 @@ describe('CategoryService', () => {
       updateMatchStats: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<CategorizationRuleRepository>;
 
-    const mockCategorizationService: jest.Mocked<TransactionCategorizationService> = {
-      suggestCategoriesForUncategorized: jest.fn().mockResolvedValue({
-        processed: 1,
-        categorized: 1,
-        results: [{
-          transactionId: 'tx-1',
-          suggestions: [{
-            categoryId: 'cat-1',
-            categoryName: 'Office Supplies',
-            confidence: CategorizationConfidence.HIGH,
-            reason: 'Matches office supply keywords',
-            score: 0.95
-          }],
-          bestSuggestion: {
-            categoryId: 'cat-1',
-            categoryName: 'Office Supplies',
-            confidence: CategorizationConfidence.HIGH,
-            reason: 'Matches office supply keywords',
-            score: 0.95
-          },
-          isAutoApplied: true
-        }]
-      }),
-    } as unknown as jest.Mocked<TransactionCategorizationService>;
+    const mockCategorizationService: jest.Mocked<TransactionCategorizationService> =
+      {
+        suggestCategoriesForUncategorized: jest.fn().mockResolvedValue({
+          processed: 1,
+          categorized: 1,
+          results: [
+            {
+              transactionId: 'tx-1',
+              suggestions: [
+                {
+                  categoryId: 'cat-1',
+                  categoryName: 'Office Supplies',
+                  confidence: CategorizationConfidence.HIGH,
+                  reason: 'Matches office supply keywords',
+                  score: 0.95,
+                },
+              ],
+              bestSuggestion: {
+                categoryId: 'cat-1',
+                categoryName: 'Office Supplies',
+                confidence: CategorizationConfidence.HIGH,
+                reason: 'Matches office supply keywords',
+                score: 0.95,
+              },
+              isAutoApplied: true,
+            },
+          ],
+        }),
+      } as unknown as jest.Mocked<TransactionCategorizationService>;
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -115,7 +123,9 @@ describe('CategoryService', () => {
     ruleRepository = module.get(CategorizationRuleRepository);
     categorizationService = module.get(TransactionCategorizationService);
 
-    jest.spyOn(categoryRepository, 'getTransactionCountByCategory' as any).mockResolvedValue(5);
+    jest
+      .spyOn(categoryRepository, 'getTransactionCountByCategory' as any)
+      .mockResolvedValue(5);
   });
 
   describe('createCategory', () => {
@@ -138,7 +148,9 @@ describe('CategoryService', () => {
         'Office Supplies',
         undefined
       );
-      expect(categoryRepository.create).toHaveBeenCalledWith(createCategoryData);
+      expect(categoryRepository.create).toHaveBeenCalledWith(
+        createCategoryData
+      );
       expect(result).toEqual(mockCategory);
     });
 
@@ -181,16 +193,19 @@ describe('CategoryService', () => {
 
       const result = await service.getCategoryById('category-1', 'org-1');
 
-      expect(categoryRepository.findById).toHaveBeenCalledWith('category-1', 'org-1');
+      expect(categoryRepository.findById).toHaveBeenCalledWith(
+        'category-1',
+        'org-1'
+      );
       expect(result).toEqual(mockCategory);
     });
 
     it('should throw NotFoundException if category not found', async () => {
       categoryRepository.findById.mockResolvedValue(null);
 
-      await expect(service.getCategoryById('category-1', 'org-1')).rejects.toThrow(
-        NotFoundException
-      );
+      await expect(
+        service.getCategoryById('category-1', 'org-1')
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -207,7 +222,11 @@ describe('CategoryService', () => {
       categoryRepository.existsByName.mockResolvedValue(false);
       categoryRepository.update.mockResolvedValue(updatedCategory);
 
-      const result = await service.updateCategory('category-1', 'org-1', updateData);
+      const result = await service.updateCategory(
+        'category-1',
+        'org-1',
+        updateData
+      );
 
       expect(categoryRepository.update).toHaveBeenCalledWith(
         'category-1',
@@ -250,42 +269,51 @@ describe('CategoryService', () => {
       categoryRepository.findById.mockResolvedValue(mockCategory);
       categoryRepository.findMany.mockResolvedValue([]); // No children
       categoryRepository.getCategoriesWithStats.mockResolvedValue([
-        { ...mockCategoryWithStats, transactionCount: 0 }
+        { ...mockCategoryWithStats, transactionCount: 0 },
       ]);
       categoryRepository.delete.mockResolvedValue(undefined);
 
       await service.deleteCategory('category-1', 'org-1');
 
-      expect(categoryRepository.delete).toHaveBeenCalledWith('category-1', 'org-1');
+      expect(categoryRepository.delete).toHaveBeenCalledWith(
+        'category-1',
+        'org-1'
+      );
     });
 
     it('should throw NotFoundException if category not found', async () => {
       categoryRepository.findById.mockResolvedValue(null);
 
-      await expect(service.deleteCategory('category-1', 'org-1')).rejects.toThrow(
-        NotFoundException
-      );
+      await expect(
+        service.deleteCategory('category-1', 'org-1')
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should throw BadRequestException if category has children', async () => {
-      const childCategory = { ...mockCategory, id: 'child-1', parentId: 'category-1' };
+      const childCategory = {
+        ...mockCategory,
+        id: 'child-1',
+        parentId: 'category-1',
+      };
 
       categoryRepository.findById.mockResolvedValue(mockCategory);
       categoryRepository.findMany.mockResolvedValue([childCategory]);
 
-      await expect(service.deleteCategory('category-1', 'org-1')).rejects.toThrow(
-        BadRequestException
-      );
+      await expect(
+        service.deleteCategory('category-1', 'org-1')
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException if category has transactions', async () => {
       categoryRepository.findById.mockResolvedValue(mockCategory);
       categoryRepository.findMany.mockResolvedValue([]);
-      categoryRepository.getCategoriesWithStats.mockResolvedValue([mockCategoryWithStats]);
+      categoryRepository.getCategoriesWithStats.mockResolvedValue([
+        mockCategoryWithStats,
+      ]);
 
-      await expect(service.deleteCategory('category-1', 'org-1')).rejects.toThrow(
-        BadRequestException
-      );
+      await expect(
+        service.deleteCategory('category-1', 'org-1')
+      ).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -294,11 +322,15 @@ describe('CategoryService', () => {
       const defaultCategories = [mockCategory];
 
       categoryRepository.findMany.mockResolvedValue([]);
-      categoryRepository.createDefaultCategories.mockResolvedValue(defaultCategories);
+      categoryRepository.createDefaultCategories.mockResolvedValue(
+        defaultCategories
+      );
 
       const result = await service.initializeDefaultCategories('org-1');
 
-      expect(categoryRepository.createDefaultCategories).toHaveBeenCalledWith('org-1');
+      expect(categoryRepository.createDefaultCategories).toHaveBeenCalledWith(
+        'org-1'
+      );
       expect(result).toEqual(defaultCategories);
     });
 
@@ -319,8 +351,12 @@ describe('CategoryService', () => {
       const categoriesWithStats = [mockCategoryWithStats];
       const uncategorizedCount = 10;
 
-      categoryRepository.getCategoriesWithStats.mockResolvedValue(categoriesWithStats);
-      categoryRepository.getUncategorizedTransactionCount.mockResolvedValue(uncategorizedCount);
+      categoryRepository.getCategoriesWithStats.mockResolvedValue(
+        categoriesWithStats
+      );
+      categoryRepository.getUncategorizedTransactionCount.mockResolvedValue(
+        uncategorizedCount
+      );
 
       const result = await service.getCategoryAnalytics('org-1');
 
@@ -349,7 +385,7 @@ describe('CategoryService', () => {
                 categoryName: 'Office Supplies',
                 confidence: CategorizationConfidence.HIGH,
                 reason: 'Matches office supply keywords',
-                score: 0.95
+                score: 0.95,
               },
             ],
             bestSuggestion: {
@@ -357,18 +393,25 @@ describe('CategoryService', () => {
               categoryName: 'Office Supplies',
               confidence: CategorizationConfidence.HIGH,
               reason: 'Matches office supply keywords',
-              score: 0.95
+              score: 0.95,
             },
-            isAutoApplied: true
+            isAutoApplied: true,
           },
         ],
       };
 
-      categorizationService.bulkCategorizeUncategorized.mockResolvedValue(mockResult);
+      categorizationService.bulkCategorizeUncategorized.mockResolvedValue(
+        mockResult
+      );
 
-      const result = await service.suggestCategoriesForUncategorized('org-1', 50);
+      const result = await service.suggestCategoriesForUncategorized(
+        'org-1',
+        50
+      );
 
-      expect(categorizationService.bulkCategorizeUncategorized).toHaveBeenCalledWith({
+      expect(
+        categorizationService.bulkCategorizeUncategorized
+      ).toHaveBeenCalledWith({
         organizationId: 'org-1',
         autoApply: false,
       });
@@ -389,11 +432,15 @@ describe('CategoryService', () => {
         results: [],
       };
 
-      categorizationService.bulkCategorizeUncategorized.mockResolvedValue(mockResult);
+      categorizationService.bulkCategorizeUncategorized.mockResolvedValue(
+        mockResult
+      );
 
       const result = await service.autoCategorizeTransactions('org-1');
 
-      expect(categorizationService.bulkCategorizeUncategorized).toHaveBeenCalledWith({
+      expect(
+        categorizationService.bulkCategorizeUncategorized
+      ).toHaveBeenCalledWith({
         organizationId: 'org-1',
         transactionIds: undefined,
         autoApply: true,
@@ -412,11 +459,18 @@ describe('CategoryService', () => {
         results: [],
       };
 
-      categorizationService.bulkCategorizeUncategorized.mockResolvedValue(mockResult);
+      categorizationService.bulkCategorizeUncategorized.mockResolvedValue(
+        mockResult
+      );
 
-      const result = await service.autoCategorizeTransactions('org-1', transactionIds);
+      const result = await service.autoCategorizeTransactions(
+        'org-1',
+        transactionIds
+      );
 
-      expect(categorizationService.bulkCategorizeUncategorized).toHaveBeenCalledWith({
+      expect(
+        categorizationService.bulkCategorizeUncategorized
+      ).toHaveBeenCalledWith({
         organizationId: 'org-1',
         transactionIds,
         autoApply: true,

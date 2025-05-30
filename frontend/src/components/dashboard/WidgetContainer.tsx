@@ -1,19 +1,22 @@
 'use client';
 
 import React, { useState, useCallback, useMemo } from 'react';
-import { Dashboard, DashboardWidget, WidgetType } from '../../types/dashboard.types';
+
 import { useDashboard } from '../../contexts/DashboardContext';
-import { MetricCard } from './widgets/MetricCard';
-import { ChartWidget } from './widgets/ChartWidget';
-import { TableWidget } from './widgets/TableWidget';
-import { ListWidget } from './widgets/ListWidget';
-import { TextWidget } from './widgets/TextWidget';
-import { CashFlowWidget } from './widgets/CashFlowWidget';
-import { RevenueExpensesWidget } from './widgets/RevenueExpensesWidget';
-import { KpiSummaryWidget } from './widgets/KpiSummaryWidget';
-import { ReceivablesWidget } from './widgets/ReceivablesWidget';
-import { LoadingSpinner } from '../common/LoadingSpinner';
+import { Dashboard, DashboardWidget, WidgetType } from '../../types/dashboard.types';
 import { ErrorMessage } from '../common/ErrorMessage';
+import { LoadingSpinner } from '../common/LoadingSpinner';
+
+import { CashFlowWidget } from './widgets/CashFlowWidget';
+import { ChartWidget } from './widgets/ChartWidget';
+import { KpiSummaryWidget } from './widgets/KpiSummaryWidget';
+import { ListWidget } from './widgets/ListWidget';
+import { MetricCard } from './widgets/MetricCard';
+import { ReceivablesWidget } from './widgets/ReceivablesWidget';
+import { RevenueExpensesWidget } from './widgets/RevenueExpensesWidget';
+import { TableWidget } from './widgets/TableWidget';
+import { TextWidget } from './widgets/TextWidget';
+
 
 interface WidgetContainerProps {
   widget: DashboardWidget;

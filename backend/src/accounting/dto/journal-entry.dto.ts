@@ -1,26 +1,45 @@
-import { IsString, IsEnum, IsOptional, IsBoolean, IsNumber, IsUUID, IsArray, ValidateNested, IsDateString, Min } from 'class-validator';
+import {
+  IsArray,
+  IsBoolean,
+  IsDateString,
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Min,
+  ValidateNested,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { JournalEntryType, SourceType } from '@prisma/client';
 
 export class CreateJournalEntryLineDto {
-  @ApiPropertyOptional({ description: 'Account code (alternative to accountId)' })
+  @ApiPropertyOptional({
+    description: 'Account code (alternative to accountId)',
+  })
   @IsOptional()
   @IsString()
   accountCode?: string;
 
-  @ApiPropertyOptional({ description: 'Account ID (alternative to accountCode)' })
+  @ApiPropertyOptional({
+    description: 'Account ID (alternative to accountCode)',
+  })
   @IsOptional()
   @IsUUID()
   accountId?: string;
 
-  @ApiPropertyOptional({ description: 'Debit amount (mutually exclusive with creditAmount)' })
+  @ApiPropertyOptional({
+    description: 'Debit amount (mutually exclusive with creditAmount)',
+  })
   @IsOptional()
   @IsNumber()
   @Min(0)
   debitAmount?: number;
 
-  @ApiPropertyOptional({ description: 'Credit amount (mutually exclusive with debitAmount)' })
+  @ApiPropertyOptional({
+    description: 'Credit amount (mutually exclusive with debitAmount)',
+  })
   @IsOptional()
   @IsNumber()
   @Min(0)
@@ -65,7 +84,10 @@ export class CreateJournalEntryDto {
   @IsUUID()
   sourceId?: string;
 
-  @ApiProperty({ description: 'Journal entry lines', type: [CreateJournalEntryLineDto] })
+  @ApiProperty({
+    description: 'Journal entry lines',
+    type: [CreateJournalEntryLineDto],
+  })
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CreateJournalEntryLineDto)
@@ -125,7 +147,10 @@ export class UpdateJournalEntryDto {
   @IsEnum(JournalEntryType)
   entryType?: JournalEntryType;
 
-  @ApiPropertyOptional({ description: 'Journal entry lines', type: [UpdateJournalEntryLineDto] })
+  @ApiPropertyOptional({
+    description: 'Journal entry lines',
+    type: [UpdateJournalEntryLineDto],
+  })
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
@@ -146,12 +171,18 @@ export class JournalEntryQueryDto {
   @Min(1)
   limit?: number;
 
-  @ApiPropertyOptional({ description: 'Filter by entry type', enum: JournalEntryType })
+  @ApiPropertyOptional({
+    description: 'Filter by entry type',
+    enum: JournalEntryType,
+  })
   @IsOptional()
   @IsEnum(JournalEntryType)
   entryType?: JournalEntryType;
 
-  @ApiPropertyOptional({ description: 'Filter by source type', enum: SourceType })
+  @ApiPropertyOptional({
+    description: 'Filter by source type',
+    enum: SourceType,
+  })
   @IsOptional()
   @IsEnum(SourceType)
   sourceType?: SourceType;
@@ -176,7 +207,9 @@ export class JournalEntryQueryDto {
   @IsDateString()
   dateTo?: Date;
 
-  @ApiPropertyOptional({ description: 'Search in entry number, description, or reference' })
+  @ApiPropertyOptional({
+    description: 'Search in entry number, description, or reference',
+  })
   @IsOptional()
   @IsString()
   search?: string;
@@ -295,6 +328,9 @@ export class JournalEntryResponseDto {
   @ApiProperty({ description: 'Last update date' })
   updatedAt: Date;
 
-  @ApiProperty({ description: 'Journal entry lines', type: [JournalEntryLineResponseDto] })
+  @ApiProperty({
+    description: 'Journal entry lines',
+    type: [JournalEntryLineResponseDto],
+  })
   lines: JournalEntryLineResponseDto[];
 }

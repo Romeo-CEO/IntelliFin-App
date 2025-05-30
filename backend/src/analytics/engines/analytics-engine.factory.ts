@@ -1,9 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { 
-  IForecastingEngine, 
-  IAnomalyDetectionEngine, 
+import { ConfigService } from '@nestjs/config';
+import {
+  AnalyticsCapability,
+  IAnomalyDetectionEngine,
+  IForecastingEngine,
   IPredictiveEngine,
-  AnalyticsCapability 
 } from '../interfaces/analytics-engine.interface';
 
 // Current Statistical Engines
@@ -15,20 +16,27 @@ import { StatisticalAnomalyEngine } from './statistical/statistical-anomaly.engi
 // import { MLAnomalyEngine } from './ml/ml-anomaly.engine';
 // import { MLPredictiveEngine } from './ml/ml-predictive.engine';
 
+import { AnalyticsConfigService } from '../config/analytics.config';
+
 /**
  * Analytics Engine Factory
- * 
+ *
  * Provides centralized engine selection and management for seamless
  * transition from statistical to ML implementations
  */
 @Injectable()
 export class AnalyticsEngineFactory {
   private readonly logger = new Logger(AnalyticsEngineFactory.name);
-  
+
   // Engine registry for future dynamic loading
   private readonly engineRegistry = new Map<string, any>();
-  
-  constructor() {
+
+  // Configuration properties (can be loaded from a config service)
+  // private mlDataSizeThreshold = 100;
+  // private mlAnomalySizeThreshold = 200;
+  // private mlAnomalyDimensionThreshold = 5;
+
+  constructor(private readonly analyticsConfigService: AnalyticsConfigService) {
     this.initializeEngines();
   }
 
@@ -40,21 +48,31 @@ export class AnalyticsEngineFactory {
     complexity: 'SIMPLE' | 'MODERATE' | 'COMPLEX' = 'SIMPLE',
     preferML: boolean = false
   ): IForecastingEngine {
-    
-    // MVP: Use statistical engine
-    if (!preferML || dataSize < 100) {
-      this.logger.log('Using Statistical Forecasting Engine');
-      return new StatisticalForecastingEngine();
+    // Determine if ML is preferred and available for this data size
+    const mlConfig = this.analyticsConfigService.getMLReadinessConfig();
+    const useMLEngine =
+      preferML && mlConfig.enabled && dataSize >= mlConfig.minDataPoints;
+
+    if (useMLEngine) {
+      // Future: Implement more sophisticated ML engine selection based on complexity
+      // For now, attempt to get a generic ML forecasting engine if available
+      const MLEngine = this.engineRegistry.get('ml-forecasting');
+      if (MLEngine) {
+        this.logger.log('Using ML Forecasting Engine (Placeholder)');
+        // TODO: Instantiate ML engine with necessary dependencies
+        // return new MLEngine();
+      }
     }
-    
-    // Future: ML engine selection logic
-    // if (dataSize > 1000 && complexity === 'COMPLEX') {
-    //   return new MLForecastingEngine();
-    // }
-    
-    // Fallback to statistical
-    this.logger.log('Falling back to Statistical Forecasting Engine');
-    return new StatisticalForecastingEngine();
+
+    // Default or fallback to statistical engine
+    this.logger.log('Using Statistical Forecasting Engine');
+    const StatisticalEngine = this.engineRegistry.get(
+      'statistical-forecasting'
+    );
+    if (!StatisticalEngine) {
+      throw new Error('Statistical Forecasting Engine not registered');
+    }
+    return new StatisticalEngine();
   }
 
   /**
@@ -68,20 +86,34 @@ export class AnalyticsEngineFactory {
     },
     preferML: boolean = false
   ): IAnomalyDetectionEngine {
-    
-    // MVP: Use statistical engine
-    if (!preferML || dataCharacteristics.size < 200) {
-      this.logger.log('Using Statistical Anomaly Detection Engine');
-      return new StatisticalAnomalyEngine();
+    // Determine if ML is preferred and available for these data characteristics
+    const mlConfig = this.analyticsConfigService.getMLReadinessConfig();
+    const useMLEngine =
+      preferML &&
+      mlConfig.enabled &&
+      dataCharacteristics.size >=
+        this.analyticsConfigService.config.minDataPointsForML; // Using direct config access for now
+    // TODO: Add dimension threshold from config when available
+    // && dataCharacteristics.dimensions >= this.analyticsConfigService.config.mlAnomalyDimensionThreshold;
+
+    if (useMLEngine) {
+      // Future: Implement more sophisticated ML engine selection
+      // For now, attempt to get a generic ML anomaly engine if available
+      const MLEngine = this.engineRegistry.get('ml-anomaly');
+      if (MLEngine) {
+        this.logger.log('Using ML Anomaly Detection Engine (Placeholder)');
+        // TODO: Instantiate ML engine with necessary dependencies
+        // return new MLEngine();
+      }
     }
-    
-    // Future: ML engine for complex patterns
-    // if (dataCharacteristics.dimensions > 5 || dataCharacteristics.hasSeasonality) {
-    //   return new MLAnomalyEngine();
-    // }
-    
-    this.logger.log('Falling back to Statistical Anomaly Detection Engine');
-    return new StatisticalAnomalyEngine();
+
+    // Default or fallback to statistical engine
+    this.logger.log('Using Statistical Anomaly Detection Engine');
+    const StatisticalEngine = this.engineRegistry.get('statistical-anomaly');
+    if (!StatisticalEngine) {
+      throw new Error('Statistical Anomaly Detection Engine not registered');
+    }
+    return new StatisticalEngine();
   }
 
   /**
@@ -90,7 +122,6 @@ export class AnalyticsEngineFactory {
   getPredictiveEngine(
     useCase: 'CUSTOMER_BEHAVIOR' | 'CASH_FLOW' | 'RISK_ASSESSMENT'
   ): IPredictiveEngine {
-    
     // Future: ML-based predictive engines
     // switch (useCase) {
     //   case 'CUSTOMER_BEHAVIOR':
@@ -100,7 +131,7 @@ export class AnalyticsEngineFactory {
     //   case 'RISK_ASSESSMENT':
     //     return new RiskAssessmentPredictiveEngine();
     // }
-    
+
     throw new Error(`Predictive engine for ${useCase} not yet implemented`);
   }
 
@@ -108,23 +139,33 @@ export class AnalyticsEngineFactory {
    * Get available capabilities for current configuration
    */
   getAvailableCapabilities(): AnalyticsCapability[] {
-    return [
-      'FORECASTING',
-      'ANOMALY_DETECTION',
-      'TREND_ANALYSIS',
-      // Future capabilities will be added here
-      // 'PATTERN_RECOGNITION',
-      // 'PREDICTIVE_MODELING',
-      // 'RISK_ASSESSMENT'
-    ];
+    // Capabilities based on registered engines
+    const capabilities: AnalyticsCapability[] = [];
+    if (
+      this.engineRegistry.has('statistical-forecasting') ||
+      (this.engineRegistry.has('ml-forecasting') && this.isMLAvailable())
+    )
+      capabilities.push('FORECASTING');
+    if (
+      this.engineRegistry.has('statistical-anomaly') ||
+      (this.engineRegistry.has('ml-anomaly') && this.isMLAvailable())
+    )
+      capabilities.push('ANOMALY_DETECTION');
+    // Add other capabilities as corresponding engines are added
+    // if (this.engineRegistry.has('statistical-trend') || (this.engineRegistry.has('ml-trend') && this.isMLAvailable())) capabilities.push('TREND_ANALYSIS');
+    // if (this.engineRegistry.has('ml-pattern-recognition') && this.isMLAvailable()) capabilities.push('PATTERN_RECOGNITION');
+    // if (this.engineRegistry.has('ml-predictive') && this.isMLAvailable()) capabilities.push('PREDICTIVE_MODELING');
+    // if (this.engineRegistry.has('ml-risk') && this.isMLAvailable()) capabilities.push('RISK_ASSESSMENT');
+
+    return capabilities;
   }
 
   /**
-   * Check if ML engines are available
+   * Check if ML engines are available based on configuration
    */
   isMLAvailable(): boolean {
-    // Future: Check for ML dependencies and models
-    return false;
+    const mlConfig = this.analyticsConfigService.getMLReadinessConfig();
+    return mlConfig.enabled; // Rely on the configuration flag
   }
 
   /**
@@ -140,27 +181,32 @@ export class AnalyticsEngineFactory {
     alternatives: string[];
     reasoning: string;
   } {
-    
-    if (dataProfile.size < 50) {
+    const mlConfig = this.analyticsConfigService.getMLReadinessConfig();
+    const mlDataSizeThreshold = mlConfig.minDataPoints; // Use configured threshold
+
+    if (dataProfile.size < mlDataSizeThreshold) {
       return {
         recommended: 'STATISTICAL',
         alternatives: [],
-        reasoning: 'Insufficient data for ML approaches'
+        reasoning: `Insufficient data (${dataProfile.size} < ${mlDataSizeThreshold}) for ML approaches`,
       };
     }
-    
-    if (dataProfile.accuracy_requirements > 0.9 && dataProfile.size > 500) {
+
+    if (dataProfile.accuracy_requirements > 0.8 && this.isMLAvailable()) {
+      // Assuming >0.8 accuracy requirement favors ML if available
       return {
         recommended: 'ML',
         alternatives: ['STATISTICAL'],
-        reasoning: 'High accuracy requirements with sufficient data favor ML'
+        reasoning: 'High accuracy requirements favor ML where available',
       };
     }
-    
+
+    // Default recommendation
     return {
       recommended: 'STATISTICAL',
-      alternatives: ['ML'],
-      reasoning: 'Statistical methods provide good balance of speed and accuracy'
+      alternatives: this.isMLAvailable() ? ['ML'] : [],
+      reasoning:
+        'Statistical methods provide a good balance of speed and accuracy for typical data',
     };
   }
 
@@ -169,14 +215,20 @@ export class AnalyticsEngineFactory {
    */
   private initializeEngines(): void {
     // Register current engines
-    this.engineRegistry.set('statistical-forecasting', StatisticalForecastingEngine);
+    this.engineRegistry.set(
+      'statistical-forecasting',
+      StatisticalForecastingEngine
+    );
     this.engineRegistry.set('statistical-anomaly', StatisticalAnomalyEngine);
-    
-    // Future: Register ML engines
+
+    // Future: Register ML engines (commented out as not yet fully implemented)
     // this.engineRegistry.set('ml-forecasting', MLForecastingEngine);
     // this.engineRegistry.set('ml-anomaly', MLAnomalyEngine);
-    
-    this.logger.log(`Initialized ${this.engineRegistry.size} analytics engines`);
+    // this.engineRegistry.set('ml-predictive', MLPredictiveEngine);
+
+    this.logger.log(
+      `Initialized ${this.engineRegistry.size} analytics engines`
+    );
   }
 
   /**
@@ -187,13 +239,15 @@ export class AnalyticsEngineFactory {
     ml: boolean;
     overall: boolean;
   }> {
-    const statistical = true; // Always available
-    const ml = this.isMLAvailable();
-    
+    const statisticalAvailable =
+      this.engineRegistry.has('statistical-forecasting') &&
+      this.engineRegistry.has('statistical-anomaly');
+    const mlAvailable = this.isMLAvailable(); // Relies on isMLAvailable logic
+
     return {
-      statistical,
-      ml,
-      overall: statistical || ml
+      statistical: statisticalAvailable,
+      ml: mlAvailable,
+      overall: statisticalAvailable || mlAvailable,
     };
   }
 }

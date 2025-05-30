@@ -3,7 +3,7 @@ import { PrismaService } from '../../database/prisma.service';
 import { TaxCalculationService } from '../../tax-management/services/tax-calculation.service';
 import { WithholdingTaxService } from '../../tax-management/services/withholding-tax.service';
 import { TaxPeriodService } from '../../tax-management/services/tax-period.service';
-import { PaymentMethod, TaxType, Prisma } from '@prisma/client';
+import { PaymentMethod, Prisma, TaxType } from '@prisma/client';
 
 export interface PaymentTaxCalculation {
   grossAmount: number;
@@ -48,7 +48,7 @@ export class PaymentTaxIntegrationService {
     private readonly prisma: PrismaService,
     private readonly taxCalculationService: TaxCalculationService,
     private readonly withholdingTaxService: WithholdingTaxService,
-    private readonly taxPeriodService: TaxPeriodService,
+    private readonly taxPeriodService: TaxPeriodService
   ) {}
 
   /**
@@ -59,17 +59,19 @@ export class PaymentTaxIntegrationService {
     grossAmount: number,
     serviceType: string,
     supplierTin?: string,
-    paymentDate: Date = new Date(),
+    paymentDate: Date = new Date()
   ): Promise<PaymentTaxCalculation> {
     try {
-      this.logger.log(`Calculating payment tax for amount: ${grossAmount}, service: ${serviceType}`);
+      this.logger.log(
+        `Calculating payment tax for amount: ${grossAmount}, service: ${serviceType}`
+      );
 
       // Check if withholding tax applies
       const withholdingRequired = await this.isWithholdingTaxRequired(
         organizationId,
         grossAmount,
         serviceType,
-        supplierTin,
+        supplierTin
       );
 
       if (!withholdingRequired.required) {
@@ -96,7 +98,7 @@ export class PaymentTaxIntegrationService {
       // Get current tax period for withholding tax
       const taxPeriod = await this.taxPeriodService.getCurrentPeriod(
         organizationId,
-        TaxType.WITHHOLDING_TAX,
+        TaxType.WITHHOLDING_TAX
       );
 
       return {
@@ -110,7 +112,10 @@ export class PaymentTaxIntegrationService {
         taxPeriodId: taxPeriod?.id,
       };
     } catch (error) {
-      this.logger.error(`Failed to calculate payment tax: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to calculate payment tax: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -118,18 +123,22 @@ export class PaymentTaxIntegrationService {
   /**
    * Process supplier payment with automatic withholding tax
    */
-  async processSupplierPayment(request: SupplierPaymentRequest): Promise<PaymentWithTaxResult> {
+  async processSupplierPayment(
+    request: SupplierPaymentRequest
+  ): Promise<PaymentWithTaxResult> {
     try {
-      this.logger.log(`Processing supplier payment for ${request.supplierName}: ${request.grossAmount}`);
+      this.logger.log(
+        `Processing supplier payment for ${request.supplierName}: ${request.grossAmount}`
+      );
 
-      return await this.prisma.$transaction(async (tx) => {
+      return await this.prisma.$transaction(async tx => {
         // Calculate withholding tax
         const taxCalculation = await this.calculatePaymentTax(
           request.organizationId,
           request.grossAmount,
           request.serviceType,
           request.supplierTin,
-          request.paymentDate,
+          request.paymentDate
         );
 
         // Create payment record
@@ -139,7 +148,9 @@ export class PaymentTaxIntegrationService {
             customerId: request.supplierId,
             amount: new Prisma.Decimal(taxCalculation.netPayableAmount),
             grossAmount: new Prisma.Decimal(request.grossAmount),
-            withholdingTaxAmount: new Prisma.Decimal(taxCalculation.withholdingTaxAmount),
+            withholdingTaxAmount: new Prisma.Decimal(
+              taxCalculation.withholdingTaxAmount
+            ),
             paymentMethod: request.paymentMethod,
             paymentDate: request.paymentDate,
             reference: request.reference,
@@ -154,17 +165,18 @@ export class PaymentTaxIntegrationService {
 
         // Create withholding tax certificate if required
         if (taxCalculation.certificateRequired && taxCalculation.taxPeriodId) {
-          const certificate = await this.withholdingTaxService.createCertificate({
-            organizationId: request.organizationId,
-            taxPeriodId: taxCalculation.taxPeriodId,
-            supplierName: request.supplierName,
-            supplierTin: request.supplierTin,
-            serviceType: request.serviceType,
-            serviceDescription: request.serviceDescription,
-            grossAmount: request.grossAmount,
-            withholdingRate: taxCalculation.withholdingRate,
-            paymentDate: request.paymentDate,
-          });
+          const certificate =
+            await this.withholdingTaxService.createCertificate({
+              organizationId: request.organizationId,
+              taxPeriodId: taxCalculation.taxPeriodId,
+              supplierName: request.supplierName,
+              supplierTin: request.supplierTin,
+              serviceType: request.serviceType,
+              serviceDescription: request.serviceDescription,
+              grossAmount: request.grossAmount,
+              withholdingRate: taxCalculation.withholdingRate,
+              paymentDate: request.paymentDate,
+            });
 
           certificateId = certificate.id;
           certificateNumber = certificate.certificateNumber;
@@ -176,7 +188,9 @@ export class PaymentTaxIntegrationService {
           });
         }
 
-        this.logger.log(`Supplier payment processed: ${payment.id}, certificate: ${certificateNumber || 'N/A'}`);
+        this.logger.log(
+          `Supplier payment processed: ${payment.id}, certificate: ${certificateNumber || 'N/A'}`
+        );
 
         return {
           paymentId: payment.id,
@@ -189,7 +203,10 @@ export class PaymentTaxIntegrationService {
         };
       });
     } catch (error) {
-      this.logger.error(`Failed to process supplier payment: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to process supplier payment: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -200,7 +217,7 @@ export class PaymentTaxIntegrationService {
   async getPaymentTaxSummary(
     organizationId: string,
     year?: number,
-    month?: number,
+    month?: number
   ): Promise<{
     totalPayments: number;
     totalGrossAmount: number;
@@ -215,8 +232,16 @@ export class PaymentTaxIntegrationService {
       if (year || month) {
         whereClause.paymentDate = {};
         if (year) {
-          whereClause.paymentDate.gte = new Date(year, month ? month - 1 : 0, 1);
-          whereClause.paymentDate.lt = new Date(year, month ? month : 12, month ? 1 : 1);
+          whereClause.paymentDate.gte = new Date(
+            year,
+            month ? month - 1 : 0,
+            1
+          );
+          whereClause.paymentDate.lt = new Date(
+            year,
+            month ? month : 12,
+            month ? 1 : 1
+          );
         }
       }
 
@@ -234,11 +259,25 @@ export class PaymentTaxIntegrationService {
       });
 
       const totalPayments = payments.length;
-      const totalGrossAmount = payments.reduce((sum, p) => sum + (p.grossAmount?.toNumber() || 0), 0);
-      const totalWithholdingTax = payments.reduce((sum, p) => sum + (p.withholdingTaxAmount?.toNumber() || 0), 0);
-      const totalNetPayments = payments.reduce((sum, p) => sum + p.amount.toNumber(), 0);
-      const certificatesGenerated = payments.filter(p => p.withholdingCertificateId).length;
-      const averageWithholdingRate = totalGrossAmount > 0 ? (totalWithholdingTax / totalGrossAmount) * 100 : 0;
+      const totalGrossAmount = payments.reduce(
+        (sum, p) => sum + (p.grossAmount?.toNumber() || 0),
+        0
+      );
+      const totalWithholdingTax = payments.reduce(
+        (sum, p) => sum + (p.withholdingTaxAmount?.toNumber() || 0),
+        0
+      );
+      const totalNetPayments = payments.reduce(
+        (sum, p) => sum + p.amount.toNumber(),
+        0
+      );
+      const certificatesGenerated = payments.filter(
+        p => p.withholdingCertificateId
+      ).length;
+      const averageWithholdingRate =
+        totalGrossAmount > 0
+          ? (totalWithholdingTax / totalGrossAmount) * 100
+          : 0;
 
       return {
         totalPayments,
@@ -249,7 +288,10 @@ export class PaymentTaxIntegrationService {
         averageWithholdingRate,
       };
     } catch (error) {
-      this.logger.error(`Failed to get payment tax summary: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to get payment tax summary: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -261,8 +303,12 @@ export class PaymentTaxIntegrationService {
     organizationId: string,
     amount: number,
     serviceType: string,
-    supplierTin?: string,
-  ): Promise<{ required: boolean; exemptionApplied: boolean; reason?: string }> {
+    supplierTin?: string
+  ): Promise<{
+    required: boolean;
+    exemptionApplied: boolean;
+    reason?: string;
+  }> {
     // Check minimum threshold (typically K200 for most services)
     const minimumThreshold = this.getMinimumThreshold(serviceType);
     if (amount < minimumThreshold) {
@@ -320,7 +366,7 @@ export class PaymentTaxIntegrationService {
   private async checkSupplierExemption(supplierTin: string): Promise<boolean> {
     // TODO: Implement actual exemption checking logic
     // This could involve checking against ZRA exemption lists or organization-specific exemptions
-    
+
     // For now, check if TIN indicates government entity (typically starts with specific patterns)
     const governmentPatterns = ['1000', '2000', '9000']; // Example patterns
     return governmentPatterns.some(pattern => supplierTin.startsWith(pattern));

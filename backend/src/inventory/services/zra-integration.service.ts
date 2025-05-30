@@ -63,7 +63,7 @@ export class ZraIntegrationService {
 
   constructor(
     private readonly configService: ConfigService,
-    private readonly cacheService: InventoryCacheService,
+    private readonly cacheService: InventoryCacheService
   ) {
     this.zraApiUrl = this.configService.get<string>('zra.apiUrl') || '';
     this.zraApiKey = this.configService.get<string>('zra.apiKey') || '';
@@ -75,7 +75,7 @@ export class ZraIntegrationService {
    */
   validateZraItemCode(itemCode: string): boolean {
     if (!itemCode) return false;
-    
+
     // ZRA item codes typically follow pattern: CATEGORY-SUBCATEGORY-SEQUENCE
     const zraPattern = /^[A-Z]{2,3}-[A-Z0-9]{2,4}-[0-9]{3,6}$/;
     return zraPattern.test(itemCode);
@@ -84,16 +84,19 @@ export class ZraIntegrationService {
   /**
    * Get item classification from ZRA
    */
-  async getItemClassification(itemCode: string): Promise<ZraItemClassification | null> {
+  async getItemClassification(
+    itemCode: string
+  ): Promise<ZraItemClassification | null> {
     try {
       if (!this.isZraEnabled || !itemCode) {
         return null;
       }
 
       const cacheKey = `zra_classification_${itemCode}`;
-      
+
       // Try cache first
-      const cached = await this.cacheService.get<ZraItemClassification>(cacheKey);
+      const cached =
+        await this.cacheService.get<ZraItemClassification>(cacheKey);
       if (cached) {
         return cached;
       }
@@ -101,7 +104,7 @@ export class ZraIntegrationService {
       // In a real implementation, this would call the ZRA API
       // For now, we'll return mock data based on item code pattern
       const classification = this.getMockClassification(itemCode);
-      
+
       if (classification) {
         // Cache for 24 hours
         await this.cacheService.set(cacheKey, classification, 86400);
@@ -109,7 +112,10 @@ export class ZraIntegrationService {
 
       return classification;
     } catch (error) {
-      this.logger.error(`Failed to get ZRA item classification: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get ZRA item classification: ${error.message}`,
+        error
+      );
       return null;
     }
   }
@@ -129,38 +135,56 @@ export class ZraIntegrationService {
         recommendations.push('Assign appropriate ZRA item classification code');
       } else if (!this.validateZraItemCode(productData.zraItemCode)) {
         issues.push('ZRA item code format is invalid');
-        recommendations.push('Use valid ZRA item code format (e.g., FB-001-123456)');
+        recommendations.push(
+          'Use valid ZRA item code format (e.g., FB-001-123456)'
+        );
       } else {
-        itemClassification = await this.getItemClassification(productData.zraItemCode);
-        
+        itemClassification = await this.getItemClassification(
+          productData.zraItemCode
+        );
+
         if (itemClassification) {
           // Check VAT rate consistency
           if (productData.vatRate !== itemClassification.vatRate) {
-            issues.push(`VAT rate mismatch: Product has ${productData.vatRate}%, ZRA classification requires ${itemClassification.vatRate}%`);
-            recommendations.push(`Update VAT rate to ${itemClassification.vatRate}% as per ZRA classification`);
+            issues.push(
+              `VAT rate mismatch: Product has ${productData.vatRate}%, ZRA classification requires ${itemClassification.vatRate}%`
+            );
+            recommendations.push(
+              `Update VAT rate to ${itemClassification.vatRate}% as per ZRA classification`
+            );
           }
 
           // Check for restricted items
           if (itemClassification.isRestricted) {
-            recommendations.push('This item is restricted - ensure proper licensing and documentation');
+            recommendations.push(
+              'This item is restricted - ensure proper licensing and documentation'
+            );
           }
 
           if (itemClassification.requiresLicense) {
-            recommendations.push('This item requires special licensing - verify compliance before sale');
+            recommendations.push(
+              'This item requires special licensing - verify compliance before sale'
+            );
           }
         }
       }
 
       // Check VAT rate validity
       if (!this.isValidZambianVatRate(productData.vatRate)) {
-        issues.push(`Invalid VAT rate: ${productData.vatRate}% is not a standard Zambian VAT rate`);
-        recommendations.push('Use standard Zambian VAT rates: 0% (zero-rated/exempt) or 16% (standard)');
+        issues.push(
+          `Invalid VAT rate: ${productData.vatRate}% is not a standard Zambian VAT rate`
+        );
+        recommendations.push(
+          'Use standard Zambian VAT rates: 0% (zero-rated/exempt) or 16% (standard)'
+        );
       }
 
       // Check taxable status consistency
       if (productData.isTaxable && productData.vatRate === 0) {
         issues.push('Product marked as taxable but has 0% VAT rate');
-        recommendations.push('Either mark as non-taxable or apply appropriate VAT rate');
+        recommendations.push(
+          'Either mark as non-taxable or apply appropriate VAT rate'
+        );
       }
 
       return {
@@ -170,7 +194,10 @@ export class ZraIntegrationService {
         itemClassification,
       };
     } catch (error) {
-      this.logger.error(`Failed to check product compliance: ${error.message}`, error);
+      this.logger.error(
+        `Failed to check product compliance: ${error.message}`,
+        error
+      );
       return {
         isCompliant: false,
         issues: ['Compliance check failed'],
@@ -184,15 +211,23 @@ export class ZraIntegrationService {
    */
   async generateInventoryReport(
     organizationId: string,
-    reportType: 'STOCK_DECLARATION' | 'INVENTORY_VALUATION' | 'MOVEMENT_SUMMARY',
+    reportType:
+      | 'STOCK_DECLARATION'
+      | 'INVENTORY_VALUATION'
+      | 'MOVEMENT_SUMMARY',
     startDate: Date,
-    endDate: Date,
+    endDate: Date
   ): Promise<ZraInventoryReport> {
     try {
       const reportId = this.generateReportId();
-      
+
       // In a real implementation, this would gather actual inventory data
-      const reportData = await this.compileInventoryData(organizationId, reportType, startDate, endDate);
+      const reportData = await this.compileInventoryData(
+        organizationId,
+        reportType,
+        startDate,
+        endDate
+      );
 
       const report: ZraInventoryReport = {
         reportId,
@@ -206,10 +241,15 @@ export class ZraIntegrationService {
       const cacheKey = `zra_report_${reportId}`;
       await this.cacheService.set(cacheKey, report, 3600); // 1 hour
 
-      this.logger.log(`Generated ZRA inventory report: ${reportId} for organization: ${organizationId}`);
+      this.logger.log(
+        `Generated ZRA inventory report: ${reportId} for organization: ${organizationId}`
+      );
       return report;
     } catch (error) {
-      this.logger.error(`Failed to generate ZRA inventory report: ${error.message}`, error);
+      this.logger.error(
+        `Failed to generate ZRA inventory report: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -220,13 +260,15 @@ export class ZraIntegrationService {
   async submitReportToZra(reportId: string): Promise<boolean> {
     try {
       if (!this.isZraEnabled) {
-        this.logger.warn('ZRA integration is disabled - report submission skipped');
+        this.logger.warn(
+          'ZRA integration is disabled - report submission skipped'
+        );
         return false;
       }
 
       const cacheKey = `zra_report_${reportId}`;
       const report = await this.cacheService.get<ZraInventoryReport>(cacheKey);
-      
+
       if (!report) {
         throw new Error(`Report not found: ${reportId}`);
       }
@@ -235,17 +277,24 @@ export class ZraIntegrationService {
       const submissionResult = await this.mockZraSubmission(report);
 
       // Update report status
-      report.submissionStatus = submissionResult.success ? 'SUBMITTED' : 'REJECTED';
+      report.submissionStatus = submissionResult.success
+        ? 'SUBMITTED'
+        : 'REJECTED';
       report.submissionDate = new Date();
       report.zraReference = submissionResult.reference;
 
       // Update cache
       await this.cacheService.set(cacheKey, report, 3600);
 
-      this.logger.log(`ZRA report submission ${submissionResult.success ? 'successful' : 'failed'}: ${reportId}`);
+      this.logger.log(
+        `ZRA report submission ${submissionResult.success ? 'successful' : 'failed'}: ${reportId}`
+      );
       return submissionResult.success;
     } catch (error) {
-      this.logger.error(`Failed to submit report to ZRA: ${error.message}`, error);
+      this.logger.error(
+        `Failed to submit report to ZRA: ${error.message}`,
+        error
+      );
       return false;
     }
   }
@@ -256,7 +305,7 @@ export class ZraIntegrationService {
   async getComplianceSummary(organizationId: string): Promise<any> {
     try {
       const cacheKey = `zra_compliance_${organizationId}`;
-      
+
       return await this.cacheService.getOrSet(
         cacheKey,
         async () => {
@@ -273,10 +322,13 @@ export class ZraIntegrationService {
             nextReportDue: null,
           };
         },
-        'INVENTORY_REPORTS',
+        'INVENTORY_REPORTS'
       );
     } catch (error) {
-      this.logger.error(`Failed to get compliance summary: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get compliance summary: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -295,7 +347,10 @@ export class ZraIntegrationService {
       suggestions.push('FB-001-000001', 'FB-002-000001');
     } else if (category.includes('clothing') || name.includes('clothing')) {
       suggestions.push('CT-001-000001', 'CT-002-000001');
-    } else if (category.includes('electronics') || name.includes('electronic')) {
+    } else if (
+      category.includes('electronics') ||
+      name.includes('electronic')
+    ) {
       suggestions.push('EL-001-000001', 'EL-002-000001');
     } else if (category.includes('furniture') || name.includes('furniture')) {
       suggestions.push('FU-001-000001', 'FU-002-000001');
@@ -316,18 +371,60 @@ export class ZraIntegrationService {
   /**
    * Get mock classification (replace with real ZRA API call)
    */
-  private getMockClassification(itemCode: string): ZraItemClassification | null {
+  private getMockClassification(
+    itemCode: string
+  ): ZraItemClassification | null {
     const category = itemCode.substring(0, 2);
-    
+
     const classifications: Record<string, Partial<ZraItemClassification>> = {
-      'FB': { description: 'Food and Beverages', vatRate: 0, category: 'Food', isRestricted: false },
-      'CT': { description: 'Clothing and Textiles', vatRate: 16, category: 'Clothing', isRestricted: false },
-      'EL': { description: 'Electronics', vatRate: 16, category: 'Electronics', isRestricted: false },
-      'FU': { description: 'Furniture', vatRate: 16, category: 'Furniture', isRestricted: false },
-      'MS': { description: 'Medical Supplies', vatRate: 0, category: 'Medical', isRestricted: true },
-      'AU': { description: 'Automotive', vatRate: 16, category: 'Automotive', isRestricted: false },
-      'CO': { description: 'Construction Materials', vatRate: 16, category: 'Construction', isRestricted: false },
-      'AG': { description: 'Agricultural Products', vatRate: 0, category: 'Agriculture', isRestricted: false },
+      FB: {
+        description: 'Food and Beverages',
+        vatRate: 0,
+        category: 'Food',
+        isRestricted: false,
+      },
+      CT: {
+        description: 'Clothing and Textiles',
+        vatRate: 16,
+        category: 'Clothing',
+        isRestricted: false,
+      },
+      EL: {
+        description: 'Electronics',
+        vatRate: 16,
+        category: 'Electronics',
+        isRestricted: false,
+      },
+      FU: {
+        description: 'Furniture',
+        vatRate: 16,
+        category: 'Furniture',
+        isRestricted: false,
+      },
+      MS: {
+        description: 'Medical Supplies',
+        vatRate: 0,
+        category: 'Medical',
+        isRestricted: true,
+      },
+      AU: {
+        description: 'Automotive',
+        vatRate: 16,
+        category: 'Automotive',
+        isRestricted: false,
+      },
+      CO: {
+        description: 'Construction Materials',
+        vatRate: 16,
+        category: 'Construction',
+        isRestricted: false,
+      },
+      AG: {
+        description: 'Agricultural Products',
+        vatRate: 0,
+        category: 'Agriculture',
+        isRestricted: false,
+      },
     };
 
     const baseClassification = classifications[category];
@@ -350,7 +447,7 @@ export class ZraIntegrationService {
     organizationId: string,
     reportType: string,
     startDate: Date,
-    endDate: Date,
+    endDate: Date
   ): Promise<any> {
     // In a real implementation, this would query actual inventory data
     return {
@@ -372,13 +469,15 @@ export class ZraIntegrationService {
   /**
    * Mock ZRA submission (replace with real API call)
    */
-  private async mockZraSubmission(report: ZraInventoryReport): Promise<{ success: boolean; reference?: string }> {
+  private async mockZraSubmission(
+    report: ZraInventoryReport
+  ): Promise<{ success: boolean; reference?: string }> {
     // Simulate API call delay
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     // Mock success/failure
     const success = Math.random() > 0.1; // 90% success rate
-    
+
     return {
       success,
       reference: success ? `ZRA-${Date.now()}` : undefined,
@@ -390,7 +489,9 @@ export class ZraIntegrationService {
    */
   private generateReportId(): string {
     const timestamp = Date.now();
-    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    const random = Math.floor(Math.random() * 1000)
+      .toString()
+      .padStart(3, '0');
     return `ZRA-RPT-${timestamp}-${random}`;
   }
 }

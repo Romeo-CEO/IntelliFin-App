@@ -1,9 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { 
-  Prisma, 
-  ApprovalTask, 
-  ApprovalTaskStatus,
+import {
   ApprovalDecision,
+  ApprovalTask,
+  ApprovalTaskStatus,
+  Prisma,
 } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
 
@@ -57,10 +57,15 @@ export class ApprovalTaskRepository {
         data,
       });
 
-      this.logger.log(`Created approval task: ${approvalTask.id} for approver: ${approvalTask.approverId}`);
+      this.logger.log(
+        `Created approval task: ${approvalTask.id} for approver: ${approvalTask.approverId}`
+      );
       return approvalTask;
     } catch (error) {
-      this.logger.error(`Failed to create approval task: ${error.message}`, error);
+      this.logger.error(
+        `Failed to create approval task: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -68,7 +73,9 @@ export class ApprovalTaskRepository {
   /**
    * Create multiple approval tasks
    */
-  async createMany(data: Prisma.ApprovalTaskCreateManyInput[]): Promise<number> {
+  async createMany(
+    data: Prisma.ApprovalTaskCreateManyInput[]
+  ): Promise<number> {
     try {
       const result = await this.prisma.approvalTask.createMany({
         data,
@@ -77,7 +84,10 @@ export class ApprovalTaskRepository {
       this.logger.log(`Created ${result.count} approval tasks`);
       return result.count;
     } catch (error) {
-      this.logger.error(`Failed to create approval tasks: ${error.message}`, error);
+      this.logger.error(
+        `Failed to create approval tasks: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -85,9 +95,11 @@ export class ApprovalTaskRepository {
   /**
    * Find approval task by ID with details
    */
-  async findByIdWithDetails(id: string): Promise<ApprovalTaskWithDetails | null> {
+  async findByIdWithDetails(
+    id: string
+  ): Promise<ApprovalTaskWithDetails | null> {
     try {
-      return await this.prisma.approvalTask.findUnique({
+      return (await this.prisma.approvalTask.findUnique({
         where: { id },
         include: {
           approvalRequest: {
@@ -126,9 +138,12 @@ export class ApprovalTaskRepository {
             },
           },
         },
-      }) as ApprovalTaskWithDetails | null;
+      })) as ApprovalTaskWithDetails | null;
     } catch (error) {
-      this.logger.error(`Failed to find approval task by ID: ${error.message}`, error);
+      this.logger.error(
+        `Failed to find approval task by ID: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -136,7 +151,10 @@ export class ApprovalTaskRepository {
   /**
    * Update approval task
    */
-  async update(id: string, data: Prisma.ApprovalTaskUpdateInput): Promise<ApprovalTask> {
+  async update(
+    id: string,
+    data: Prisma.ApprovalTaskUpdateInput
+  ): Promise<ApprovalTask> {
     try {
       const approvalTask = await this.prisma.approvalTask.update({
         where: { id },
@@ -146,7 +164,10 @@ export class ApprovalTaskRepository {
       this.logger.log(`Updated approval task: ${approvalTask.id}`);
       return approvalTask;
     } catch (error) {
-      this.logger.error(`Failed to update approval task: ${error.message}`, error);
+      this.logger.error(
+        `Failed to update approval task: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -154,14 +175,19 @@ export class ApprovalTaskRepository {
   /**
    * Find tasks by approval request ID
    */
-  async findByApprovalRequestId(approvalRequestId: string): Promise<ApprovalTask[]> {
+  async findByApprovalRequestId(
+    approvalRequestId: string
+  ): Promise<ApprovalTask[]> {
     try {
       return await this.prisma.approvalTask.findMany({
         where: { approvalRequestId },
         orderBy: { sequence: 'asc' },
       });
     } catch (error) {
-      this.logger.error(`Failed to find approval tasks by request ID: ${error.message}`, error);
+      this.logger.error(
+        `Failed to find approval tasks by request ID: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -173,7 +199,7 @@ export class ApprovalTaskRepository {
     approverId: string,
     organizationId: string,
     page: number = 1,
-    limit: number = 20,
+    limit: number = 20
   ): Promise<{
     tasks: ApprovalTaskWithDetails[];
     total: number;
@@ -251,7 +277,10 @@ export class ApprovalTaskRepository {
         totalPages: Math.ceil(total / limit),
       };
     } catch (error) {
-      this.logger.error(`Failed to find pending approval tasks: ${error.message}`, error);
+      this.logger.error(
+        `Failed to find pending approval tasks: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -264,7 +293,7 @@ export class ApprovalTaskRepository {
     organizationId: string,
     status?: ApprovalTaskStatus,
     page: number = 1,
-    limit: number = 20,
+    limit: number = 20
   ): Promise<{
     tasks: ApprovalTaskWithDetails[];
     total: number;
@@ -338,7 +367,10 @@ export class ApprovalTaskRepository {
         totalPages: Math.ceil(total / limit),
       };
     } catch (error) {
-      this.logger.error(`Failed to find approval tasks by approver: ${error.message}`, error);
+      this.logger.error(
+        `Failed to find approval tasks by approver: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -349,7 +381,7 @@ export class ApprovalTaskRepository {
   async completeTask(
     taskId: string,
     decision: ApprovalDecision,
-    comments?: string,
+    comments?: string
   ): Promise<ApprovalTask> {
     try {
       const approvalTask = await this.prisma.approvalTask.update({
@@ -362,10 +394,15 @@ export class ApprovalTaskRepository {
         },
       });
 
-      this.logger.log(`Completed approval task: ${approvalTask.id} with decision: ${decision}`);
+      this.logger.log(
+        `Completed approval task: ${approvalTask.id} with decision: ${decision}`
+      );
       return approvalTask;
     } catch (error) {
-      this.logger.error(`Failed to complete approval task: ${error.message}`, error);
+      this.logger.error(
+        `Failed to complete approval task: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -387,7 +424,10 @@ export class ApprovalTaskRepository {
       this.logger.log(`Skipped approval task: ${approvalTask.id}`);
       return approvalTask;
     } catch (error) {
-      this.logger.error(`Failed to skip approval task: ${error.message}`, error);
+      this.logger.error(
+        `Failed to skip approval task: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -416,7 +456,10 @@ export class ApprovalTaskRepository {
       this.logger.log(`Expired ${result.count} overdue approval tasks`);
       return result.count;
     } catch (error) {
-      this.logger.error(`Failed to expire overdue tasks: ${error.message}`, error);
+      this.logger.error(
+        `Failed to expire overdue tasks: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -424,7 +467,10 @@ export class ApprovalTaskRepository {
   /**
    * Get task statistics for an approver
    */
-  async getApproverStats(approverId: string, organizationId: string): Promise<{
+  async getApproverStats(
+    approverId: string,
+    organizationId: string
+  ): Promise<{
     totalTasks: number;
     pendingTasks: number;
     completedTasks: number;
@@ -475,25 +521,34 @@ export class ApprovalTaskRepository {
       const decisionTimesMs = decisionTimes
         .filter(task => task.decidedAt)
         .map(task => task.decidedAt!.getTime() - task.createdAt.getTime());
-      
-      const averageDecisionTime = decisionTimesMs.length > 0
-        ? decisionTimesMs.reduce((sum, time) => sum + time, 0) / decisionTimesMs.length / (1000 * 60 * 60) // Convert to hours
-        : 0;
+
+      const averageDecisionTime =
+        decisionTimesMs.length > 0
+          ? decisionTimesMs.reduce((sum, time) => sum + time, 0) /
+            decisionTimesMs.length /
+            (1000 * 60 * 60) // Convert to hours
+          : 0;
 
       return {
         totalTasks,
         pendingTasks,
         completedTasks,
         averageDecisionTime,
-        tasksByDecision: tasksByDecision.reduce((acc, item) => {
-          if (item.decision) {
-            acc[item.decision] = item._count._all;
-          }
-          return acc;
-        }, {} as Record<ApprovalDecision, number>),
+        tasksByDecision: tasksByDecision.reduce(
+          (acc, item) => {
+            if (item.decision) {
+              acc[item.decision] = item._count._all;
+            }
+            return acc;
+          },
+          {} as Record<ApprovalDecision, number>
+        ),
       };
     } catch (error) {
-      this.logger.error(`Failed to get approver stats: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get approver stats: ${error.message}`,
+        error
+      );
       throw error;
     }
   }

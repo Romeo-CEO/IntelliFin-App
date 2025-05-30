@@ -1,4 +1,5 @@
 import { apiClient } from './api.client';
+import { AnalyticsQuery, ExpenseTrendAnalysis, NewForecastResult, AnalyticsResponse, CustomerProfitability, ProfitabilityTrends, TaxAnalyticsDashboard, TaxOptimizationInsights, ZraComplianceAnalysis, FinancialRatios, BusinessHealthScore, HealthScoreComponents, ExpenseAnomalyDetection, ProductProfitability, CashFlowData, CashFlowSummary, RevenueExpensesData, RevenueExpensesSummary, KpiMetrics, ReceivablesAgingData, ReceivablesAgingInsights } from '../types/analytics.types';
 
 // Analytics data interfaces
 export interface CashFlowData {
@@ -37,24 +38,6 @@ export interface RevenueExpensesAnalytics {
   };
 }
 
-export interface KpiMetrics {
-  totalRevenue: number;
-  totalExpenses: number;
-  netProfit: number;
-  profitMargin: number;
-  cashBalance: number;
-  accountsReceivable: number;
-  averageInvoiceValue: number;
-  paymentCycleTime: number;
-  customerCount: number;
-  invoiceCount: number;
-  // Trend indicators (vs previous period)
-  revenueTrend: number;
-  expensesTrend: number;
-  profitTrend: number;
-  receivablesTrend: number;
-}
-
 export interface ReceivablesAgingDetail {
   customerId: string;
   customerName: string;
@@ -85,29 +68,16 @@ export interface ReceivablesAnalytics {
   };
 }
 
-export interface AnalyticsQuery {
-  period?: 'day' | 'week' | 'month';
-  startDate?: string;
-  endDate?: string;
-  groupBy?: 'day' | 'week' | 'month';
-}
-
 class AnalyticsService {
   private readonly baseUrl = '/api/analytics';
 
   /**
    * Get cash flow analytics
    */
-  async getCashFlowAnalytics(query: AnalyticsQuery = {}): Promise<CashFlowAnalytics> {
+  async getCashFlowAnalytics(query: AnalyticsQuery = {}): Promise<AnalyticsResponse<{ data: CashFlowData[]; summary: CashFlowSummary; }>> {
     try {
-      const params = new URLSearchParams();
-
-      if (query.period) params.append('period', query.period);
-      if (query.startDate) params.append('startDate', query.startDate);
-      if (query.endDate) params.append('endDate', query.endDate);
-      if (query.groupBy) params.append('groupBy', query.groupBy);
-
-      const response = await apiClient.get(`${this.baseUrl}/cash-flow?${params.toString()}`);
+      const params = new URLSearchParams(query as any);
+      const response = await apiClient.get(`${this.baseUrl}/cash-flow-analytics?${params.toString()}`);
       return response.data;
     } catch (error) {
       console.error('Failed to get cash flow analytics:', error);
@@ -136,16 +106,11 @@ class AnalyticsService {
   }
 
   /**
-   * Get KPI summary metrics
+   * Get comprehensive KPI metrics
    */
-  async getKpiSummary(query: AnalyticsQuery = {}): Promise<KpiMetrics> {
+  async getKpiSummary(query: AnalyticsQuery = {}): Promise<AnalyticsResponse<KpiMetrics>> {
     try {
-      const params = new URLSearchParams();
-
-      if (query.period) params.append('period', query.period);
-      if (query.startDate) params.append('startDate', query.startDate);
-      if (query.endDate) params.append('endDate', query.endDate);
-
+      const params = new URLSearchParams(query as any);
       const response = await apiClient.get(`${this.baseUrl}/kpi-summary?${params.toString()}`);
       return response.data;
     } catch (error) {
@@ -157,13 +122,13 @@ class AnalyticsService {
   /**
    * Get accounts receivable aging analysis
    */
-  async getReceivablesAging(): Promise<ReceivablesAnalytics> {
+  async getReceivablesAging(): Promise<AnalyticsResponse<{ aging: ReceivablesAgingData; insights: ReceivablesAgingInsights; }>> {
     try {
       const response = await apiClient.get(`${this.baseUrl}/receivables-aging`);
       return response.data;
     } catch (error) {
       console.error('Failed to get receivables aging:', error);
-      throw new Error('Failed to load receivables aging analysis');
+      throw new Error('Failed to load receivables aging');
     }
   }
 
@@ -280,7 +245,7 @@ class AnalyticsService {
     periods?: number;
     confidence?: number;
     method?: 'linear' | 'exponential' | 'seasonal'
-  } = {}): Promise<any> {
+  } = {}): Promise<NewForecastResult[]> {
     try {
       const params = new URLSearchParams();
 
@@ -302,7 +267,7 @@ class AnalyticsService {
   /**
    * Get expense trends analysis
    */
-  async getExpenseTrends(query: AnalyticsQuery = {}): Promise<any> {
+  async getExpenseTrends(query: AnalyticsQuery = {}): Promise<ExpenseTrendAnalysis> {
     try {
       const params = new URLSearchParams();
 
@@ -321,14 +286,9 @@ class AnalyticsService {
   /**
    * Get expense anomalies
    */
-  async getExpenseAnomalies(query: AnalyticsQuery = {}): Promise<any> {
+  async getExpenseAnomalies(query: AnalyticsQuery = {}): Promise<AnalyticsResponse<ExpenseAnomalyDetection>> {
     try {
-      const params = new URLSearchParams();
-
-      if (query.period) params.append('period', query.period);
-      if (query.startDate) params.append('startDate', query.startDate);
-      if (query.endDate) params.append('endDate', query.endDate);
-
+      const params = new URLSearchParams(query as any);
       const response = await apiClient.get(`${this.baseUrl}/expense-anomalies?${params.toString()}`);
       return response.data;
     } catch (error) {
@@ -338,35 +298,25 @@ class AnalyticsService {
   }
 
   /**
-   * Get profitability analysis
+   * Get customer profitability
    */
-  async getProfitabilityAnalysis(query: AnalyticsQuery = {}): Promise<any> {
+  async getCustomerProfitability(query: AnalyticsQuery = {}): Promise<AnalyticsResponse<CustomerProfitability[]>> {
     try {
-      const params = new URLSearchParams();
-
-      if (query.period) params.append('period', query.period);
-      if (query.startDate) params.append('startDate', query.startDate);
-      if (query.endDate) params.append('endDate', query.endDate);
-
-      const response = await apiClient.get(`${this.baseUrl}/profitability-analysis?${params.toString()}`);
+      const params = new URLSearchParams(query as any);
+      const response = await apiClient.get(`${this.baseUrl}/customer-profitability?${params.toString()}`);
       return response.data;
     } catch (error) {
-      console.error('Failed to get profitability analysis:', error);
-      throw new Error('Failed to load profitability analysis');
+      console.error('Failed to get customer profitability:', error);
+      throw new Error('Failed to load customer profitability');
     }
   }
 
   /**
    * Get profitability trends
    */
-  async getProfitabilityTrends(query: AnalyticsQuery = {}): Promise<any> {
+  async getProfitabilityTrends(query: AnalyticsQuery = {}): Promise<AnalyticsResponse<ProfitabilityTrends>> {
     try {
-      const params = new URLSearchParams();
-
-      if (query.period) params.append('period', query.period);
-      if (query.startDate) params.append('startDate', query.startDate);
-      if (query.endDate) params.append('endDate', query.endDate);
-
+      const params = new URLSearchParams(query as any);
       const response = await apiClient.get(`${this.baseUrl}/profitability-trends?${params.toString()}`);
       return response.data;
     } catch (error) {
@@ -378,7 +328,7 @@ class AnalyticsService {
   /**
    * Get tax analytics
    */
-  async getTaxAnalytics(query: AnalyticsQuery = {}): Promise<any> {
+  async getTaxAnalytics(query: AnalyticsQuery = {}): Promise<AnalyticsResponse<TaxAnalyticsDashboard>> {
     try {
       const params = new URLSearchParams();
 
@@ -397,18 +347,13 @@ class AnalyticsService {
   /**
    * Get tax optimization insights
    */
-  async getTaxOptimization(query: AnalyticsQuery = {}): Promise<any> {
+  async getTaxOptimizationInsights(query: AnalyticsQuery = {}): Promise<AnalyticsResponse<TaxOptimizationInsights>> {
     try {
-      const params = new URLSearchParams();
-
-      if (query.period) params.append('period', query.period);
-      if (query.startDate) params.append('startDate', query.startDate);
-      if (query.endDate) params.append('endDate', query.endDate);
-
-      const response = await apiClient.get(`${this.baseUrl}/tax-optimization?${params.toString()}`);
+      const params = new URLSearchParams(query as any);
+      const response = await apiClient.get(`${this.baseUrl}/tax-optimization-insights?${params.toString()}`);
       return response.data;
     } catch (error) {
-      console.error('Failed to get tax optimization:', error);
+      console.error('Failed to get tax optimization insights:', error);
       throw new Error('Failed to load tax optimization insights');
     }
   }
@@ -416,7 +361,7 @@ class AnalyticsService {
   /**
    * Get ZRA compliance analysis
    */
-  async getZraCompliance(): Promise<any> {
+  async getZraCompliance(): Promise<AnalyticsResponse<ZraComplianceAnalysis>> {
     try {
       const response = await apiClient.get(`${this.baseUrl}/zra-compliance`);
       return response.data;
@@ -467,19 +412,28 @@ class AnalyticsService {
   /**
    * Get health score components
    */
-  async getHealthScoreComponents(query: AnalyticsQuery = {}): Promise<any> {
+  async getHealthScoreComponents(query: AnalyticsQuery = {}): Promise<AnalyticsResponse<HealthScoreComponents>> {
     try {
-      const params = new URLSearchParams();
-
-      if (query.period) params.append('period', query.period);
-      if (query.startDate) params.append('startDate', query.startDate);
-      if (query.endDate) params.append('endDate', query.endDate);
-
+      const params = new URLSearchParams(query as any);
       const response = await apiClient.get(`${this.baseUrl}/health-score-components?${params.toString()}`);
       return response.data;
     } catch (error) {
       console.error('Failed to get health score components:', error);
       throw new Error('Failed to load health score components');
+    }
+  }
+
+  /**
+   * Get product profitability
+   */
+  async getProductProfitability(query: AnalyticsQuery = {}): Promise<AnalyticsResponse<ProductProfitability[]>> {
+    try {
+      const params = new URLSearchParams(query as any);
+      const response = await apiClient.get(`${this.baseUrl}/product-profitability?${params.toString()}`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get product profitability:', error);
+      throw new Error('Failed to load product profitability');
     }
   }
 }

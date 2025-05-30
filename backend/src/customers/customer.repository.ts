@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Prisma, Customer } from '@prisma/client';
+import { Customer, Prisma } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
 
 export interface CreateCustomerData {
@@ -102,7 +102,10 @@ export class CustomerRepository {
         },
       });
     } catch (error) {
-      this.logger.error(`Failed to find customer by ID: ${error.message}`, error);
+      this.logger.error(
+        `Failed to find customer by ID: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -110,7 +113,10 @@ export class CustomerRepository {
   /**
    * Find customer by ID with statistics
    */
-  async findByIdWithStats(id: string, organizationId: string): Promise<CustomerWithStats | null> {
+  async findByIdWithStats(
+    id: string,
+    organizationId: string
+  ): Promise<CustomerWithStats | null> {
     try {
       return await this.prisma.customer.findFirst({
         where: {
@@ -128,7 +134,10 @@ export class CustomerRepository {
         },
       });
     } catch (error) {
-      this.logger.error(`Failed to find customer with stats: ${error.message}`, error);
+      this.logger.error(
+        `Failed to find customer with stats: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -140,7 +149,7 @@ export class CustomerRepository {
     filters: CustomerFilters,
     orderBy: Prisma.CustomerOrderByWithRelationInput = { name: 'asc' },
     skip?: number,
-    take?: number,
+    take?: number
   ): Promise<Customer[]> {
     try {
       const where = this.buildWhereClause(filters);
@@ -173,7 +182,11 @@ export class CustomerRepository {
   /**
    * Update customer
    */
-  async update(id: string, organizationId: string, data: UpdateCustomerData): Promise<Customer> {
+  async update(
+    id: string,
+    organizationId: string,
+    data: UpdateCustomerData
+  ): Promise<Customer> {
     try {
       return await this.prisma.customer.update({
         where: {
@@ -215,7 +228,10 @@ export class CustomerRepository {
   /**
    * Find customer by ZRA TIN
    */
-  async findByZraTin(zraTin: string, organizationId: string): Promise<Customer | null> {
+  async findByZraTin(
+    zraTin: string,
+    organizationId: string
+  ): Promise<Customer | null> {
     try {
       return await this.prisma.customer.findFirst({
         where: {
@@ -225,7 +241,10 @@ export class CustomerRepository {
         },
       });
     } catch (error) {
-      this.logger.error(`Failed to find customer by ZRA TIN: ${error.message}`, error);
+      this.logger.error(
+        `Failed to find customer by ZRA TIN: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -233,7 +252,10 @@ export class CustomerRepository {
   /**
    * Find customer by email
    */
-  async findByEmail(email: string, organizationId: string): Promise<Customer | null> {
+  async findByEmail(
+    email: string,
+    organizationId: string
+  ): Promise<Customer | null> {
     try {
       return await this.prisma.customer.findFirst({
         where: {
@@ -243,7 +265,10 @@ export class CustomerRepository {
         },
       });
     } catch (error) {
-      this.logger.error(`Failed to find customer by email: ${error.message}`, error);
+      this.logger.error(
+        `Failed to find customer by email: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -280,10 +305,15 @@ export class CustomerRepository {
         active,
         inactive: total - active,
         withZraTin,
-        averagePaymentTerms: Math.round(avgPaymentTerms._avg.paymentTerms || 14),
+        averagePaymentTerms: Math.round(
+          avgPaymentTerms._avg.paymentTerms || 14
+        ),
       };
     } catch (error) {
-      this.logger.error(`Failed to get customer stats: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get customer stats: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -291,7 +321,9 @@ export class CustomerRepository {
   /**
    * Build where clause for filters
    */
-  private buildWhereClause(filters: CustomerFilters): Prisma.CustomerWhereInput {
+  private buildWhereClause(
+    filters: CustomerFilters
+  ): Prisma.CustomerWhereInput {
     const where: Prisma.CustomerWhereInput = {
       organizationId: filters.organizationId,
       deletedAt: null,
@@ -319,7 +351,10 @@ export class CustomerRepository {
       where.zraTin = filters.hasZraTin ? { not: null } : null;
     }
 
-    if (filters.paymentTermsMin !== undefined || filters.paymentTermsMax !== undefined) {
+    if (
+      filters.paymentTermsMin !== undefined ||
+      filters.paymentTermsMax !== undefined
+    ) {
       where.paymentTerms = {};
       if (filters.paymentTermsMin !== undefined) {
         where.paymentTerms.gte = filters.paymentTermsMin;
@@ -329,7 +364,10 @@ export class CustomerRepository {
       }
     }
 
-    if (filters.creditLimitMin !== undefined || filters.creditLimitMax !== undefined) {
+    if (
+      filters.creditLimitMin !== undefined ||
+      filters.creditLimitMax !== undefined
+    ) {
       where.creditLimit = {};
       if (filters.creditLimitMin !== undefined) {
         where.creditLimit.gte = filters.creditLimitMin;

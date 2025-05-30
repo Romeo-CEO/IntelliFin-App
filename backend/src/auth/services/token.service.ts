@@ -4,10 +4,10 @@ import { JwtService } from '@nestjs/jwt';
 import * as crypto from 'crypto';
 
 import {
-  JwtPayload,
-  RefreshTokenPayload,
   AuthTokens,
   AuthenticatedUser,
+  JwtPayload,
+  RefreshTokenPayload,
 } from '../interfaces/auth.interface';
 import { PrismaService } from '../../database/prisma.service';
 
@@ -16,7 +16,7 @@ export class TokenService {
   constructor(
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
-    private readonly prisma: PrismaService,
+    private readonly prisma: PrismaService
   ) {}
 
   /**
@@ -25,7 +25,7 @@ export class TokenService {
   async generateTokens(
     user: AuthenticatedUser,
     sessionId?: string,
-    rememberMe: boolean = false,
+    rememberMe: boolean = false
   ): Promise<AuthTokens> {
     const payload: JwtPayload = {
       sub: user.id,
@@ -74,7 +74,7 @@ export class TokenService {
       return this.jwtService.verify(token, {
         secret: this.configService.get<string>('jwt.secret'),
       });
-    } catch (error) {
+    } catch {
       throw new UnauthorizedException('Invalid access token');
     }
   }
@@ -87,7 +87,7 @@ export class TokenService {
       return this.jwtService.verify(token, {
         secret: this.configService.get<string>('jwt.refreshSecret'),
       });
-    } catch (error) {
+    } catch {
       throw new UnauthorizedException('Invalid refresh token');
     }
   }
@@ -164,7 +164,7 @@ export class TokenService {
     userAgent?: string,
     deviceInfo?: any,
     rememberMe: boolean = false,
-    sessionId?: string, // Optional session ID to ensure consistency
+    sessionId?: string // Optional session ID to ensure consistency
   ): Promise<string> {
     const expiresAt = new Date();
     if (rememberMe) {

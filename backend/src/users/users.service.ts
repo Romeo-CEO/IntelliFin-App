@@ -1,11 +1,11 @@
 import {
+  BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
-  ConflictException,
-  BadRequestException,
 } from '@nestjs/common';
 
-import { User, UserStatus, UserRole } from '@prisma/client';
+import { User, UserRole, UserStatus } from '@prisma/client';
 
 import { UsersRepository } from './users.repository';
 import { AuthenticatedUser } from '../auth/interfaces/auth.interface';
@@ -31,22 +31,25 @@ export interface UpdateUserData {
 
 @Injectable()
 export class UsersService {
-  constructor(
-    private readonly usersRepository: UsersRepository,
-  ) {}
+  constructor(private readonly usersRepository: UsersRepository) {}
 
   /**
    * Create a new user
    */
-  async create(userData: CreateUserData, hashedPassword: string): Promise<User> {
+  async create(
+    userData: CreateUserData,
+    hashedPassword: string
+  ): Promise<User> {
     // Check if user already exists
     const existingUser = await this.usersRepository.findByEmailAndTenant(
       userData.email,
-      userData.tenantId,
+      userData.tenantId
     );
 
     if (existingUser) {
-      throw new ConflictException('User with this email already exists in this tenant');
+      throw new ConflictException(
+        'User with this email already exists in this tenant'
+      );
     }
 
     // Create user
@@ -83,7 +86,10 @@ export class UsersService {
   /**
    * Find user by email and tenant
    */
-  async findByEmailAndTenant(email: string, tenantId: string): Promise<User | null> {
+  async findByEmailAndTenant(
+    email: string,
+    tenantId: string
+  ): Promise<User | null> {
     return this.usersRepository.findByEmailAndTenant(email, tenantId);
   }
 
@@ -118,7 +124,7 @@ export class UsersService {
     tenantId: string,
     page: number = 1,
     limit: number = 10,
-    search?: string,
+    search?: string
   ) {
     const skip = (page - 1) * limit;
 
@@ -131,7 +137,10 @@ export class UsersService {
         take: limit,
       });
       // For search, we need to count separately
-      const allSearchResults = await this.usersRepository.search(tenantId, search);
+      const allSearchResults = await this.usersRepository.search(
+        tenantId,
+        search
+      );
       total = allSearchResults.length;
     } else {
       users = await this.usersRepository.findByTenant(tenantId, {
@@ -155,14 +164,21 @@ export class UsersService {
   /**
    * Update user role
    */
-  async updateRole(id: string, role: UserRole, updatedBy: string): Promise<User> {
+  async updateRole(
+    id: string,
+    role: UserRole,
+    updatedBy: string
+  ): Promise<User> {
     const user = await this.usersRepository.findById(id);
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
     // Prevent self-role modification for certain roles
-    const adminRoles: UserRole[] = [UserRole.SUPER_ADMIN, UserRole.TENANT_ADMIN];
+    const adminRoles: UserRole[] = [
+      UserRole.SUPER_ADMIN,
+      UserRole.TENANT_ADMIN,
+    ];
     if (id === updatedBy && adminRoles.includes(user.role)) {
       throw new BadRequestException('Cannot modify your own admin role');
     }
@@ -261,8 +277,15 @@ export class UsersService {
   /**
    * Sanitize user data (remove sensitive fields)
    */
-  private sanitizeUser(user: User): Omit<User, 'password' | 'emailVerificationToken' | 'resetPasswordToken'> {
-    const { password, emailVerificationToken, resetPasswordToken, ...sanitizedUser } = user;
+  private sanitizeUser(
+    user: User
+  ): Omit<User, 'password' | 'emailVerificationToken' | 'resetPasswordToken'> {
+    const {
+      password,
+      emailVerificationToken,
+      resetPasswordToken,
+      ...sanitizedUser
+    } = user;
     return sanitizedUser;
   }
 

@@ -1,25 +1,31 @@
 import {
+  Body,
   Controller,
   Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseIntPipe,
+  ParseUUIDPipe,
   Post,
   Put,
-  Body,
-  Param,
   Query,
-  UseGuards,
   Request,
-  HttpStatus,
-  HttpCode,
-  ParseUUIDPipe,
-  ParseIntPipe,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { 
-  TaxFilingService, 
-  CreateTaxFilingDto 
+import {
+  CreateTaxFilingDto,
+  TaxFilingService,
 } from '../services/tax-filing.service';
-import { TaxFilingType, TaxFilingStatus } from '@prisma/client';
+import { TaxFilingStatus, TaxFilingType } from '@prisma/client';
 
 @ApiTags('Tax Filing')
 @ApiBearerAuth()
@@ -36,7 +42,7 @@ export class TaxFilingController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async prepareFiling(
     @Request() req: any,
-    @Body() createDto: Omit<CreateTaxFilingDto, 'organizationId' | 'preparedBy'>,
+    @Body() createDto: Omit<CreateTaxFilingDto, 'organizationId' | 'preparedBy'>
   ) {
     try {
       const dto: CreateTaxFilingDto = {
@@ -67,13 +73,13 @@ export class TaxFilingController {
   @ApiResponse({ status: 404, description: 'Filing not found' })
   async submitFiling(
     @Request() req: any,
-    @Param('id', ParseUUIDPipe) filingId: string,
+    @Param('id', ParseUUIDPipe) filingId: string
   ) {
     try {
       const filing = await this.taxFilingService.submitFiling(
         req.user.organizationId,
         filingId,
-        req.user.id,
+        req.user.id
       );
 
       return {
@@ -102,7 +108,7 @@ export class TaxFilingController {
     @Query('taxPeriodId') taxPeriodId?: string,
     @Query('filingType') filingType?: TaxFilingType,
     @Query('status') status?: TaxFilingStatus,
-    @Query('year', new ParseIntPipe({ optional: true })) year?: number,
+    @Query('year', new ParseIntPipe({ optional: true })) year?: number
   ) {
     try {
       const filters = {
@@ -114,7 +120,7 @@ export class TaxFilingController {
 
       const filings = await this.taxFilingService.getFilings(
         req.user.organizationId,
-        filters,
+        filters
       );
 
       return {
@@ -133,15 +139,18 @@ export class TaxFilingController {
 
   @Get('vat-return/:taxPeriodId')
   @ApiOperation({ summary: 'Generate VAT return' })
-  @ApiResponse({ status: 200, description: 'VAT return generated successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'VAT return generated successfully',
+  })
   async generateVATReturn(
     @Request() req: any,
-    @Param('taxPeriodId', ParseUUIDPipe) taxPeriodId: string,
+    @Param('taxPeriodId', ParseUUIDPipe) taxPeriodId: string
   ) {
     try {
       const vatReturn = await this.taxFilingService.generateVATReturn(
         req.user.organizationId,
-        taxPeriodId,
+        taxPeriodId
       );
 
       return {
@@ -164,12 +173,12 @@ export class TaxFilingController {
   @ApiResponse({ status: 200, description: 'Summary retrieved successfully' })
   async getFilingSummary(
     @Request() req: any,
-    @Query('year', new ParseIntPipe({ optional: true })) year?: number,
+    @Query('year', new ParseIntPipe({ optional: true })) year?: number
   ) {
     try {
       const summary = await this.taxFilingService.getFilingSummary(
         req.user.organizationId,
-        year,
+        year
       );
 
       return {
@@ -188,7 +197,10 @@ export class TaxFilingController {
 
   @Get('dashboard')
   @ApiOperation({ summary: 'Get tax filing dashboard data' })
-  @ApiResponse({ status: 200, description: 'Dashboard data retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Dashboard data retrieved successfully',
+  })
   async getDashboardData(@Request() req: any) {
     try {
       const currentYear = new Date().getFullYear();
@@ -196,25 +208,25 @@ export class TaxFilingController {
       // Get summary for current year
       const summary = await this.taxFilingService.getFilingSummary(
         req.user.organizationId,
-        currentYear,
+        currentYear
       );
 
       // Get recent filings
       const recentFilings = await this.taxFilingService.getFilings(
         req.user.organizationId,
-        { year: currentYear },
+        { year: currentYear }
       );
 
       // Get draft filings
       const draftFilings = await this.taxFilingService.getFilings(
         req.user.organizationId,
-        { status: TaxFilingStatus.DRAFT, year: currentYear },
+        { status: TaxFilingStatus.DRAFT, year: currentYear }
       );
 
       // Get submitted filings
       const submittedFilings = await this.taxFilingService.getFilings(
         req.user.organizationId,
-        { status: TaxFilingStatus.SUBMITTED, year: currentYear },
+        { status: TaxFilingStatus.SUBMITTED, year: currentYear }
       );
 
       const dashboardData = {
@@ -224,11 +236,11 @@ export class TaxFilingController {
         submittedFilings: submittedFilings.slice(0, 5), // Latest 5 submitted
         alerts: {
           draftCount: draftFilings.length,
-          pendingSubmission: draftFilings.filter(f => 
-            f.status === TaxFilingStatus.PREPARED
+          pendingSubmission: draftFilings.filter(
+            f => f.status === TaxFilingStatus.PREPARED
           ).length,
-          awaitingAcknowledgment: submittedFilings.filter(f => 
-            f.status === TaxFilingStatus.SUBMITTED && !f.acknowledgedAt
+          awaitingAcknowledgment: submittedFilings.filter(
+            f => f.status === TaxFilingStatus.SUBMITTED && !f.acknowledgedAt
           ).length,
         },
         year: currentYear,
@@ -250,58 +262,61 @@ export class TaxFilingController {
 
   @Get('types')
   @ApiOperation({ summary: 'Get available filing types' })
-  @ApiResponse({ status: 200, description: 'Filing types retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Filing types retrieved successfully',
+  })
   async getFilingTypes() {
     try {
       const filingTypes = [
-        { 
-          value: 'VAT_RETURN', 
-          label: 'VAT Return', 
+        {
+          value: 'VAT_RETURN',
+          label: 'VAT Return',
           description: 'Quarterly VAT return',
           frequency: 'Quarterly',
-          deadline: '18th of month following quarter'
+          deadline: '18th of month following quarter',
         },
-        { 
-          value: 'INCOME_TAX', 
-          label: 'Income Tax Return', 
+        {
+          value: 'INCOME_TAX',
+          label: 'Income Tax Return',
           description: 'Annual income tax return',
           frequency: 'Annually',
-          deadline: '21st June following tax year'
+          deadline: '21st June following tax year',
         },
-        { 
-          value: 'PAYE_RETURN', 
-          label: 'PAYE Return', 
+        {
+          value: 'PAYE_RETURN',
+          label: 'PAYE Return',
           description: 'Monthly PAYE return',
           frequency: 'Monthly',
-          deadline: '10th of following month'
+          deadline: '10th of following month',
         },
-        { 
-          value: 'WHT_RETURN', 
-          label: 'Withholding Tax Return', 
+        {
+          value: 'WHT_RETURN',
+          label: 'Withholding Tax Return',
           description: 'Monthly withholding tax return',
           frequency: 'Monthly',
-          deadline: '14th of following month'
+          deadline: '14th of following month',
         },
-        { 
-          value: 'ADVANCE_TAX', 
-          label: 'Advance Tax', 
+        {
+          value: 'ADVANCE_TAX',
+          label: 'Advance Tax',
           description: 'Quarterly advance tax payment',
           frequency: 'Quarterly',
-          deadline: '30 days after quarter end'
+          deadline: '30 days after quarter end',
         },
-        { 
-          value: 'TURNOVER_TAX', 
-          label: 'Turnover Tax', 
+        {
+          value: 'TURNOVER_TAX',
+          label: 'Turnover Tax',
           description: 'Monthly turnover tax for small businesses',
           frequency: 'Monthly',
-          deadline: '18th of following month'
+          deadline: '18th of following month',
         },
-        { 
-          value: 'AMENDED_RETURN', 
-          label: 'Amended Return', 
+        {
+          value: 'AMENDED_RETURN',
+          label: 'Amended Return',
           description: 'Amendment to previously filed return',
           frequency: 'As needed',
-          deadline: 'Within prescribed time limits'
+          deadline: 'Within prescribed time limits',
         },
       ];
 
@@ -324,7 +339,7 @@ export class TaxFilingController {
   @ApiResponse({ status: 200, description: 'Template retrieved successfully' })
   async getFilingTemplate(
     @Request() req: any,
-    @Param('filingType') filingType: TaxFilingType,
+    @Param('filingType') filingType: TaxFilingType
   ) {
     try {
       // Generate template based on filing type
@@ -334,11 +349,30 @@ export class TaxFilingController {
         case TaxFilingType.VAT_RETURN:
           template = {
             sections: [
-              { name: 'Organization Information', fields: ['name', 'tin', 'address'] },
-              { name: 'Period Information', fields: ['startDate', 'endDate', 'quarter'] },
-              { name: 'Sales Information', fields: ['standardRatedSales', 'zeroRatedSales', 'exemptSales'] },
-              { name: 'Purchase Information', fields: ['standardRatedPurchases', 'zeroRatedPurchases', 'exemptPurchases'] },
-              { name: 'VAT Calculation', fields: ['outputVAT', 'inputVAT', 'netVAT'] },
+              {
+                name: 'Organization Information',
+                fields: ['name', 'tin', 'address'],
+              },
+              {
+                name: 'Period Information',
+                fields: ['startDate', 'endDate', 'quarter'],
+              },
+              {
+                name: 'Sales Information',
+                fields: ['standardRatedSales', 'zeroRatedSales', 'exemptSales'],
+              },
+              {
+                name: 'Purchase Information',
+                fields: [
+                  'standardRatedPurchases',
+                  'zeroRatedPurchases',
+                  'exemptPurchases',
+                ],
+              },
+              {
+                name: 'VAT Calculation',
+                fields: ['outputVAT', 'inputVAT', 'netVAT'],
+              },
             ],
             validationRules: {
               outputVAT: 'Must equal 16% of standard-rated sales',
@@ -351,9 +385,19 @@ export class TaxFilingController {
         case TaxFilingType.WHT_RETURN:
           template = {
             sections: [
-              { name: 'Organization Information', fields: ['name', 'tin', 'address'] },
+              {
+                name: 'Organization Information',
+                fields: ['name', 'tin', 'address'],
+              },
               { name: 'Period Information', fields: ['month', 'year'] },
-              { name: 'Withholding Certificates', fields: ['certificatesList', 'totalGrossAmount', 'totalTaxWithheld'] },
+              {
+                name: 'Withholding Certificates',
+                fields: [
+                  'certificatesList',
+                  'totalGrossAmount',
+                  'totalTaxWithheld',
+                ],
+              },
             ],
             validationRules: {
               totalTaxWithheld: 'Must equal sum of all certificate tax amounts',
@@ -364,9 +408,15 @@ export class TaxFilingController {
         default:
           template = {
             sections: [
-              { name: 'Organization Information', fields: ['name', 'tin', 'address'] },
+              {
+                name: 'Organization Information',
+                fields: ['name', 'tin', 'address'],
+              },
               { name: 'Period Information', fields: ['startDate', 'endDate'] },
-              { name: 'Tax Information', fields: ['taxableAmount', 'taxRate', 'taxDue'] },
+              {
+                name: 'Tax Information',
+                fields: ['taxableAmount', 'taxRate', 'taxDue'],
+              },
             ],
             validationRules: {},
           };

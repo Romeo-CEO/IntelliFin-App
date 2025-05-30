@@ -1,8 +1,10 @@
 'use client';
 
 import React, { createContext, useContext, useReducer, useCallback, useEffect } from 'react';
-import { Dashboard, DashboardWidget, WidgetType } from '../types/dashboard.types';
+
 import { dashboardService } from '../services/dashboard.service';
+import { Dashboard, DashboardWidget, WidgetType } from '../types/dashboard.types';
+
 import { useAuth } from './AuthContext';
 
 // Dashboard state interface

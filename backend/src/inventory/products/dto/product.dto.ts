@@ -1,19 +1,16 @@
 import {
-  IsString,
-  IsOptional,
-  IsBoolean,
-  IsNumber,
-  IsDecimal,
   IsArray,
-  IsUUID,
-  MinLength,
+  IsBoolean,
+  IsIn,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUrl,
+  Max,
   MaxLength,
   Min,
-  Max,
-  IsIn,
+  MinLength,
   ValidateNested,
-  IsUrl,
-  Matches,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
@@ -110,20 +107,31 @@ export class CreateProductDto {
 
   @ApiProperty({
     description: 'Cost price of the product',
-    example: 150.00,
+    example: 150.0,
     minimum: 0,
   })
-  @IsNumber({ maxDecimalPlaces: 2 }, { message: 'Cost price must be a valid decimal with up to 2 decimal places' })
+  @IsNumber(
+    { maxDecimalPlaces: 2 },
+    {
+      message: 'Cost price must be a valid decimal with up to 2 decimal places',
+    }
+  )
   @Min(0, { message: 'Cost price must be non-negative' })
   @Type(() => Number)
   costPrice: number;
 
   @ApiProperty({
     description: 'Selling price of the product',
-    example: 250.00,
+    example: 250.0,
     minimum: 0,
   })
-  @IsNumber({ maxDecimalPlaces: 2 }, { message: 'Selling price must be a valid decimal with up to 2 decimal places' })
+  @IsNumber(
+    { maxDecimalPlaces: 2 },
+    {
+      message:
+        'Selling price must be a valid decimal with up to 2 decimal places',
+    }
+  )
   @Min(0, { message: 'Selling price must be non-negative' })
   @Type(() => Number)
   sellingPrice: number;
@@ -135,7 +143,9 @@ export class CreateProductDto {
   })
   @IsOptional()
   @IsString()
-  @IsIn(['ZMW', 'USD', 'EUR', 'GBP'], { message: 'Currency must be one of: ZMW, USD, EUR, GBP' })
+  @IsIn(['ZMW', 'USD', 'EUR', 'GBP'], {
+    message: 'Currency must be one of: ZMW, USD, EUR, GBP',
+  })
   @Transform(({ value }) => value?.toUpperCase() || 'ZMW')
   currency?: string;
 
@@ -147,7 +157,10 @@ export class CreateProductDto {
     default: 16,
   })
   @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 2 }, { message: 'VAT rate must be a valid decimal' })
+  @IsNumber(
+    { maxDecimalPlaces: 2 },
+    { message: 'VAT rate must be a valid decimal' }
+  )
   @Min(0, { message: 'VAT rate must be non-negative' })
   @Max(100, { message: 'VAT rate cannot exceed 100%' })
   @Type(() => Number)
@@ -170,7 +183,10 @@ export class CreateProductDto {
     default: 0,
   })
   @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 3 }, { message: 'Minimum stock must be a valid decimal' })
+  @IsNumber(
+    { maxDecimalPlaces: 3 },
+    { message: 'Minimum stock must be a valid decimal' }
+  )
   @Min(0, { message: 'Minimum stock must be non-negative' })
   @Type(() => Number)
   minimumStock?: number;
@@ -181,7 +197,10 @@ export class CreateProductDto {
     minimum: 0,
   })
   @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 3 }, { message: 'Maximum stock must be a valid decimal' })
+  @IsNumber(
+    { maxDecimalPlaces: 3 },
+    { message: 'Maximum stock must be a valid decimal' }
+  )
   @Min(0, { message: 'Maximum stock must be non-negative' })
   @Type(() => Number)
   maximumStock?: number;
@@ -193,7 +212,10 @@ export class CreateProductDto {
     default: 0,
   })
   @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 3 }, { message: 'Reorder point must be a valid decimal' })
+  @IsNumber(
+    { maxDecimalPlaces: 3 },
+    { message: 'Reorder point must be a valid decimal' }
+  )
   @Min(0, { message: 'Reorder point must be non-negative' })
   @Type(() => Number)
   reorderPoint?: number;
@@ -205,7 +227,10 @@ export class CreateProductDto {
     default: 0,
   })
   @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 3 }, { message: 'Reorder quantity must be a valid decimal' })
+  @IsNumber(
+    { maxDecimalPlaces: 3 },
+    { message: 'Reorder quantity must be a valid decimal' }
+  )
   @Min(0, { message: 'Reorder quantity must be non-negative' })
   @Type(() => Number)
   reorderQuantity?: number;
@@ -218,7 +243,8 @@ export class CreateProductDto {
   @IsOptional()
   @IsString()
   @IsIn(['pcs', 'kg', 'g', 'l', 'ml', 'm', 'cm', 'mm', 'box', 'pack', 'set'], {
-    message: 'Unit must be one of: pcs, kg, g, l, ml, m, cm, mm, box, pack, set'
+    message:
+      'Unit must be one of: pcs, kg, g, l, ml, m, cm, mm, box, pack, set',
   })
   @Transform(({ value }) => value?.toLowerCase() || 'pcs')
   unit?: string;
@@ -229,7 +255,10 @@ export class CreateProductDto {
     minimum: 0,
   })
   @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 3 }, { message: 'Weight must be a valid decimal' })
+  @IsNumber(
+    { maxDecimalPlaces: 3 },
+    { message: 'Weight must be a valid decimal' }
+  )
   @Min(0, { message: 'Weight must be non-negative' })
   @Type(() => Number)
   weight?: number;
@@ -279,7 +308,10 @@ export class CreateProductDto {
 
   @ApiPropertyOptional({
     description: 'Product image URLs',
-    example: ['https://example.com/image1.jpg', 'https://example.com/image2.jpg'],
+    example: [
+      'https://example.com/image1.jpg',
+      'https://example.com/image2.jpg',
+    ],
   })
   @IsOptional()
   @IsArray()
@@ -332,12 +364,28 @@ export class ProductQueryDto {
   @ApiPropertyOptional({
     description: 'Field to sort by',
     example: 'name',
-    enum: ['name', 'sku', 'category', 'costPrice', 'sellingPrice', 'currentStock', 'createdAt'],
+    enum: [
+      'name',
+      'sku',
+      'category',
+      'costPrice',
+      'sellingPrice',
+      'currentStock',
+      'createdAt',
+    ],
     default: 'name',
   })
   @IsOptional()
   @IsString()
-  @IsIn(['name', 'sku', 'category', 'costPrice', 'sellingPrice', 'currentStock', 'createdAt'])
+  @IsIn([
+    'name',
+    'sku',
+    'category',
+    'costPrice',
+    'sellingPrice',
+    'currentStock',
+    'createdAt',
+  ])
   sortBy?: string = 'name';
 
   @ApiPropertyOptional({
@@ -428,22 +476,28 @@ export class ProductQueryDto {
 
   @ApiPropertyOptional({
     description: 'Minimum cost price filter',
-    example: 50.00,
+    example: 50.0,
     minimum: 0,
   })
   @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 2 }, { message: 'Minimum cost price must be a valid decimal' })
+  @IsNumber(
+    { maxDecimalPlaces: 2 },
+    { message: 'Minimum cost price must be a valid decimal' }
+  )
   @Min(0, { message: 'Minimum cost price must be non-negative' })
   @Type(() => Number)
   minCostPrice?: number;
 
   @ApiPropertyOptional({
     description: 'Maximum cost price filter',
-    example: 500.00,
+    example: 500.0,
     minimum: 0,
   })
   @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 2 }, { message: 'Maximum cost price must be a valid decimal' })
+  @IsNumber(
+    { maxDecimalPlaces: 2 },
+    { message: 'Maximum cost price must be a valid decimal' }
+  )
   @Min(0, { message: 'Maximum cost price must be non-negative' })
   @Type(() => Number)
   maxCostPrice?: number;
@@ -512,13 +566,13 @@ export class ProductResponseDto {
 
   @ApiProperty({
     description: 'Cost price',
-    example: 150.00,
+    example: 150.0,
   })
   costPrice: number;
 
   @ApiProperty({
     description: 'Selling price',
-    example: 250.00,
+    example: 250.0,
   })
   sellingPrice: number;
 
@@ -684,7 +738,7 @@ export class ProductStatsDto {
 
   @ApiProperty({
     description: 'Total inventory value',
-    example: 125000.50,
+    example: 125000.5,
   })
   totalInventoryValue: number;
 

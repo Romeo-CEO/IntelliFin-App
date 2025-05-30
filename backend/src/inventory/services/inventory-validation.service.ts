@@ -1,5 +1,8 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
-import { CreateProductDto, UpdateProductDto } from '../products/dto/product.dto';
+import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  CreateProductDto,
+  UpdateProductDto,
+} from '../products/dto/product.dto';
 
 /**
  * Inventory Validation Service
@@ -8,22 +11,28 @@ import { CreateProductDto, UpdateProductDto } from '../products/dto/product.dto'
  */
 @Injectable()
 export class InventoryValidationService {
-
   /**
    * Validate product data
    */
-  async validateProductData(productData: CreateProductDto | UpdateProductDto): Promise<void> {
+  async validateProductData(
+    productData: CreateProductDto | UpdateProductDto
+  ): Promise<void> {
     const errors: string[] = [];
 
     // Validate SKU format
     if (productData.sku) {
       if (!this.isValidSku(productData.sku)) {
-        errors.push('SKU must contain only alphanumeric characters, hyphens, and underscores');
+        errors.push(
+          'SKU must contain only alphanumeric characters, hyphens, and underscores'
+        );
       }
     }
 
     // Validate pricing
-    if (productData.costPrice !== undefined && productData.sellingPrice !== undefined) {
+    if (
+      productData.costPrice !== undefined &&
+      productData.sellingPrice !== undefined
+    ) {
       if (productData.costPrice < 0) {
         errors.push('Cost price cannot be negative');
       }
@@ -43,11 +52,17 @@ export class InventoryValidationService {
     }
 
     // Validate stock levels
-    if (productData.minimumStock !== undefined && productData.minimumStock < 0) {
+    if (
+      productData.minimumStock !== undefined &&
+      productData.minimumStock < 0
+    ) {
       errors.push('Minimum stock cannot be negative');
     }
 
-    if (productData.maximumStock !== undefined && productData.maximumStock < 0) {
+    if (
+      productData.maximumStock !== undefined &&
+      productData.maximumStock < 0
+    ) {
       errors.push('Maximum stock cannot be negative');
     }
 
@@ -59,11 +74,17 @@ export class InventoryValidationService {
       errors.push('Minimum stock cannot be greater than maximum stock');
     }
 
-    if (productData.reorderPoint !== undefined && productData.reorderPoint < 0) {
+    if (
+      productData.reorderPoint !== undefined &&
+      productData.reorderPoint < 0
+    ) {
       errors.push('Reorder point cannot be negative');
     }
 
-    if (productData.reorderQuantity !== undefined && productData.reorderQuantity < 0) {
+    if (
+      productData.reorderQuantity !== undefined &&
+      productData.reorderQuantity < 0
+    ) {
       errors.push('Reorder quantity cannot be negative');
     }
 
@@ -75,7 +96,9 @@ export class InventoryValidationService {
     // Validate dimensions
     if (productData.dimensions) {
       if (!this.isValidDimensions(productData.dimensions)) {
-        errors.push('Dimensions must contain valid positive numbers for length, width, and height');
+        errors.push(
+          'Dimensions must contain valid positive numbers for length, width, and height'
+        );
       }
     }
 
@@ -149,7 +172,10 @@ export class InventoryValidationService {
     }
 
     // Validate credit limit
-    if (supplierData.creditLimit !== undefined && supplierData.creditLimit < 0) {
+    if (
+      supplierData.creditLimit !== undefined &&
+      supplierData.creditLimit < 0
+    ) {
       errors.push('Credit limit cannot be negative');
     }
 
@@ -189,7 +215,7 @@ export class InventoryValidationService {
     if (poData.orderDate && poData.expectedDate) {
       const orderDate = new Date(poData.orderDate);
       const expectedDate = new Date(poData.expectedDate);
-      
+
       if (expectedDate < orderDate) {
         errors.push('Expected delivery date cannot be before order date');
       }
@@ -237,7 +263,10 @@ export class InventoryValidationService {
     }
 
     // Validate stock levels
-    if (movementData.stockBefore !== undefined && movementData.stockBefore < 0) {
+    if (
+      movementData.stockBefore !== undefined &&
+      movementData.stockBefore < 0
+    ) {
       errors.push('Stock before cannot be negative');
     }
 
@@ -249,7 +278,7 @@ export class InventoryValidationService {
     if (movementData.movementDate) {
       const movementDate = new Date(movementData.movementDate);
       const now = new Date();
-      
+
       if (movementDate > now) {
         errors.push('Movement date cannot be in the future');
       }
@@ -287,15 +316,15 @@ export class InventoryValidationService {
     }
 
     const { length, width, height } = dimensions;
-    
+
     if (length !== undefined && (typeof length !== 'number' || length < 0)) {
       return false;
     }
-    
+
     if (width !== undefined && (typeof width !== 'number' || width < 0)) {
       return false;
     }
-    
+
     if (height !== undefined && (typeof height !== 'number' || height < 0)) {
       return false;
     }
@@ -333,7 +362,19 @@ export class InventoryValidationService {
    * Validate unit of measurement
    */
   private isValidUnit(unit: string): boolean {
-    const validUnits = ['pcs', 'kg', 'g', 'l', 'ml', 'm', 'cm', 'mm', 'box', 'pack', 'set'];
+    const validUnits = [
+      'pcs',
+      'kg',
+      'g',
+      'l',
+      'ml',
+      'm',
+      'cm',
+      'mm',
+      'box',
+      'pack',
+      'set',
+    ];
     return validUnits.includes(unit.toLowerCase());
   }
 
@@ -345,12 +386,12 @@ export class InventoryValidationService {
       const urlObj = new URL(url);
       const validProtocols = ['http:', 'https:'];
       const validExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
-      
+
       if (!validProtocols.includes(urlObj.protocol)) {
         return false;
       }
 
-      const hasValidExtension = validExtensions.some(ext => 
+      const hasValidExtension = validExtensions.some(ext =>
         urlObj.pathname.toLowerCase().endsWith(ext)
       );
 

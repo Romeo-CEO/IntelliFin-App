@@ -23,7 +23,7 @@ describe('AppController (e2e)', () => {
     return request(app.getHttpServer())
       .get('/health')
       .expect(200)
-      .expect((res) => {
+      .expect(res => {
         expect(res.body).toHaveProperty('status');
         expect(res.body).toHaveProperty('timestamp');
       });
@@ -33,7 +33,7 @@ describe('AppController (e2e)', () => {
     return request(app.getHttpServer())
       .get('/health/ready')
       .expect(200)
-      .expect((res) => {
+      .expect(res => {
         expect(res.body).toHaveProperty('status');
         expect(res.body).toHaveProperty('timestamp');
       });

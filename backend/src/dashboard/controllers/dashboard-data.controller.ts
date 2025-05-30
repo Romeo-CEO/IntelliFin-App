@@ -1,20 +1,20 @@
 import {
   Controller,
   Get,
-  Query,
-  Param,
-  UseGuards,
   HttpStatus,
   Logger,
+  Param,
+  Query,
+  UseGuards,
   ValidationPipe,
 } from '@nestjs/common';
 import {
-  ApiTags,
   ApiBearerAuth,
   ApiOperation,
-  ApiResponse,
   ApiParam,
   ApiQuery,
+  ApiResponse,
+  ApiTags,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 
@@ -39,7 +39,7 @@ export class DashboardDataController {
 
   constructor(
     private readonly dashboardDataService: DashboardDataService,
-    private readonly widgetDataService: WidgetDataService,
+    private readonly widgetDataService: WidgetDataService
   ) {}
 
   @Get('overview')
@@ -67,19 +67,24 @@ export class DashboardDataController {
   async getDashboardOverview(
     @CurrentUser() user: AuthenticatedUser,
     @Query('period') period: string = 'month',
-    @Query('includeComparison') includeComparison: boolean = true,
+    @Query('includeComparison') includeComparison: boolean = true
   ) {
     try {
       const data = await this.dashboardDataService.getDashboardOverview(
         user.organizationId,
         period,
-        includeComparison,
+        includeComparison
       );
 
-      this.logger.log(`Dashboard overview data retrieved for organization: ${user.organizationId}`);
+      this.logger.log(
+        `Dashboard overview data retrieved for organization: ${user.organizationId}`
+      );
       return data;
     } catch (error) {
-      this.logger.error(`Failed to get dashboard overview: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get dashboard overview: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -102,16 +107,18 @@ export class DashboardDataController {
   })
   async getKpiMetrics(
     @CurrentUser() user: AuthenticatedUser,
-    @Query('metrics') metrics?: string,
+    @Query('metrics') metrics?: string
   ) {
     try {
       const requestedMetrics = metrics ? metrics.split(',') : undefined;
       const data = await this.dashboardDataService.getKpiMetrics(
         user.organizationId,
-        requestedMetrics,
+        requestedMetrics
       );
 
-      this.logger.log(`KPI metrics retrieved for organization: ${user.organizationId}`);
+      this.logger.log(
+        `KPI metrics retrieved for organization: ${user.organizationId}`
+      );
       return data;
     } catch (error) {
       this.logger.error(`Failed to get KPI metrics: ${error.message}`, error);
@@ -137,18 +144,23 @@ export class DashboardDataController {
   })
   async getFinancialSummary(
     @CurrentUser() user: AuthenticatedUser,
-    @Query('period') period: string = 'month',
+    @Query('period') period: string = 'month'
   ) {
     try {
       const data = await this.dashboardDataService.getFinancialSummary(
         user.organizationId,
-        period,
+        period
       );
 
-      this.logger.log(`Financial summary retrieved for organization: ${user.organizationId}`);
+      this.logger.log(
+        `Financial summary retrieved for organization: ${user.organizationId}`
+      );
       return data;
     } catch (error) {
-      this.logger.error(`Failed to get financial summary: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get financial summary: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -177,13 +189,13 @@ export class DashboardDataController {
   async getWidgetData(
     @CurrentUser() user: AuthenticatedUser,
     @Param('widgetId') widgetId: string,
-    @Query('refresh') refresh: boolean = false,
+    @Query('refresh') refresh: boolean = false
   ) {
     try {
       const data = await this.widgetDataService.getWidgetData(
         widgetId,
         user.organizationId,
-        refresh,
+        refresh
       );
 
       this.logger.log(`Widget data retrieved for widget: ${widgetId}`);
@@ -198,7 +210,8 @@ export class DashboardDataController {
   @Throttle({ default: { limit: 15, ttl: 60000 } }) // 15 requests per minute
   @ApiOperation({
     summary: 'Get analytics summary',
-    description: 'Get enhanced analytics summary from Step 19 analytics engines',
+    description:
+      'Get enhanced analytics summary from Step 19 analytics engines',
   })
   @ApiQuery({
     name: 'includeForecasts',
@@ -219,19 +232,24 @@ export class DashboardDataController {
   async getAnalyticsSummary(
     @CurrentUser() user: AuthenticatedUser,
     @Query('includeForecasts') includeForecasts: boolean = true,
-    @Query('includeAnomalies') includeAnomalies: boolean = true,
+    @Query('includeAnomalies') includeAnomalies: boolean = true
   ) {
     try {
       const data = await this.dashboardDataService.getAnalyticsSummary(
         user.organizationId,
         includeForecasts,
-        includeAnomalies,
+        includeAnomalies
       );
 
-      this.logger.log(`Analytics summary retrieved for organization: ${user.organizationId}`);
+      this.logger.log(
+        `Analytics summary retrieved for organization: ${user.organizationId}`
+      );
       return data;
     } catch (error) {
-      this.logger.error(`Failed to get analytics summary: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get analytics summary: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -246,18 +264,21 @@ export class DashboardDataController {
     status: HttpStatus.OK,
     description: 'Zambian compliance summary retrieved successfully',
   })
-  async getZambianComplianceSummary(
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
+  async getZambianComplianceSummary(@CurrentUser() user: AuthenticatedUser) {
     try {
       const data = await this.dashboardDataService.getZambianComplianceSummary(
-        user.organizationId,
+        user.organizationId
       );
 
-      this.logger.log(`Zambian compliance summary retrieved for organization: ${user.organizationId}`);
+      this.logger.log(
+        `Zambian compliance summary retrieved for organization: ${user.organizationId}`
+      );
       return data;
     } catch (error) {
-      this.logger.error(`Failed to get Zambian compliance summary: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get Zambian compliance summary: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -280,18 +301,23 @@ export class DashboardDataController {
   })
   async getMobileMoneySummary(
     @CurrentUser() user: AuthenticatedUser,
-    @Query('provider') provider: string = 'all',
+    @Query('provider') provider: string = 'all'
   ) {
     try {
       const data = await this.dashboardDataService.getMobileMoneySummary(
         user.organizationId,
-        provider,
+        provider
       );
 
-      this.logger.log(`Mobile money summary retrieved for organization: ${user.organizationId}`);
+      this.logger.log(
+        `Mobile money summary retrieved for organization: ${user.organizationId}`
+      );
       return data;
     } catch (error) {
-      this.logger.error(`Failed to get mobile money summary: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get mobile money summary: ${error.message}`,
+        error
+      );
       throw error;
     }
   }

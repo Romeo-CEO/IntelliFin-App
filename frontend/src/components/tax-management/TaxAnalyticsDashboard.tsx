@@ -1,14 +1,16 @@
-import React, { useState, useEffect } from 'react';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
+  TrendingUp,
+  TrendingDown,
+  BarChart3,
+  PieChart as PieChartIcon,
+  Target,
+  AlertTriangle,
+  CheckCircle,
+  Brain,
+  Zap,
+  RefreshCw,
+} from 'lucide-react';
+import React, { useState, useEffect } from 'react';
 import {
   LineChart,
   Line,
@@ -25,18 +27,19 @@ import {
   Pie,
   Cell,
 } from 'recharts';
+
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
-  TrendingUp,
-  TrendingDown,
-  BarChart3,
-  PieChart as PieChartIcon,
-  Target,
-  AlertTriangle,
-  CheckCircle,
-  Brain,
-  Zap,
-  RefreshCw,
-} from 'lucide-react';
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+
+
 import { useToast } from '@/hooks/use-toast';
 
 interface TrendData {

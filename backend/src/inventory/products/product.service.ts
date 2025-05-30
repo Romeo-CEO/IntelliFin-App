@@ -1,21 +1,21 @@
 import {
+  BadRequestException,
+  ConflictException,
   Injectable,
   Logger,
   NotFoundException,
-  ConflictException,
-  BadRequestException,
 } from '@nestjs/common';
 import { Product } from '@prisma/client';
 import {
-  ProductRepository,
   CreateProductData,
-  UpdateProductData,
   ProductFilters,
+  ProductRepository,
+  UpdateProductData,
 } from './product.repository';
 import {
   CreateProductDto,
-  UpdateProductDto,
   ProductQueryDto,
+  UpdateProductDto,
 } from './dto/product.dto';
 import { InventoryValidationService } from '../services/inventory-validation.service';
 import { InventoryCacheService } from '../services/inventory-cache.service';
@@ -29,31 +29,38 @@ export class ProductService {
     private readonly productRepository: ProductRepository,
     private readonly validationService: InventoryValidationService,
     private readonly cacheService: InventoryCacheService,
-    private readonly stockLevelService: StockLevelService,
+    private readonly stockLevelService: StockLevelService
   ) {}
 
   /**
    * Create a new product
    */
-  async createProduct(organizationId: string, createProductDto: CreateProductDto): Promise<Product> {
+  async createProduct(
+    organizationId: string,
+    createProductDto: CreateProductDto
+  ): Promise<Product> {
     try {
       // Validate SKU uniqueness
       const existingProduct = await this.productRepository.findBySku(
         createProductDto.sku,
-        organizationId,
+        organizationId
       );
       if (existingProduct) {
-        throw new ConflictException(`Product with SKU '${createProductDto.sku}' already exists`);
+        throw new ConflictException(
+          `Product with SKU '${createProductDto.sku}' already exists`
+        );
       }
 
       // Validate barcode uniqueness if provided
       if (createProductDto.barcode) {
         const existingByBarcode = await this.productRepository.findByBarcode(
           createProductDto.barcode,
-          organizationId,
+          organizationId
         );
         if (existingByBarcode) {
-          throw new ConflictException(`Product with barcode '${createProductDto.barcode}' already exists`);
+          throw new ConflictException(
+            `Product with barcode '${createProductDto.barcode}' already exists`
+          );
         }
       }
 
@@ -73,7 +80,10 @@ export class ProductService {
 
       // Check if initial stock alerts need to be created
       if (product.trackStock && product.currentStock <= product.minimumStock) {
-        await this.stockLevelService.checkStockLevels(organizationId, product.id);
+        await this.stockLevelService.checkStockLevels(
+          organizationId,
+          product.id
+        );
       }
 
       this.logger.log(`Created product: ${product.id} (SKU: ${product.sku})`);
@@ -90,7 +100,7 @@ export class ProductService {
   async getProductById(id: string, organizationId: string): Promise<Product> {
     try {
       const cacheKey = `product_${id}`;
-      
+
       // Try to get from cache first
       const cached = await this.cacheService.get<Product>(cacheKey);
       if (cached) {
@@ -117,13 +127,19 @@ export class ProductService {
    */
   async getProductBySku(sku: string, organizationId: string): Promise<Product> {
     try {
-      const product = await this.productRepository.findBySku(sku, organizationId);
+      const product = await this.productRepository.findBySku(
+        sku,
+        organizationId
+      );
       if (!product) {
         throw new NotFoundException(`Product with SKU '${sku}' not found`);
       }
       return product;
     } catch (error) {
-      this.logger.error(`Failed to get product by SKU: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get product by SKU: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -131,15 +147,26 @@ export class ProductService {
   /**
    * Get product by barcode
    */
-  async getProductByBarcode(barcode: string, organizationId: string): Promise<Product> {
+  async getProductByBarcode(
+    barcode: string,
+    organizationId: string
+  ): Promise<Product> {
     try {
-      const product = await this.productRepository.findByBarcode(barcode, organizationId);
+      const product = await this.productRepository.findByBarcode(
+        barcode,
+        organizationId
+      );
       if (!product) {
-        throw new NotFoundException(`Product with barcode '${barcode}' not found`);
+        throw new NotFoundException(
+          `Product with barcode '${barcode}' not found`
+        );
       }
       return product;
     } catch (error) {
-      this.logger.error(`Failed to get product by barcode: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get product by barcode: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -166,7 +193,7 @@ export class ProductService {
       };
 
       const cacheKey = `products_${organizationId}_${JSON.stringify(query)}`;
-      
+
       // Try to get from cache first
       const cached = await this.cacheService.get(cacheKey);
       if (cached) {
@@ -204,31 +231,41 @@ export class ProductService {
   async updateProduct(
     id: string,
     organizationId: string,
-    updateProductDto: UpdateProductDto,
+    updateProductDto: UpdateProductDto
   ): Promise<Product> {
     try {
       // Check if product exists
       const existingProduct = await this.getProductById(id, organizationId);
 
       // Validate SKU uniqueness if SKU is being updated
-      if (updateProductDto.sku && updateProductDto.sku !== existingProduct.sku) {
+      if (
+        updateProductDto.sku &&
+        updateProductDto.sku !== existingProduct.sku
+      ) {
         const existingBySku = await this.productRepository.findBySku(
           updateProductDto.sku,
-          organizationId,
+          organizationId
         );
         if (existingBySku && existingBySku.id !== id) {
-          throw new ConflictException(`Product with SKU '${updateProductDto.sku}' already exists`);
+          throw new ConflictException(
+            `Product with SKU '${updateProductDto.sku}' already exists`
+          );
         }
       }
 
       // Validate barcode uniqueness if barcode is being updated
-      if (updateProductDto.barcode && updateProductDto.barcode !== existingProduct.barcode) {
+      if (
+        updateProductDto.barcode &&
+        updateProductDto.barcode !== existingProduct.barcode
+      ) {
         const existingByBarcode = await this.productRepository.findByBarcode(
           updateProductDto.barcode,
-          organizationId,
+          organizationId
         );
         if (existingByBarcode && existingByBarcode.id !== id) {
-          throw new ConflictException(`Product with barcode '${updateProductDto.barcode}' already exists`);
+          throw new ConflictException(
+            `Product with barcode '${updateProductDto.barcode}' already exists`
+          );
         }
       }
 
@@ -236,14 +273,21 @@ export class ProductService {
       await this.validationService.validateProductData(updateProductDto);
 
       const updateData: UpdateProductData = updateProductDto;
-      const updatedProduct = await this.productRepository.update(id, organizationId, updateData);
+      const updatedProduct = await this.productRepository.update(
+        id,
+        organizationId,
+        updateData
+      );
 
       // Invalidate cache
       await this.cacheService.invalidateProductCache(organizationId);
       await this.cacheService.delete(`product_${id}`);
 
       // Check stock levels if minimum stock was updated
-      if (updateProductDto.minimumStock !== undefined && updatedProduct.trackStock) {
+      if (
+        updateProductDto.minimumStock !== undefined &&
+        updatedProduct.trackStock
+      ) {
         await this.stockLevelService.checkStockLevels(organizationId, id);
       }
 
@@ -262,7 +306,7 @@ export class ProductService {
     id: string,
     organizationId: string,
     newStock: number,
-    reason?: string,
+    reason?: string
   ): Promise<Product> {
     try {
       if (newStock < 0) {
@@ -270,12 +314,18 @@ export class ProductService {
       }
 
       const existingProduct = await this.getProductById(id, organizationId);
-      
+
       if (!existingProduct.trackStock) {
-        throw new BadRequestException('Stock tracking is disabled for this product');
+        throw new BadRequestException(
+          'Stock tracking is disabled for this product'
+        );
       }
 
-      const updatedProduct = await this.productRepository.updateStock(id, organizationId, newStock);
+      const updatedProduct = await this.productRepository.updateStock(
+        id,
+        organizationId,
+        newStock
+      );
 
       // Invalidate cache
       await this.cacheService.invalidateProductCache(organizationId);
@@ -284,10 +334,15 @@ export class ProductService {
       // Check stock levels and create alerts if necessary
       await this.stockLevelService.checkStockLevels(organizationId, id);
 
-      this.logger.log(`Updated stock for product ${id}: ${existingProduct.currentStock} -> ${newStock}`);
+      this.logger.log(
+        `Updated stock for product ${id}: ${existingProduct.currentStock} -> ${newStock}`
+      );
       return updatedProduct;
     } catch (error) {
-      this.logger.error(`Failed to update product stock: ${error.message}`, error);
+      this.logger.error(
+        `Failed to update product stock: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -323,14 +378,15 @@ export class ProductService {
   async getProductStats(organizationId: string) {
     try {
       const cacheKey = `product_stats_${organizationId}`;
-      
+
       // Try to get from cache first
       const cached = await this.cacheService.get(cacheKey);
       if (cached) {
         return cached;
       }
 
-      const stats = await this.productRepository.getProductStats(organizationId);
+      const stats =
+        await this.productRepository.getProductStats(organizationId);
 
       // Cache the result
       await this.cacheService.set(cacheKey, stats, 300); // 5 minutes
@@ -357,7 +413,7 @@ export class ProductService {
         filters,
         { name: 'asc' },
         0,
-        limit,
+        limit
       );
     } catch (error) {
       this.logger.error(`Failed to search products: ${error.message}`, error);
@@ -371,7 +427,7 @@ export class ProductService {
   async getProductsForSelect(organizationId: string) {
     try {
       const cacheKey = `products_select_${organizationId}`;
-      
+
       // Try to get from cache first
       const cached = await this.cacheService.get(cacheKey);
       if (cached) {
@@ -383,10 +439,9 @@ export class ProductService {
         isActive: true,
       };
 
-      const products = await this.productRepository.findMany(
-        filters,
-        { name: 'asc' },
-      );
+      const products = await this.productRepository.findMany(filters, {
+        name: 'asc',
+      });
 
       const result = products.map(product => ({
         id: product.id,
@@ -403,7 +458,10 @@ export class ProductService {
 
       return result;
     } catch (error) {
-      this.logger.error(`Failed to get products for select: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get products for select: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -419,12 +477,14 @@ export class ProductService {
         lowStock: true,
       };
 
-      return await this.productRepository.findMany(
-        filters,
-        { currentStock: 'asc' },
-      );
+      return await this.productRepository.findMany(filters, {
+        currentStock: 'asc',
+      });
     } catch (error) {
-      this.logger.error(`Failed to get low stock products: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get low stock products: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -440,12 +500,12 @@ export class ProductService {
         outOfStock: true,
       };
 
-      return await this.productRepository.findMany(
-        filters,
-        { name: 'asc' },
-      );
+      return await this.productRepository.findMany(filters, { name: 'asc' });
     } catch (error) {
-      this.logger.error(`Failed to get out of stock products: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get out of stock products: ${error.message}`,
+        error
+      );
       throw error;
     }
   }

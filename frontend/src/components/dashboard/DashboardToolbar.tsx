@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { Dashboard } from '../../types/dashboard.types';
+
 import { useDashboard } from '../../contexts/DashboardContext';
+import { Dashboard } from '../../types/dashboard.types';
 
 interface DashboardToolbarProps {
   dashboard: Dashboard;

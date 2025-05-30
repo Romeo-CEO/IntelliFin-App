@@ -26,7 +26,7 @@ export class OrganizationRepository {
 
   async update(
     id: string,
-    data: Prisma.OrganizationUpdateInput,
+    data: Prisma.OrganizationUpdateInput
   ): Promise<Organization> {
     return this.prisma.organization.update({
       where: { id },

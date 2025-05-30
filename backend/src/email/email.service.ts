@@ -25,7 +25,7 @@ export class EmailService {
       // In a real implementation, this would use a service like SendGrid, AWS SES, etc.
       // For now, we'll just log the email content
       const emailContent = this.generateInvitationEmailContent(data);
-      
+
       this.logger.log(`Email content for ${data.to}:`);
       this.logger.log(emailContent);
 
@@ -35,9 +35,10 @@ export class EmailService {
       //   subject: `Invitation to join ${data.organizationName} on IntelliFin`,
       //   html: emailContent,
       // });
-
     } catch (error) {
-      this.logger.error(`Failed to send invitation email to ${data.to}: ${error.message}`);
+      this.logger.error(
+        `Failed to send invitation email to ${data.to}: ${error.message}`
+      );
       throw error;
     }
   }
@@ -130,12 +131,16 @@ export class EmailService {
         
         <p><strong>${data.inviterName}</strong> has invited you to join <strong>${data.organizationName}</strong> on IntelliFin as a <strong>${roleDisplayName}</strong>.</p>
         
-        ${data.message ? `
+        ${
+          data.message
+            ? `
         <div class="info-box">
             <h4>Personal Message:</h4>
             <p><em>"${data.message}"</em></p>
         </div>
-        ` : ''}
+        `
+            : ''
+        }
         
         <p>IntelliFin is a comprehensive financial management platform designed specifically for Zambian SMEs and Mobile Money Agents. With IntelliFin, you can:</p>
         
@@ -207,7 +212,10 @@ export class EmailService {
     // TODO: Implement password reset email
   }
 
-  async sendEmailVerificationEmail(to: string, verificationUrl: string): Promise<void> {
+  async sendEmailVerificationEmail(
+    to: string,
+    verificationUrl: string
+  ): Promise<void> {
     this.logger.log(`Sending email verification email to ${to}`);
     // TODO: Implement email verification email
   }

@@ -1,9 +1,9 @@
 import {
-  Injectable,
-  NestInterceptor,
-  ExecutionContext,
   CallHandler,
+  ExecutionContext,
+  Injectable,
   Logger,
+  NestInterceptor,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
@@ -12,7 +12,10 @@ import { tap } from 'rxjs/operators';
 export class LoggingInterceptor implements NestInterceptor {
   private readonly logger = new Logger(LoggingInterceptor.name);
 
-  public intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+  public intercept(
+    context: ExecutionContext,
+    next: CallHandler
+  ): Observable<any> {
     const request = context.switchToHttp().getRequest();
     const { method, url, ip, headers } = request;
     const userAgent = headers['user-agent'] || '';
@@ -21,7 +24,7 @@ export class LoggingInterceptor implements NestInterceptor {
     const now = Date.now();
 
     this.logger.log(
-      `Incoming Request: ${method} ${url} - ${ip} - ${userAgent} - Tenant: ${tenantId}`,
+      `Incoming Request: ${method} ${url} - ${ip} - ${userAgent} - Tenant: ${tenantId}`
     );
 
     return next.handle().pipe(
@@ -32,9 +35,9 @@ export class LoggingInterceptor implements NestInterceptor {
         const responseTime = Date.now() - now;
 
         this.logger.log(
-          `Outgoing Response: ${method} ${url} ${statusCode} ${contentLength} - ${responseTime}ms - Tenant: ${tenantId}`,
+          `Outgoing Response: ${method} ${url} ${statusCode} ${contentLength} - ${responseTime}ms - Tenant: ${tenantId}`
         );
-      }),
+      })
     );
   }
 }

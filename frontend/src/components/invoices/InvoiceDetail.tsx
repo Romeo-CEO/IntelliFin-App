@@ -1,6 +1,5 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
 import { 
   X, 
   Edit, 
@@ -22,6 +21,8 @@ import {
   QrCode,
   Receipt
 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+
 import { Invoice, InvoiceStatus, ZraSubmissionStatus, invoiceService } from '../../services/invoice.service';
 
 interface InvoiceDetailProps {

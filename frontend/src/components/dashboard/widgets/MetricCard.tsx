@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
+
 import { Dashboard, DashboardWidget, MetricCardConfig } from '../../../types/dashboard.types';
 
 interface MetricCardProps {

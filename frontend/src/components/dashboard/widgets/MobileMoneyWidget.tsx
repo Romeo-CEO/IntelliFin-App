@@ -1,11 +1,13 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { DashboardWidget, Dashboard } from '../../../types/dashboard.types';
+
 import { paymentService } from '../../../services/payment.service';
-import { LoadingSpinner } from '../../common/LoadingSpinner';
-import { ErrorMessage } from '../../common/ErrorMessage';
+import { DashboardWidget, Dashboard } from '../../../types/dashboard.types';
 import { Chart } from '../../charts/Chart';
+import { ErrorMessage } from '../../common/ErrorMessage';
+import { LoadingSpinner } from '../../common/LoadingSpinner';
+
 import { MetricCard } from './MetricCard';
 
 interface MobileMoneyWidgetProps {
@@ -135,7 +137,7 @@ export const MobileMoneyWidget: React.FC<MobileMoneyWidgetProps> = ({
   const formatCurrency = useCallback((amount: number) => {
     return new Intl.NumberFormat('en-ZM', {
       style: 'currency',
-      currency: currency,
+      currency,
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);

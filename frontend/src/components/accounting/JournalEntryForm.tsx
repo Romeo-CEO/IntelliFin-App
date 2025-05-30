@@ -1,9 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { 
   Plus, 
   Trash2, 
@@ -13,17 +10,21 @@ import {
   Calculator,
   Search
 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useForm, useFieldArray } from 'react-hook-form';
+import { z } from 'zod';
+
 import { useAccounting } from '../../contexts/AccountingContext';
 import { JournalEntry, Account } from '../../services/accounting.service';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Select } from '../ui/select';
-import { Textarea } from '../ui/textarea';
-import { Label } from '../ui/label';
-import { Card } from '../ui/card';
+import { LoadingSpinner } from '../common/LoadingSpinner';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Badge } from '../ui/badge';
-import { LoadingSpinner } from '../common/LoadingSpinner';
+import { Button } from '../ui/button';
+import { Card } from '../ui/card';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { Select } from '../ui/select';
+import { Textarea } from '../ui/textarea';
 
 // Form validation schema
 const journalEntryLineSchema = z.object({

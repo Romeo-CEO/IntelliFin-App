@@ -75,24 +75,35 @@ export class ZraInvoiceService {
   private readonly isEnabled: boolean;
 
   constructor(private readonly configService: ConfigService) {
-    this.zraApiUrl = this.configService.get<string>('ZRA_API_URL') || 'https://api.zra.org.zm/smartinvoice';
+    this.zraApiUrl =
+      this.configService.get<string>('ZRA_API_URL') ||
+      'https://api.zra.org.zm/smartinvoice';
     this.zraApiKey = this.configService.get<string>('ZRA_API_KEY') || '';
     this.zraTin = this.configService.get<string>('ZRA_TIN') || '';
-    this.isEnabled = this.configService.get<boolean>('ZRA_INTEGRATION_ENABLED') || false;
+    this.isEnabled =
+      this.configService.get<boolean>('ZRA_INTEGRATION_ENABLED') || false;
 
     if (this.isEnabled && (!this.zraApiKey || !this.zraTin)) {
-      this.logger.warn('ZRA integration is enabled but API key or TIN is missing');
+      this.logger.warn(
+        'ZRA integration is enabled but API key or TIN is missing'
+      );
     }
   }
 
   /**
    * Submit invoice to ZRA Smart Invoice system
    */
-  async submitInvoice(invoice: InvoiceWithRelations, organizationTin: string): Promise<ZraInvoiceSubmission> {
+  async submitInvoice(
+    invoice: InvoiceWithRelations,
+    organizationTin: string
+  ): Promise<ZraInvoiceSubmission> {
     try {
       if (!this.isEnabled) {
         this.logger.debug('ZRA integration is disabled, skipping submission');
-        return this.createMockSubmission(invoice.id, ZraSubmissionStatus.DISABLED);
+        return this.createMockSubmission(
+          invoice.id,
+          ZraSubmissionStatus.DISABLED
+        );
       }
 
       // Validate invoice data
@@ -109,7 +120,10 @@ export class ZraInvoiceService {
       }
 
       // Prepare invoice data for ZRA
-      const zraInvoiceData = this.prepareZraInvoiceData(invoice, organizationTin);
+      const zraInvoiceData = this.prepareZraInvoiceData(
+        invoice,
+        organizationTin
+      );
 
       // Submit to ZRA API
       const response = await this.callZraApi('/submit-invoice', zraInvoiceData);
@@ -117,7 +131,10 @@ export class ZraInvoiceService {
       // Process response
       return this.processZraResponse(invoice.id, response);
     } catch (error) {
-      this.logger.error(`Failed to submit invoice ${invoice.id} to ZRA: ${error.message}`, error);
+      this.logger.error(
+        `Failed to submit invoice ${invoice.id} to ZRA: ${error.message}`,
+        error
+      );
       return {
         invoiceId: invoice.id,
         submissionId: '',
@@ -131,7 +148,9 @@ export class ZraInvoiceService {
   /**
    * Check submission status with ZRA
    */
-  async checkSubmissionStatus(submissionId: string): Promise<ZraInvoiceSubmission> {
+  async checkSubmissionStatus(
+    submissionId: string
+  ): Promise<ZraInvoiceSubmission> {
     try {
       if (!this.isEnabled) {
         return this.createMockSubmission('', ZraSubmissionStatus.DISABLED);
@@ -140,7 +159,10 @@ export class ZraInvoiceService {
       const response = await this.callZraApi(`/check-status/${submissionId}`);
       return this.processZraResponse('', response);
     } catch (error) {
-      this.logger.error(`Failed to check ZRA submission status: ${error.message}`, error);
+      this.logger.error(
+        `Failed to check ZRA submission status: ${error.message}`,
+        error
+      );
       return {
         invoiceId: '',
         submissionId,
@@ -154,16 +176,25 @@ export class ZraInvoiceService {
   /**
    * Cancel invoice submission with ZRA
    */
-  async cancelInvoice(submissionId: string, reason: string): Promise<ZraInvoiceSubmission> {
+  async cancelInvoice(
+    submissionId: string,
+    reason: string
+  ): Promise<ZraInvoiceSubmission> {
     try {
       if (!this.isEnabled) {
         return this.createMockSubmission('', ZraSubmissionStatus.DISABLED);
       }
 
-      const response = await this.callZraApi(`/cancel-invoice/${submissionId}`, { reason });
+      const response = await this.callZraApi(
+        `/cancel-invoice/${submissionId}`,
+        { reason }
+      );
       return this.processZraResponse('', response);
     } catch (error) {
-      this.logger.error(`Failed to cancel ZRA invoice: ${error.message}`, error);
+      this.logger.error(
+        `Failed to cancel ZRA invoice: ${error.message}`,
+        error
+      );
       return {
         invoiceId: '',
         submissionId,
@@ -247,7 +278,10 @@ export class ZraInvoiceService {
   /**
    * Prepare invoice data for ZRA submission
    */
-  private prepareZraInvoiceData(invoice: InvoiceWithRelations, organizationTin: string): ZraInvoiceData {
+  private prepareZraInvoiceData(
+    invoice: InvoiceWithRelations,
+    organizationTin: string
+  ): ZraInvoiceData {
     return {
       invoiceNumber: invoice.invoiceNumber,
       issueDate: invoice.issueDate.toISOString().split('T')[0],
@@ -290,22 +324,27 @@ export class ZraInvoiceService {
   /**
    * Call ZRA API
    */
-  private async callZraApi(endpoint: string, data?: any): Promise<ZraApiResponse> {
+  private async callZraApi(
+    endpoint: string,
+    data?: any
+  ): Promise<ZraApiResponse> {
     const url = `${this.zraApiUrl}${endpoint}`;
     const options: RequestInit = {
       method: data ? 'POST' : 'GET',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.zraApiKey}`,
+        Authorization: `Bearer ${this.zraApiKey}`,
         'X-ZRA-TIN': this.zraTin,
       },
       ...(data && { body: JSON.stringify(data) }),
     };
 
     const response = await fetch(url, options);
-    
+
     if (!response.ok) {
-      throw new Error(`ZRA API error: ${response.status} ${response.statusText}`);
+      throw new Error(
+        `ZRA API error: ${response.status} ${response.statusText}`
+      );
     }
 
     return response.json();
@@ -314,7 +353,10 @@ export class ZraInvoiceService {
   /**
    * Process ZRA API response
    */
-  private processZraResponse(invoiceId: string, response: ZraApiResponse): ZraInvoiceSubmission {
+  private processZraResponse(
+    invoiceId: string,
+    response: ZraApiResponse
+  ): ZraInvoiceSubmission {
     let status: ZraSubmissionStatus;
 
     switch (response.status?.toLowerCase()) {
@@ -333,7 +375,9 @@ export class ZraInvoiceService {
         status = ZraSubmissionStatus.CANCELLED;
         break;
       default:
-        status = response.success ? ZraSubmissionStatus.PENDING : ZraSubmissionStatus.FAILED;
+        status = response.success
+          ? ZraSubmissionStatus.PENDING
+          : ZraSubmissionStatus.FAILED;
     }
 
     return {
@@ -344,20 +388,31 @@ export class ZraInvoiceService {
       qrCode: response.qrCode,
       submissionDate: new Date(),
       errorMessage: response.message,
-      validationErrors: response.validationErrors?.map(e => `${e.field}: ${e.message}`),
+      validationErrors: response.validationErrors?.map(
+        e => `${e.field}: ${e.message}`
+      ),
     };
   }
 
   /**
    * Create mock submission for testing/disabled mode
    */
-  private createMockSubmission(invoiceId: string, status: ZraSubmissionStatus): ZraInvoiceSubmission {
+  private createMockSubmission(
+    invoiceId: string,
+    status: ZraSubmissionStatus
+  ): ZraInvoiceSubmission {
     return {
       invoiceId,
       submissionId: `MOCK-${Date.now()}`,
       status,
-      receiptNumber: status === ZraSubmissionStatus.ACCEPTED ? `RCP-${Date.now()}` : undefined,
-      qrCode: status === ZraSubmissionStatus.ACCEPTED ? 'mock-qr-code-data' : undefined,
+      receiptNumber:
+        status === ZraSubmissionStatus.ACCEPTED
+          ? `RCP-${Date.now()}`
+          : undefined,
+      qrCode:
+        status === ZraSubmissionStatus.ACCEPTED
+          ? 'mock-qr-code-data'
+          : undefined,
       submissionDate: new Date(),
     };
   }

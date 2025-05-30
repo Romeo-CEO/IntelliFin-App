@@ -1,16 +1,16 @@
 import {
-  IsString,
-  IsOptional,
-  IsNumber,
-  IsEnum,
-  IsDateString,
-  IsBoolean,
   IsArray,
-  ValidateNested,
-  Min,
+  IsBoolean,
+  IsDateString,
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
   Max,
+  Min,
+  ValidateNested,
 } from 'class-validator';
-import { Type, Transform } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 // ============================================================================
@@ -181,13 +181,13 @@ export class AirtelTransactionDto {
   @ApiProperty({ description: 'Currency code' })
   currency: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'Transaction type',
     enum: AirtelTransactionType,
   })
   transaction_type: AirtelTransactionType;
 
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'Transaction status',
     enum: AirtelTransactionStatus,
   })
@@ -196,7 +196,7 @@ export class AirtelTransactionDto {
   @ApiPropertyOptional({ description: 'Transaction description' })
   description?: string;
 
-  @ApiPropertyOptional({ 
+  @ApiPropertyOptional({
     description: 'Counterparty information',
     type: AirtelCounterpartyDto,
   })
@@ -205,11 +205,11 @@ export class AirtelTransactionDto {
   counterparty?: AirtelCounterpartyDto;
 
   @ApiPropertyOptional({ description: 'Account balance after transaction' })
-  @Transform(({ value }) => value ? parseFloat(value) : undefined)
+  @Transform(({ value }) => (value ? parseFloat(value) : undefined))
   balance_after?: number;
 
   @ApiPropertyOptional({ description: 'Transaction fees' })
-  @Transform(({ value }) => value ? parseFloat(value) : 0)
+  @Transform(({ value }) => (value ? parseFloat(value) : 0))
   fees?: number;
 }
 
@@ -228,7 +228,7 @@ export class AirtelPaginationDto {
 }
 
 export class AirtelTransactionsResponseDto {
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'Array of transactions',
     type: [AirtelTransactionDto],
   })
@@ -237,7 +237,7 @@ export class AirtelTransactionsResponseDto {
   @Type(() => AirtelTransactionDto)
   transactions: AirtelTransactionDto[];
 
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'Pagination information',
     type: AirtelPaginationDto,
   })
@@ -256,7 +256,7 @@ export class AirtelAccountProfileDto {
   @ApiPropertyOptional({ description: 'Last name' })
   last_name?: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'Account status',
     enum: AirtelAccountStatus,
   })
@@ -265,7 +265,7 @@ export class AirtelAccountProfileDto {
   @ApiPropertyOptional({ description: 'Account grade/tier' })
   grade?: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'KYC verification status',
     enum: AirtelKycStatus,
   })
@@ -306,7 +306,7 @@ export class AirtelTokenResponseDto {
 // ============================================================================
 
 export class AirtelApiResponseDto<T = any> {
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'API status information',
     type: AirtelApiStatusDto,
   })
@@ -317,7 +317,7 @@ export class AirtelApiResponseDto<T = any> {
   @ApiPropertyOptional({ description: 'Response data' })
   data?: T;
 
-  @ApiPropertyOptional({ 
+  @ApiPropertyOptional({
     description: 'Error information',
     type: AirtelApiErrorDto,
   })

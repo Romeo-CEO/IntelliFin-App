@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useReducer, useCallback } from 'react';
+
 import { Account, JournalEntry, accountingService } from '../services/accounting.service';
 
 // Accounting state interface

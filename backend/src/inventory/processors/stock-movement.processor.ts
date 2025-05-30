@@ -1,10 +1,11 @@
-import { Processor, Process } from '@nestjs/bull';
+import { Process, Processor } from '@nestjs/bull';
 import { Injectable, Logger } from '@nestjs/common';
 import { Job } from 'bull';
 import { StockLevelService } from '../services/stock-level.service';
 import { InventoryCacheService } from '../services/inventory-cache.service';
 import { ProductRepository } from '../products/product.repository';
 import { StockMovementRepository } from '../stock-movements/stock-movement.repository';
+import { SourceType } from '../stock-movements/source-type.enum';
 
 export interface StockMovementJobData {
   organizationId: string;
@@ -47,7 +48,7 @@ export class StockMovementProcessor {
     private readonly stockLevelService: StockLevelService,
     private readonly cacheService: InventoryCacheService,
     private readonly productRepository: ProductRepository,
-    private readonly stockMovementRepository: StockMovementRepository,
+    private readonly stockMovementRepository: StockMovementRepository
   ) {}
 
   /**
@@ -56,18 +57,25 @@ export class StockMovementProcessor {
   @Process('process-stock-movement')
   async processStockMovement(job: Job<StockMovementJobData>) {
     const { data } = job;
-    
+
     try {
-      this.logger.log(`Processing stock movement for product ${data.productId}: ${data.movementType} ${data.quantity}`);
+      this.logger.log(
+        `Processing stock movement for product ${data.productId}: ${data.movementType} ${data.quantity}`
+      );
 
       // Get current product
-      const product = await this.productRepository.findById(data.productId, data.organizationId);
+      const product = await this.productRepository.findById(
+        data.productId,
+        data.organizationId
+      );
       if (!product) {
         throw new Error(`Product not found: ${data.productId}`);
       }
 
       if (!product.trackStock) {
-        this.logger.warn(`Stock tracking disabled for product ${data.productId} - skipping movement`);
+        this.logger.warn(
+          `Stock tracking disabled for product ${data.productId} - skipping movement`
+        );
         return;
       }
 
@@ -102,29 +110,40 @@ export class StockMovementProcessor {
         quantity: data.quantity,
         stockBefore: currentStock,
         stockAfter: newStock,
-        sourceType: data.sourceType as any,
+        sourceType: data.sourceType as SourceType,
         sourceId: data.sourceId,
         reason: data.reason,
         createdBy: data.userId,
       });
 
       // Update product stock level
-      await this.productRepository.updateStock(data.productId, data.organizationId, newStock);
+      await this.productRepository.updateStock(
+        data.productId,
+        data.organizationId,
+        newStock
+      );
 
       // Check stock levels and create alerts if necessary
-      await this.stockLevelService.checkStockLevels(data.organizationId, data.productId);
+      await this.stockLevelService.checkStockLevels(
+        data.organizationId,
+        data.productId
+      );
 
       // Invalidate relevant caches
       await this.cacheService.invalidateProductCache(data.organizationId);
       await this.cacheService.invalidateStockMovementCache(data.organizationId);
 
-      this.logger.log(`Stock movement processed successfully for product ${data.productId}: ${currentStock} -> ${newStock}`);
+      this.logger.log(
+        `Stock movement processed successfully for product ${data.productId}: ${currentStock} -> ${newStock}`
+      );
 
       // Update job progress
       await job.progress(100);
-
     } catch (error) {
-      this.logger.error(`Failed to process stock movement: ${error.message}`, error);
+      this.logger.error(
+        `Failed to process stock movement: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -135,9 +154,11 @@ export class StockMovementProcessor {
   @Process('bulk-stock-update')
   async processBulkStockUpdate(job: Job<BulkStockUpdateJobData>) {
     const { data } = job;
-    
+
     try {
-      this.logger.log(`Processing bulk stock update for ${data.updates.length} products in organization ${data.organizationId}`);
+      this.logger.log(
+        `Processing bulk stock update for ${data.updates.length} products in organization ${data.organizationId}`
+      );
 
       const totalUpdates = data.updates.length;
       let processedCount = 0;
@@ -145,9 +166,14 @@ export class StockMovementProcessor {
       for (const update of data.updates) {
         try {
           // Get current product
-          const product = await this.productRepository.findById(update.productId, data.organizationId);
+          const product = await this.productRepository.findById(
+            update.productId,
+            data.organizationId
+          );
           if (!product || !product.trackStock) {
-            this.logger.warn(`Skipping stock update for product ${update.productId} - not found or tracking disabled`);
+            this.logger.warn(
+              `Skipping stock update for product ${update.productId} - not found or tracking disabled`
+            );
             continue;
           }
 
@@ -163,16 +189,23 @@ export class StockMovementProcessor {
             quantity: Math.abs(newStock - currentStock),
             stockBefore: currentStock,
             stockAfter: newStock,
-            sourceType: 'MANUAL',
+            sourceType: 'MANUAL' as SourceType,
             reason: update.reason || 'Bulk stock update',
             createdBy: data.userId,
           });
 
           // Update product stock level
-          await this.productRepository.updateStock(update.productId, data.organizationId, newStock);
+          await this.productRepository.updateStock(
+            update.productId,
+            data.organizationId,
+            newStock
+          );
 
           // Check stock levels
-          await this.stockLevelService.checkStockLevels(data.organizationId, update.productId);
+          await this.stockLevelService.checkStockLevels(
+            data.organizationId,
+            update.productId
+          );
 
           processedCount++;
 
@@ -184,9 +217,11 @@ export class StockMovementProcessor {
           if (processedCount % 10 === 0) {
             await new Promise(resolve => setTimeout(resolve, 100));
           }
-
         } catch (error) {
-          this.logger.error(`Failed to update stock for product ${update.productId}: ${error.message}`, error);
+          this.logger.error(
+            `Failed to update stock for product ${update.productId}: ${error.message}`,
+            error
+          );
           // Continue with other updates
         }
       }
@@ -195,10 +230,14 @@ export class StockMovementProcessor {
       await this.cacheService.invalidateProductCache(data.organizationId);
       await this.cacheService.invalidateStockMovementCache(data.organizationId);
 
-      this.logger.log(`Bulk stock update completed: ${processedCount}/${totalUpdates} products updated`);
-
+      this.logger.log(
+        `Bulk stock update completed: ${processedCount}/${totalUpdates} products updated`
+      );
     } catch (error) {
-      this.logger.error(`Failed to process bulk stock update: ${error.message}`, error);
+      this.logger.error(
+        `Failed to process bulk stock update: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -209,9 +248,11 @@ export class StockMovementProcessor {
   @Process('stock-reconciliation')
   async processStockReconciliation(job: Job<StockReconciliationJobData>) {
     const { data } = job;
-    
+
     try {
-      this.logger.log(`Processing stock reconciliation for organization ${data.organizationId}`);
+      this.logger.log(
+        `Processing stock reconciliation for organization ${data.organizationId}`
+      );
 
       // Get products to reconcile
       const filters = {
@@ -234,18 +275,25 @@ export class StockMovementProcessor {
 
           // Check for stock level issues
           const currentStock = Number(product.currentStock);
-          const minimumStock = Number(product.minimumStock);
-          const maximumStock = product.maximumStock ? Number(product.maximumStock) : null;
+          const maximumStock = product.maximumStock
+            ? Number(product.maximumStock)
+            : null;
 
           let hasIssues = false;
 
           // Check for negative stock
           if (currentStock < 0) {
-            this.logger.warn(`Negative stock detected for product ${product.id}: ${currentStock}`);
-            
+            this.logger.warn(
+              `Negative stock detected for product ${product.id}: ${currentStock}`
+            );
+
             // Correct negative stock to zero
-            await this.productRepository.updateStock(product.id, data.organizationId, 0);
-            
+            await this.productRepository.updateStock(
+              product.id,
+              data.organizationId,
+              0
+            );
+
             // Create adjustment record
             await this.stockMovementRepository.create({
               organizationId: data.organizationId,
@@ -255,7 +303,7 @@ export class StockMovementProcessor {
               quantity: Math.abs(currentStock),
               stockBefore: currentStock,
               stockAfter: 0,
-              sourceType: 'MANUAL',
+              sourceType: 'MANUAL' as SourceType,
               reason: 'Stock reconciliation - negative stock correction',
               createdBy: data.userId,
             });
@@ -265,12 +313,17 @@ export class StockMovementProcessor {
 
           // Check for unrealistic stock levels
           if (maximumStock && currentStock > maximumStock * 2) {
-            this.logger.warn(`Unusually high stock detected for product ${product.id}: ${currentStock} (max: ${maximumStock})`);
+            this.logger.warn(
+              `Unusually high stock detected for product ${product.id}: ${currentStock} (max: ${maximumStock})`
+            );
             hasIssues = true;
           }
 
           // Check stock levels and create alerts
-          await this.stockLevelService.checkStockLevels(data.organizationId, product.id);
+          await this.stockLevelService.checkStockLevels(
+            data.organizationId,
+            product.id
+          );
 
           if (hasIssues) {
             reconciliationIssues++;
@@ -286,9 +339,11 @@ export class StockMovementProcessor {
           if (processedCount % 20 === 0) {
             await new Promise(resolve => setTimeout(resolve, 200));
           }
-
         } catch (error) {
-          this.logger.error(`Failed to reconcile stock for product ${product.id}: ${error.message}`, error);
+          this.logger.error(
+            `Failed to reconcile stock for product ${product.id}: ${error.message}`,
+            error
+          );
           reconciliationIssues++;
         }
       }
@@ -298,7 +353,9 @@ export class StockMovementProcessor {
       await this.cacheService.invalidateStockMovementCache(data.organizationId);
       await this.cacheService.invalidateStockAlertCache(data.organizationId);
 
-      this.logger.log(`Stock reconciliation completed: ${processedCount} products processed, ${reconciliationIssues} issues found`);
+      this.logger.log(
+        `Stock reconciliation completed: ${processedCount} products processed, ${reconciliationIssues} issues found`
+      );
 
       // Return summary
       return {
@@ -306,9 +363,11 @@ export class StockMovementProcessor {
         issuesFound: reconciliationIssues,
         completedAt: new Date(),
       };
-
     } catch (error) {
-      this.logger.error(`Failed to process stock reconciliation: ${error.message}`, error);
+      this.logger.error(
+        `Failed to process stock reconciliation: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -319,16 +378,22 @@ export class StockMovementProcessor {
   @Process('check-all-stock-levels')
   async processStockLevelChecks(job: Job<{ organizationId: string }>) {
     const { organizationId } = job.data;
-    
+
     try {
-      this.logger.log(`Processing stock level checks for organization ${organizationId}`);
+      this.logger.log(
+        `Processing stock level checks for organization ${organizationId}`
+      );
 
       await this.stockLevelService.checkAllStockLevels(organizationId);
 
-      this.logger.log(`Stock level checks completed for organization ${organizationId}`);
-
+      this.logger.log(
+        `Stock level checks completed for organization ${organizationId}`
+      );
     } catch (error) {
-      this.logger.error(`Failed to process stock level checks: ${error.message}`, error);
+      this.logger.error(
+        `Failed to process stock level checks: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -337,20 +402,32 @@ export class StockMovementProcessor {
    * Clean up old stock movements
    */
   @Process('cleanup-old-movements')
-  async cleanupOldMovements(job: Job<{ organizationId: string; daysOld: number }>) {
+  async cleanupOldMovements(
+    job: Job<{ organizationId: string; daysOld: number }>
+  ) {
     const { organizationId, daysOld } = job.data;
-    
+
     try {
-      this.logger.log(`Cleaning up stock movements older than ${daysOld} days for organization ${organizationId}`);
+      this.logger.log(
+        `Cleaning up stock movements older than ${daysOld} days for organization ${organizationId}`
+      );
 
-      const deletedCount = await this.stockMovementRepository.deleteOldMovements(organizationId, daysOld);
+      const deletedCount =
+        await this.stockMovementRepository.deleteOldMovements(
+          organizationId,
+          daysOld
+        );
 
-      this.logger.log(`Cleanup completed: ${deletedCount} old stock movements deleted`);
+      this.logger.log(
+        `Cleanup completed: ${deletedCount} old stock movements deleted`
+      );
 
       return { deletedCount };
-
     } catch (error) {
-      this.logger.error(`Failed to cleanup old movements: ${error.message}`, error);
+      this.logger.error(
+        `Failed to cleanup old movements: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -367,8 +444,11 @@ export class StockMovementProcessor {
    * Handle job failure
    */
   async handleJobFailure(job: Job, error: Error) {
-    this.logger.error(`Job ${job.name} failed with ID ${job.id}: ${error.message}`, error);
-    
+    this.logger.error(
+      `Job ${job.name} failed with ID ${job.id}: ${error.message}`,
+      error
+    );
+
     // Could implement retry logic or notification here
     // For now, just log the failure
   }

@@ -41,7 +41,7 @@ export class OcrService {
   async processReceipt(
     fileBuffer: Buffer,
     contentType: string,
-    options: OcrProcessingOptions = {},
+    options: OcrProcessingOptions = {}
   ): Promise<OcrResult> {
     try {
       this.logger.log(`Starting OCR processing for file type: ${contentType}`);
@@ -50,7 +50,9 @@ export class OcrService {
       // In production, this would integrate with Azure Computer Vision or similar service
       const result = await this.performOcr(fileBuffer, contentType, options);
 
-      this.logger.log(`OCR processing completed with confidence: ${result.confidence}`);
+      this.logger.log(
+        `OCR processing completed with confidence: ${result.confidence}`
+      );
       return result;
     } catch (error) {
       this.logger.error(`OCR processing failed: ${error.message}`, error);
@@ -61,7 +63,9 @@ export class OcrService {
   /**
    * Extract structured data from OCR text
    */
-  async extractStructuredData(ocrText: string): Promise<OcrResult['extractedData']> {
+  async extractStructuredData(
+    ocrText: string
+  ): Promise<OcrResult['extractedData']> {
     try {
       const extractedData: OcrResult['extractedData'] = {};
 
@@ -106,7 +110,10 @@ export class OcrService {
 
       return extractedData;
     } catch (error) {
-      this.logger.error(`Failed to extract structured data: ${error.message}`, error);
+      this.logger.error(
+        `Failed to extract structured data: ${error.message}`,
+        error
+      );
       return {};
     }
   }
@@ -126,9 +133,12 @@ export class OcrService {
       }
 
       // Check if we extracted at least some meaningful data
-      const hasVendor = result.extractedData.vendor && result.extractedData.vendor.length > 0;
-      const hasTotal = result.extractedData.total && result.extractedData.total > 0;
-      const hasDate = result.extractedData.date && result.extractedData.date.length > 0;
+      const hasVendor =
+        result.extractedData.vendor && result.extractedData.vendor.length > 0;
+      const hasTotal =
+        result.extractedData.total && result.extractedData.total > 0;
+      const hasDate =
+        result.extractedData.date && result.extractedData.date.length > 0;
 
       return hasVendor || hasTotal || hasDate;
     } catch (error) {
@@ -143,7 +153,7 @@ export class OcrService {
   private async performOcr(
     fileBuffer: Buffer,
     contentType: string,
-    options: OcrProcessingOptions,
+    options: OcrProcessingOptions
   ): Promise<OcrResult> {
     // This is a placeholder implementation for MVP
     // In production, integrate with Azure Computer Vision, Google Cloud Vision, or Tesseract.js
@@ -217,28 +227,35 @@ Thank you for your business!`,
    */
   private extractVendor(text: string): string | null {
     try {
-      const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-      
+      const lines = text
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
+
       // Usually the vendor name is in the first few lines
       for (let i = 0; i < Math.min(3, lines.length); i++) {
         const line = lines[i];
-        
+
         // Skip lines that look like addresses or phone numbers
-        if (line.includes('Tel:') || line.includes('Phone:') || line.includes('VAT No:')) {
+        if (
+          line.includes('Tel:') ||
+          line.includes('Phone:') ||
+          line.includes('VAT No:')
+        ) {
           continue;
         }
-        
+
         // Skip lines with only numbers or special characters
         if (/^[\d\s\-\+\(\)]+$/.test(line)) {
           continue;
         }
-        
+
         // If line has reasonable length and contains letters, it's likely the vendor
         if (line.length >= 3 && line.length <= 50 && /[a-zA-Z]/.test(line)) {
           return line;
         }
       }
-      
+
       return null;
     } catch (error) {
       return null;
@@ -368,24 +385,26 @@ Thank you for your business!`,
       }> = [];
 
       const lines = text.split('\n');
-      
+
       for (const line of lines) {
         // Look for lines that have item description and price
         // Pattern: Description ... Price
         const itemMatch = line.match(/^(.+?)\s+K?(\d+\.?\d*)$/);
-        
+
         if (itemMatch) {
           const description = itemMatch[1].trim();
           const amount = parseFloat(itemMatch[2]);
-          
+
           // Skip lines that look like totals or headers
-          if (description.toLowerCase().includes('total') ||
-              description.toLowerCase().includes('subtotal') ||
-              description.toLowerCase().includes('vat') ||
-              description.toLowerCase().includes('tax')) {
+          if (
+            description.toLowerCase().includes('total') ||
+            description.toLowerCase().includes('subtotal') ||
+            description.toLowerCase().includes('vat') ||
+            description.toLowerCase().includes('tax')
+          ) {
             continue;
           }
-          
+
           if (description.length > 2 && amount > 0) {
             items.push({
               description,

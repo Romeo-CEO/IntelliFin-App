@@ -1,5 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { StockAlert, StockAlertType, StockAlertLevel, Prisma } from '@prisma/client';
+import {
+  Prisma,
+  StockAlert,
+  StockAlertLevel,
+  StockAlertType,
+} from '@prisma/client';
 import { TenantDatabaseProvider } from '../../modules/tenants/providers/tenant-database.provider';
 
 export interface CreateStockAlertData {
@@ -36,16 +41,14 @@ export interface StockAlertFilters {
 export class StockAlertRepository {
   private readonly logger = new Logger(StockAlertRepository.name);
 
-  constructor(
-    private readonly tenantDb: TenantDatabaseProvider,
-  ) {}
+  constructor(private readonly tenantDb: TenantDatabaseProvider) {}
 
   /**
    * Create a new stock alert
    */
   async create(data: CreateStockAlertData): Promise<StockAlert> {
     try {
-      return await this.tenantDb.executeInTenantContext(async (prisma) => {
+      return await this.tenantDb.executeInTenantContext(async prisma => {
         return await prisma.stockAlert.create({
           data: {
             organizationId: data.organizationId,
@@ -61,7 +64,10 @@ export class StockAlertRepository {
         });
       });
     } catch (error) {
-      this.logger.error(`Failed to create stock alert: ${error.message}`, error);
+      this.logger.error(
+        `Failed to create stock alert: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -69,9 +75,12 @@ export class StockAlertRepository {
   /**
    * Find stock alert by ID
    */
-  async findById(id: string, organizationId: string): Promise<StockAlert | null> {
+  async findById(
+    id: string,
+    organizationId: string
+  ): Promise<StockAlert | null> {
     try {
-      return await this.tenantDb.executeInTenantContext(async (prisma) => {
+      return await this.tenantDb.executeInTenantContext(async prisma => {
         return await prisma.stockAlert.findFirst({
           where: {
             id,
@@ -80,7 +89,10 @@ export class StockAlertRepository {
         });
       });
     } catch (error) {
-      this.logger.error(`Failed to find stock alert by ID: ${error.message}`, error);
+      this.logger.error(
+        `Failed to find stock alert by ID: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -91,10 +103,10 @@ export class StockAlertRepository {
   async findActiveAlert(
     organizationId: string,
     productId: string,
-    alertType: StockAlertType,
+    alertType: StockAlertType
   ): Promise<StockAlert | null> {
     try {
-      return await this.tenantDb.executeInTenantContext(async (prisma) => {
+      return await this.tenantDb.executeInTenantContext(async prisma => {
         return await prisma.stockAlert.findFirst({
           where: {
             organizationId,
@@ -121,10 +133,10 @@ export class StockAlertRepository {
     filters: StockAlertFilters,
     orderBy?: Prisma.StockAlertOrderByWithRelationInput,
     skip?: number,
-    take?: number,
+    take?: number
   ): Promise<StockAlert[]> {
     try {
-      return await this.tenantDb.executeInTenantContext(async (prisma) => {
+      return await this.tenantDb.executeInTenantContext(async prisma => {
         const where = this.buildWhereClause(filters);
 
         return await prisma.stockAlert.findMany({
@@ -157,12 +169,15 @@ export class StockAlertRepository {
    */
   async count(filters: StockAlertFilters): Promise<number> {
     try {
-      return await this.tenantDb.executeInTenantContext(async (prisma) => {
+      return await this.tenantDb.executeInTenantContext(async prisma => {
         const where = this.buildWhereClause(filters);
         return await prisma.stockAlert.count({ where });
       });
     } catch (error) {
-      this.logger.error(`Failed to count stock alerts: ${error.message}`, error);
+      this.logger.error(
+        `Failed to count stock alerts: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -170,9 +185,13 @@ export class StockAlertRepository {
   /**
    * Update stock alert
    */
-  async update(id: string, organizationId: string, data: UpdateStockAlertData): Promise<StockAlert> {
+  async update(
+    id: string,
+    organizationId: string,
+    data: UpdateStockAlertData
+  ): Promise<StockAlert> {
     try {
-      return await this.tenantDb.executeInTenantContext(async (prisma) => {
+      return await this.tenantDb.executeInTenantContext(async prisma => {
         return await prisma.stockAlert.update({
           where: {
             id,
@@ -182,7 +201,10 @@ export class StockAlertRepository {
         });
       });
     } catch (error) {
-      this.logger.error(`Failed to update stock alert: ${error.message}`, error);
+      this.logger.error(
+        `Failed to update stock alert: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -190,9 +212,13 @@ export class StockAlertRepository {
   /**
    * Acknowledge stock alert
    */
-  async acknowledge(id: string, organizationId: string, acknowledgedBy: string): Promise<StockAlert> {
+  async acknowledge(
+    id: string,
+    organizationId: string,
+    acknowledgedBy: string
+  ): Promise<StockAlert> {
     try {
-      return await this.tenantDb.executeInTenantContext(async (prisma) => {
+      return await this.tenantDb.executeInTenantContext(async prisma => {
         return await prisma.stockAlert.update({
           where: {
             id,
@@ -206,7 +232,10 @@ export class StockAlertRepository {
         });
       });
     } catch (error) {
-      this.logger.error(`Failed to acknowledge stock alert: ${error.message}`, error);
+      this.logger.error(
+        `Failed to acknowledge stock alert: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -216,7 +245,7 @@ export class StockAlertRepository {
    */
   async deactivate(id: string, organizationId: string): Promise<StockAlert> {
     try {
-      return await this.tenantDb.executeInTenantContext(async (prisma) => {
+      return await this.tenantDb.executeInTenantContext(async prisma => {
         return await prisma.stockAlert.update({
           where: {
             id,
@@ -228,7 +257,10 @@ export class StockAlertRepository {
         });
       });
     } catch (error) {
-      this.logger.error(`Failed to deactivate stock alert: ${error.message}`, error);
+      this.logger.error(
+        `Failed to deactivate stock alert: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -236,9 +268,12 @@ export class StockAlertRepository {
   /**
    * Delete old acknowledged alerts
    */
-  async deleteOldAcknowledgedAlerts(organizationId: string, daysOld = 30): Promise<number> {
+  async deleteOldAcknowledgedAlerts(
+    organizationId: string,
+    daysOld = 30
+  ): Promise<number> {
     try {
-      return await this.tenantDb.executeInTenantContext(async (prisma) => {
+      return await this.tenantDb.executeInTenantContext(async prisma => {
         const cutoffDate = new Date();
         cutoffDate.setDate(cutoffDate.getDate() - daysOld);
 
@@ -255,7 +290,10 @@ export class StockAlertRepository {
         return result.count;
       });
     } catch (error) {
-      this.logger.error(`Failed to delete old acknowledged alerts: ${error.message}`, error);
+      this.logger.error(
+        `Failed to delete old acknowledged alerts: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -265,7 +303,7 @@ export class StockAlertRepository {
    */
   async getAlertStats(organizationId: string) {
     try {
-      return await this.tenantDb.executeInTenantContext(async (prisma) => {
+      return await this.tenantDb.executeInTenantContext(async prisma => {
         const [
           totalAlerts,
           activeAlerts,
@@ -379,7 +417,9 @@ export class StockAlertRepository {
   /**
    * Build where clause for filtering
    */
-  private buildWhereClause(filters: StockAlertFilters): Prisma.StockAlertWhereInput {
+  private buildWhereClause(
+    filters: StockAlertFilters
+  ): Prisma.StockAlertWhereInput {
     const where: Prisma.StockAlertWhereInput = {
       organizationId: filters.organizationId,
     };

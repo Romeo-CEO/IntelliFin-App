@@ -15,9 +15,12 @@ export const appConfig = registerAs('app', () => ({
   logLevel: process.env.LOG_LEVEL || 'info',
   maxFileSize: parseInt(process.env.MAX_FILE_SIZE || '10485760', 10), // 10MB
   maxRequestSize: parseInt(process.env.MAX_REQUEST_SIZE || '52428800', 10), // 50MB
-  sessionSecret: process.env.SESSION_SECRET || 'your-session-secret-change-in-production',
-  cookieSecret: process.env.COOKIE_SECRET || 'your-cookie-secret-change-in-production',
-  encryptionKey: process.env.ENCRYPTION_KEY || 'your-encryption-key-change-in-production',
+  sessionSecret:
+    process.env.SESSION_SECRET || 'your-session-secret-change-in-production',
+  cookieSecret:
+    process.env.COOKIE_SECRET || 'your-cookie-secret-change-in-production',
+  encryptionKey:
+    process.env.ENCRYPTION_KEY || 'your-encryption-key-change-in-production',
   rateLimiting: {
     ttl: parseInt(process.env.RATE_LIMIT_TTL || '60', 10), // seconds
     limit: parseInt(process.env.RATE_LIMIT_LIMIT || '100', 10), // requests
@@ -26,7 +29,9 @@ export const appConfig = registerAs('app', () => ({
   },
   security: {
     bcryptRounds: parseInt(process.env.BCRYPT_ROUNDS || '12', 10),
-    jwtSecret: process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production',
+    jwtSecret:
+      process.env.JWT_SECRET ||
+      'your-super-secret-jwt-key-change-in-production',
     passwordMinLength: parseInt(process.env.PASSWORD_MIN_LENGTH || '8', 10),
     passwordMaxLength: parseInt(process.env.PASSWORD_MAX_LENGTH || '128', 10),
     maxLoginAttempts: parseInt(process.env.MAX_LOGIN_ATTEMPTS || '5', 10),

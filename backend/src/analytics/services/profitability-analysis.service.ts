@@ -1,6 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
-import { CustomerProfitability, ProductProfitability } from '../analytics.repository';
+import {
+  CustomerProfitability,
+  ProductProfitability,
+} from '../analytics.repository';
 
 export interface ProfitabilityAnalysis {
   customerProfitability: CustomerProfitability[];
@@ -67,35 +70,48 @@ export class ProfitabilityAnalysisService {
   async analyzeProfitability(
     organizationId: string,
     startDate: Date,
-    endDate: Date,
+    endDate: Date
   ): Promise<ProfitabilityAnalysis> {
     try {
-      this.logger.log(`Analyzing profitability for organization: ${organizationId}`);
+      this.logger.log(
+        `Analyzing profitability for organization: ${organizationId}`
+      );
 
       // Analyze customer profitability
       const customerProfitability = await this.analyzeCustomerProfitability(
         organizationId,
         startDate,
-        endDate,
+        endDate
       );
 
       // Analyze product profitability
       const productProfitability = await this.analyzeProductProfitability(
         organizationId,
         startDate,
-        endDate,
+        endDate
       );
 
       // Generate insights
-      const insights = this.generateProfitabilityInsights(customerProfitability, productProfitability);
+      const insights = this.generateProfitabilityInsights(
+        customerProfitability,
+        productProfitability
+      );
 
       // Perform break-even analysis
-      const breakEvenAnalysis = await this.performBreakEvenAnalysis(organizationId, startDate, endDate);
+      const breakEvenAnalysis = await this.performBreakEvenAnalysis(
+        organizationId,
+        startDate,
+        endDate
+      );
 
       // Perform segment analysis
-      const segmentAnalysis = this.performSegmentAnalysis(customerProfitability);
+      const segmentAnalysis = this.performSegmentAnalysis(
+        customerProfitability
+      );
 
-      this.logger.log(`Profitability analysis completed for organization: ${organizationId}`);
+      this.logger.log(
+        `Profitability analysis completed for organization: ${organizationId}`
+      );
 
       return {
         customerProfitability,
@@ -105,7 +121,10 @@ export class ProfitabilityAnalysisService {
         segmentAnalysis,
       };
     } catch (error) {
-      this.logger.error(`Failed to analyze profitability: ${error.message}`, error);
+      this.logger.error(
+        `Failed to analyze profitability: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -116,23 +135,25 @@ export class ProfitabilityAnalysisService {
   async analyzeProfitabilityTrends(
     organizationId: string,
     startDate: Date,
-    endDate: Date,
+    endDate: Date
   ): Promise<ProfitabilityTrends> {
     try {
-      this.logger.log(`Analyzing profitability trends for organization: ${organizationId}`);
+      this.logger.log(
+        `Analyzing profitability trends for organization: ${organizationId}`
+      );
 
       // Get customer trends
       const customerTrends = await this.getCustomerProfitabilityTrends(
         organizationId,
         startDate,
-        endDate,
+        endDate
       );
 
       // Get product trends
       const productTrends = await this.getProductProfitabilityTrends(
         organizationId,
         startDate,
-        endDate,
+        endDate
       );
 
       this.logger.log(`Profitability trends analysis completed`);
@@ -142,7 +163,10 @@ export class ProfitabilityAnalysisService {
         productTrends,
       };
     } catch (error) {
-      this.logger.error(`Failed to analyze profitability trends: ${error.message}`, error);
+      this.logger.error(
+        `Failed to analyze profitability trends: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -153,7 +177,7 @@ export class ProfitabilityAnalysisService {
   private async analyzeCustomerProfitability(
     organizationId: string,
     startDate: Date,
-    endDate: Date,
+    endDate: Date
   ): Promise<CustomerProfitability[]> {
     // Get customer revenue data
     const customerRevenue = await this.prisma.invoice.groupBy({
@@ -169,7 +193,11 @@ export class ProfitabilityAnalysisService {
     });
 
     // Get customer cost data (simplified - using expense allocation)
-    const customerCosts = await this.getCustomerCosts(organizationId, startDate, endDate);
+    const customerCosts = await this.getCustomerCosts(
+      organizationId,
+      startDate,
+      endDate
+    );
 
     // Calculate customer profitability
     const profitability: CustomerProfitability[] = [];
@@ -183,9 +211,11 @@ export class ProfitabilityAnalysisService {
       if (!customer) continue;
 
       const totalRevenue = revenue._sum.paidAmount?.toNumber() || 0;
-      const totalCosts = customerCosts.get(revenue.customerId) || totalRevenue * 0.3; // Default 30% cost ratio
+      const totalCosts =
+        customerCosts.get(revenue.customerId) || totalRevenue * 0.3; // Default 30% cost ratio
       const netProfit = totalRevenue - totalCosts;
-      const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+      const profitMargin =
+        totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
       const transactionCount = revenue._count.id;
       const averageOrderValue = revenue._avg.totalAmount?.toNumber() || 0;
 
@@ -193,14 +223,14 @@ export class ProfitabilityAnalysisService {
       const lifetimeValue = this.calculateCustomerLifetimeValue(
         totalRevenue,
         transactionCount,
-        profitMargin,
+        profitMargin
       );
 
       // Calculate risk score
       const riskScore = this.calculateCustomerRiskScore(
         profitMargin,
         transactionCount,
-        averageOrderValue,
+        averageOrderValue
       );
 
       profitability.push({
@@ -226,7 +256,7 @@ export class ProfitabilityAnalysisService {
   private async analyzeProductProfitability(
     organizationId: string,
     startDate: Date,
-    endDate: Date,
+    endDate: Date
   ): Promise<ProductProfitability[]> {
     // Get product revenue data from invoice items
     const productRevenue = await this.prisma.invoiceItem.groupBy({
@@ -255,7 +285,8 @@ export class ProfitabilityAnalysisService {
       const costPerUnit = averagePrice * 0.4; // Assume 40% cost ratio
       const totalCosts = costPerUnit * unitsSold;
       const netProfit = totalRevenue - totalCosts;
-      const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+      const profitMargin =
+        totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
 
       // Determine category (simplified)
       const category = this.categorizeProduct(product.description);
@@ -281,7 +312,7 @@ export class ProfitabilityAnalysisService {
    */
   private generateProfitabilityInsights(
     customerProfitability: CustomerProfitability[],
-    productProfitability: ProductProfitability[],
+    productProfitability: ProductProfitability[]
   ): ProfitabilityAnalysis['insights'] {
     // Top and bottom customers
     const topCustomers = customerProfitability.slice(0, 5);
@@ -301,25 +332,39 @@ export class ProfitabilityAnalysisService {
     const recommendations: string[] = [];
 
     if (bottomCustomers.length > 0) {
-      recommendations.push(`${bottomCustomers.length} customers are unprofitable - review pricing or service costs`);
+      recommendations.push(
+        `${bottomCustomers.length} customers are unprofitable - review pricing or service costs`
+      );
     }
 
     if (bottomProducts.length > 0) {
-      recommendations.push(`${bottomProducts.length} products are unprofitable - review pricing or discontinue`);
+      recommendations.push(
+        `${bottomProducts.length} products are unprofitable - review pricing or discontinue`
+      );
     }
 
-    const highRiskCustomers = customerProfitability.filter(c => c.riskScore > 70).length;
+    const highRiskCustomers = customerProfitability.filter(
+      c => c.riskScore > 70
+    ).length;
     if (highRiskCustomers > 0) {
-      recommendations.push(`${highRiskCustomers} customers are high-risk - implement retention strategies`);
+      recommendations.push(
+        `${highRiskCustomers} customers are high-risk - implement retention strategies`
+      );
     }
 
-    const lowMarginProducts = productProfitability.filter(p => p.profitMargin < 10).length;
+    const lowMarginProducts = productProfitability.filter(
+      p => p.profitMargin < 10
+    ).length;
     if (lowMarginProducts > 0) {
-      recommendations.push(`${lowMarginProducts} products have low margins - optimize pricing or costs`);
+      recommendations.push(
+        `${lowMarginProducts} products have low margins - optimize pricing or costs`
+      );
     }
 
     if (recommendations.length === 0) {
-      recommendations.push('Profitability analysis shows healthy margins across customers and products');
+      recommendations.push(
+        'Profitability analysis shows healthy margins across customers and products'
+      );
     }
 
     return {
@@ -337,7 +382,7 @@ export class ProfitabilityAnalysisService {
   private async performBreakEvenAnalysis(
     organizationId: string,
     startDate: Date,
-    endDate: Date,
+    endDate: Date
   ): Promise<ProfitabilityAnalysis['breakEvenAnalysis']> {
     // Get total revenue and expenses
     const [revenueData, expenseData] = await Promise.all([
@@ -365,15 +410,23 @@ export class ProfitabilityAnalysisService {
     // Simplified break-even calculation
     const fixedCosts = totalExpenses * 0.6; // Assume 60% fixed costs
     const variableCosts = totalExpenses * 0.4; // Assume 40% variable costs
-    const variableCostRatio = totalRevenue > 0 ? variableCosts / totalRevenue : 0.4;
+    const variableCostRatio =
+      totalRevenue > 0 ? variableCosts / totalRevenue : 0.4;
     const contributionMargin = 1 - variableCostRatio;
 
-    const breakEvenRevenue = contributionMargin > 0 ? fixedCosts / contributionMargin : 0;
-    const breakEvenUnits = breakEvenRevenue > 0 && totalRevenue > 0 ? 
-      breakEvenRevenue / (totalRevenue / this.getEstimatedUnitsSold(organizationId, startDate, endDate)) : 0;
+    const breakEvenRevenue =
+      contributionMargin > 0 ? fixedCosts / contributionMargin : 0;
+    const breakEvenUnits =
+      breakEvenRevenue > 0 && totalRevenue > 0
+        ? breakEvenRevenue /
+          (totalRevenue /
+            this.getEstimatedUnitsSold(organizationId, startDate, endDate))
+        : 0;
 
-    const marginOfSafety = totalRevenue > breakEvenRevenue ? 
-      ((totalRevenue - breakEvenRevenue) / totalRevenue) * 100 : 0;
+    const marginOfSafety =
+      totalRevenue > breakEvenRevenue
+        ? ((totalRevenue - breakEvenRevenue) / totalRevenue) * 100
+        : 0;
 
     return {
       fixedCosts,
@@ -389,7 +442,7 @@ export class ProfitabilityAnalysisService {
    * Perform customer segment analysis
    */
   private performSegmentAnalysis(
-    customerProfitability: CustomerProfitability[],
+    customerProfitability: CustomerProfitability[]
   ): ProfitabilityAnalysis['segmentAnalysis'] {
     const segments = {
       highValue: { count: 0, revenue: 0, profit: 0 },
@@ -427,7 +480,7 @@ export class ProfitabilityAnalysisService {
   private async getCustomerProfitabilityTrends(
     organizationId: string,
     startDate: Date,
-    endDate: Date,
+    endDate: Date
   ): Promise<ProfitabilityTrends['customerTrends']> {
     // Simplified implementation - can be enhanced with actual monthly data
     const customers = await this.prisma.customer.findMany({
@@ -440,8 +493,12 @@ export class ProfitabilityAnalysisService {
 
     for (const customer of customers) {
       // Get monthly data for customer (simplified)
-      const monthlyData = await this.getCustomerMonthlyData(customer.id, startDate, endDate);
-      
+      const monthlyData = await this.getCustomerMonthlyData(
+        customer.id,
+        startDate,
+        endDate
+      );
+
       const trend = this.calculateTrend(monthlyData.map(m => m.profit));
       const riskLevel = this.calculateRiskLevel(monthlyData);
 
@@ -463,7 +520,7 @@ export class ProfitabilityAnalysisService {
   private async getProductProfitabilityTrends(
     organizationId: string,
     startDate: Date,
-    endDate: Date,
+    endDate: Date
   ): Promise<ProfitabilityTrends['productTrends']> {
     // Simplified implementation
     const products = await this.prisma.invoiceItem.groupBy({
@@ -483,9 +540,9 @@ export class ProfitabilityAnalysisService {
         organizationId,
         product.description,
         startDate,
-        endDate,
+        endDate
       );
-      
+
       const trend = this.calculateTrend(monthlyData.map(m => m.profit));
       const lifecycle = this.determineProductLifecycle(monthlyData);
 
@@ -506,67 +563,70 @@ export class ProfitabilityAnalysisService {
   private async getCustomerCosts(
     organizationId: string,
     startDate: Date,
-    endDate: Date,
+    endDate: Date
   ): Promise<Map<string, number>> {
     // Simplified cost allocation - can be enhanced with actual cost tracking
     const costs = new Map<string, number>();
-    
+
     // For now, use a simplified approach
     // In a real implementation, you would track customer-specific costs
-    
+
     return costs;
   }
 
   private calculateCustomerLifetimeValue(
     revenue: number,
     transactionCount: number,
-    profitMargin: number,
+    profitMargin: number
   ): number {
     // Simplified LTV calculation
     const avgOrderValue = transactionCount > 0 ? revenue / transactionCount : 0;
     const avgProfit = avgOrderValue * (profitMargin / 100);
     const estimatedLifetimeTransactions = Math.max(12, transactionCount * 2);
-    
+
     return avgProfit * estimatedLifetimeTransactions;
   }
 
   private calculateCustomerRiskScore(
     profitMargin: number,
     transactionCount: number,
-    averageOrderValue: number,
+    averageOrderValue: number
   ): number {
     let riskScore = 0;
-    
+
     // Low profit margin increases risk
     if (profitMargin < 10) riskScore += 30;
     else if (profitMargin < 20) riskScore += 15;
-    
+
     // Low transaction count increases risk
     if (transactionCount < 3) riskScore += 25;
     else if (transactionCount < 6) riskScore += 10;
-    
+
     // Low order value increases risk
     if (averageOrderValue < 1000) riskScore += 20;
     else if (averageOrderValue < 5000) riskScore += 10;
-    
+
     return Math.min(100, riskScore);
   }
 
   private categorizeProduct(productName: string): string {
     // Simplified product categorization
     const name = productName.toLowerCase();
-    
-    if (name.includes('service') || name.includes('consultation')) return 'Services';
-    if (name.includes('software') || name.includes('digital')) return 'Digital Products';
-    if (name.includes('equipment') || name.includes('hardware')) return 'Equipment';
-    
+
+    if (name.includes('service') || name.includes('consultation'))
+      return 'Services';
+    if (name.includes('software') || name.includes('digital'))
+      return 'Digital Products';
+    if (name.includes('equipment') || name.includes('hardware'))
+      return 'Equipment';
+
     return 'General Products';
   }
 
   private async getEstimatedUnitsSold(
     organizationId: string,
     startDate: Date,
-    endDate: Date,
+    endDate: Date
   ): Promise<number> {
     const result = await this.prisma.invoiceItem.aggregate({
       where: {
@@ -577,15 +637,17 @@ export class ProfitabilityAnalysisService {
       },
       _sum: { quantity: true },
     });
-    
+
     return result._sum.quantity?.toNumber() || 1;
   }
 
   private async getCustomerMonthlyData(
     customerId: string,
     startDate: Date,
-    endDate: Date,
-  ): Promise<Array<{ month: string; revenue: number; profit: number; margin: number }>> {
+    endDate: Date
+  ): Promise<
+    Array<{ month: string; revenue: number; profit: number; margin: number }>
+  > {
     // Simplified monthly data - would need actual implementation
     return [];
   }
@@ -594,35 +656,51 @@ export class ProfitabilityAnalysisService {
     organizationId: string,
     productName: string,
     startDate: Date,
-    endDate: Date,
-  ): Promise<Array<{ month: string; revenue: number; profit: number; margin: number; unitsSold: number }>> {
+    endDate: Date
+  ): Promise<
+    Array<{
+      month: string;
+      revenue: number;
+      profit: number;
+      margin: number;
+      unitsSold: number;
+    }>
+  > {
     // Simplified monthly data - would need actual implementation
     return [];
   }
 
-  private calculateTrend(values: number[]): 'improving' | 'declining' | 'stable' {
+  private calculateTrend(
+    values: number[]
+  ): 'improving' | 'declining' | 'stable' {
     if (values.length < 2) return 'stable';
-    
+
     const firstHalf = values.slice(0, Math.floor(values.length / 2));
     const secondHalf = values.slice(Math.floor(values.length / 2));
-    
-    const firstAvg = firstHalf.reduce((sum, val) => sum + val, 0) / firstHalf.length;
-    const secondAvg = secondHalf.reduce((sum, val) => sum + val, 0) / secondHalf.length;
-    
+
+    const firstAvg =
+      firstHalf.reduce((sum, val) => sum + val, 0) / firstHalf.length;
+    const secondAvg =
+      secondHalf.reduce((sum, val) => sum + val, 0) / secondHalf.length;
+
     const change = (secondAvg - firstAvg) / firstAvg;
-    
+
     if (change > 0.1) return 'improving';
     if (change < -0.1) return 'declining';
     return 'stable';
   }
 
-  private calculateRiskLevel(monthlyData: Array<{ profit: number }>): 'low' | 'medium' | 'high' {
+  private calculateRiskLevel(
+    monthlyData: Array<{ profit: number }>
+  ): 'low' | 'medium' | 'high' {
     const profits = monthlyData.map(m => m.profit);
-    const avgProfit = profits.reduce((sum, val) => sum + val, 0) / profits.length;
+    const avgProfit =
+      profits.reduce((sum, val) => sum + val, 0) / profits.length;
     const negativeMonths = profits.filter(p => p < 0).length;
-    
+
     if (avgProfit < 0 || negativeMonths > profits.length * 0.5) return 'high';
-    if (avgProfit < 1000 || negativeMonths > profits.length * 0.3) return 'medium';
+    if (avgProfit < 1000 || negativeMonths > profits.length * 0.3)
+      return 'medium';
     return 'low';
   }
 
@@ -630,9 +708,9 @@ export class ProfitabilityAnalysisService {
     monthlyData: Array<{ unitsSold: number }>
   ): 'growth' | 'maturity' | 'decline' {
     if (monthlyData.length < 3) return 'maturity';
-    
+
     const trend = this.calculateTrend(monthlyData.map(m => m.unitsSold));
-    
+
     if (trend === 'improving') return 'growth';
     if (trend === 'declining') return 'decline';
     return 'maturity';

@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Prisma, Receipt, OcrStatus } from '@prisma/client';
+import { OcrStatus, Prisma, Receipt } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
 
 export interface ReceiptFilters {
@@ -46,7 +46,9 @@ export class ReceiptRepository {
         },
       });
 
-      this.logger.log(`Created receipt: ${receipt.id} for expense: ${receipt.expenseId}`);
+      this.logger.log(
+        `Created receipt: ${receipt.id} for expense: ${receipt.expenseId}`
+      );
       return receipt;
     } catch (error) {
       this.logger.error(`Failed to create receipt: ${error.message}`, error);
@@ -75,7 +77,10 @@ export class ReceiptRepository {
         },
       });
     } catch (error) {
-      this.logger.error(`Failed to find receipt by ID: ${error.message}`, error);
+      this.logger.error(
+        `Failed to find receipt by ID: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -90,7 +95,10 @@ export class ReceiptRepository {
         orderBy: { createdAt: 'desc' },
       });
     } catch (error) {
-      this.logger.error(`Failed to find receipts by expense ID: ${error.message}`, error);
+      this.logger.error(
+        `Failed to find receipts by expense ID: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -147,7 +155,7 @@ export class ReceiptRepository {
     filters: ReceiptFilters,
     page: number = 1,
     limit: number = 50,
-    orderBy: Prisma.ReceiptOrderByWithRelationInput = { createdAt: 'desc' },
+    orderBy: Prisma.ReceiptOrderByWithRelationInput = { createdAt: 'desc' }
   ): Promise<{
     receipts: Receipt[];
     total: number;
@@ -204,18 +212,23 @@ export class ReceiptRepository {
   /**
    * Get receipt statistics
    */
-  async getStats(organizationId: string, dateFrom?: Date, dateTo?: Date): Promise<ReceiptStats> {
+  async getStats(
+    organizationId: string,
+    dateFrom?: Date,
+    dateTo?: Date
+  ): Promise<ReceiptStats> {
     try {
       const where: Prisma.ReceiptWhereInput = {
         expense: {
           organizationId,
         },
-        ...(dateFrom && dateTo && {
-          createdAt: {
-            gte: dateFrom,
-            lte: dateTo,
-          },
-        }),
+        ...(dateFrom &&
+          dateTo && {
+            createdAt: {
+              gte: dateFrom,
+              lte: dateTo,
+            },
+          }),
       };
 
       const [
@@ -246,14 +259,20 @@ export class ReceiptRepository {
         totalReceipts,
         totalFileSize: Number(totalFileSizeResult._sum.fileSize || 0),
         averageFileSize: Number(totalFileSizeResult._avg.fileSize || 0),
-        receiptsByStatus: receiptsByStatus.reduce((acc, item) => {
-          acc[item.ocrStatus] = item._count._all;
-          return acc;
-        }, {} as Record<OcrStatus, number>),
-        receiptsByFileType: receiptsByFileType.reduce((acc, item) => {
-          acc[item.fileType] = item._count._all;
-          return acc;
-        }, {} as Record<string, number>),
+        receiptsByStatus: receiptsByStatus.reduce(
+          (acc, item) => {
+            acc[item.ocrStatus] = item._count._all;
+            return acc;
+          },
+          {} as Record<OcrStatus, number>
+        ),
+        receiptsByFileType: receiptsByFileType.reduce(
+          (acc, item) => {
+            acc[item.fileType] = item._count._all;
+            return acc;
+          },
+          {} as Record<string, number>
+        ),
       };
     } catch (error) {
       this.logger.error(`Failed to get receipt stats: ${error.message}`, error);
@@ -283,7 +302,10 @@ export class ReceiptRepository {
         },
       });
     } catch (error) {
-      this.logger.error(`Failed to find pending OCR receipts: ${error.message}`, error);
+      this.logger.error(
+        `Failed to find pending OCR receipts: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -295,7 +317,7 @@ export class ReceiptRepository {
     id: string,
     ocrStatus: OcrStatus,
     ocrText?: string,
-    ocrData?: any,
+    ocrData?: any
   ): Promise<Receipt> {
     try {
       const updateData: Prisma.ReceiptUpdateInput = {
@@ -311,7 +333,9 @@ export class ReceiptRepository {
         data: updateData,
       });
 
-      this.logger.log(`Updated OCR data for receipt: ${receipt.id}, status: ${ocrStatus}`);
+      this.logger.log(
+        `Updated OCR data for receipt: ${receipt.id}, status: ${ocrStatus}`
+      );
       return receipt;
     } catch (error) {
       this.logger.error(`Failed to update OCR data: ${error.message}`, error);
@@ -325,7 +349,7 @@ export class ReceiptRepository {
   async findByOrganization(
     organizationId: string,
     page: number = 1,
-    limit: number = 50,
+    limit: number = 50
   ): Promise<{
     receipts: Receipt[];
     total: number;
@@ -378,7 +402,10 @@ export class ReceiptRepository {
         totalPages: Math.ceil(total / limit),
       };
     } catch (error) {
-      this.logger.error(`Failed to find receipts by organization: ${error.message}`, error);
+      this.logger.error(
+        `Failed to find receipts by organization: ${error.message}`,
+        error
+      );
       throw error;
     }
   }

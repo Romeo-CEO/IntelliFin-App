@@ -1,23 +1,23 @@
 import {
+  Body,
   Controller,
+  Delete,
   Get,
+  HttpStatus,
+  Param,
   Post,
   Put,
-  Delete,
-  Body,
-  Param,
   Query,
-  HttpStatus,
   UseGuards,
   ValidationPipe,
 } from '@nestjs/common';
 import {
-  ApiTags,
+  ApiBearerAuth,
   ApiOperation,
-  ApiResponse,
   ApiParam,
   ApiQuery,
-  ApiBearerAuth,
+  ApiResponse,
+  ApiTags,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -25,10 +25,14 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { ExpenseService } from './expense.service';
-import { CreateExpenseDto, UpdateExpenseDto, ExpenseQueryDto } from './dto/expense.dto';
 import {
-  ExpenseResponseDto,
+  CreateExpenseDto,
+  ExpenseQueryDto,
+  UpdateExpenseDto,
+} from './dto/expense.dto';
+import {
   ExpenseListResponseDto,
+  ExpenseResponseDto,
   ExpenseStatsResponseDto,
 } from './dto/expense-response.dto';
 
@@ -43,7 +47,8 @@ export class ExpenseController {
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 requests per minute
   @ApiOperation({
     summary: 'Create expense',
-    description: 'Create a new expense record with proper categorization and validation',
+    description:
+      'Create a new expense record with proper categorization and validation',
   })
   @ApiResponse({
     status: HttpStatus.CREATED,
@@ -60,12 +65,12 @@ export class ExpenseController {
   })
   async createExpense(
     @CurrentUser() user: AuthenticatedUser,
-    @Body(ValidationPipe) createExpenseDto: CreateExpenseDto,
+    @Body(ValidationPipe) createExpenseDto: CreateExpenseDto
   ) {
     return await this.expenseService.createExpense(
       user.organizationId,
       user.id,
-      createExpenseDto,
+      createExpenseDto
     );
   }
 
@@ -83,7 +88,7 @@ export class ExpenseController {
   })
   async getExpenses(
     @CurrentUser() user: AuthenticatedUser,
-    @Query(ValidationPipe) query: ExpenseQueryDto,
+    @Query(ValidationPipe) query: ExpenseQueryDto
   ) {
     return await this.expenseService.getExpenses(user.organizationId, query);
   }
@@ -114,9 +119,13 @@ export class ExpenseController {
   async getExpenseStats(
     @CurrentUser() user: AuthenticatedUser,
     @Query('dateFrom') dateFrom?: string,
-    @Query('dateTo') dateTo?: string,
+    @Query('dateTo') dateTo?: string
   ) {
-    return await this.expenseService.getExpenseStats(user.organizationId, dateFrom, dateTo);
+    return await this.expenseService.getExpenseStats(
+      user.organizationId,
+      dateFrom,
+      dateTo
+    );
   }
 
   @Get(':id')
@@ -141,7 +150,7 @@ export class ExpenseController {
   })
   async getExpenseById(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id') id: string,
+    @Param('id') id: string
   ) {
     return await this.expenseService.getExpenseById(id, user.organizationId);
   }
@@ -173,13 +182,13 @@ export class ExpenseController {
   async updateExpense(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
-    @Body(ValidationPipe) updateExpenseDto: UpdateExpenseDto,
+    @Body(ValidationPipe) updateExpenseDto: UpdateExpenseDto
   ) {
     return await this.expenseService.updateExpense(
       id,
       user.organizationId,
       user.id,
-      updateExpenseDto,
+      updateExpenseDto
     );
   }
 
@@ -204,7 +213,7 @@ export class ExpenseController {
   })
   async deleteExpense(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id') id: string,
+    @Param('id') id: string
   ) {
     await this.expenseService.deleteExpense(id, user.organizationId);
   }
@@ -235,9 +244,13 @@ export class ExpenseController {
   })
   async approveExpense(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id') id: string,
+    @Param('id') id: string
   ) {
-    return await this.expenseService.approveExpense(id, user.organizationId, user.id);
+    return await this.expenseService.approveExpense(
+      id,
+      user.organizationId,
+      user.id
+    );
   }
 
   @Put(':id/reject')
@@ -267,8 +280,13 @@ export class ExpenseController {
   async rejectExpense(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
-    @Body('notes') notes?: string,
+    @Body('notes') notes?: string
   ) {
-    return await this.expenseService.rejectExpense(id, user.organizationId, user.id, notes);
+    return await this.expenseService.rejectExpense(
+      id,
+      user.organizationId,
+      user.id,
+      notes
+    );
   }
 }

@@ -117,7 +117,10 @@ describe('Dashboard E2E Tests', () => {
         .query({ includeForecasts: 'true', includeAnomalies: 'true' })
         .expect(200);
 
-      expect(response.body).toHaveProperty('organizationId', mockUser.organizationId);
+      expect(response.body).toHaveProperty(
+        'organizationId',
+        mockUser.organizationId
+      );
       expect(response.body).toHaveProperty('forecasts');
       expect(response.body).toHaveProperty('anomalies');
       expect(response.body).toHaveProperty('trends');
@@ -201,7 +204,7 @@ describe('Dashboard E2E Tests', () => {
       );
 
       const responses = await Promise.all(requests);
-      
+
       // Some requests should be rate limited (429 status)
       const rateLimitedResponses = responses.filter(res => res.status === 429);
       expect(rateLimitedResponses.length).toBeGreaterThan(0);
@@ -215,7 +218,7 @@ describe('Dashboard E2E Tests', () => {
       );
 
       const responses = await Promise.all(requests);
-      
+
       // Some requests should be rate limited
       const rateLimitedResponses = responses.filter(res => res.status === 429);
       expect(rateLimitedResponses.length).toBeGreaterThan(0);
@@ -305,7 +308,7 @@ describe('Dashboard E2E Tests', () => {
   describe('Performance Requirements', () => {
     it('should respond to dashboard overview within 3 seconds', async () => {
       const startTime = Date.now();
-      
+
       await request(app.getHttpServer())
         .get('/dashboard-data/overview')
         .set('Authorization', `Bearer ${authToken}`)
@@ -317,7 +320,7 @@ describe('Dashboard E2E Tests', () => {
 
     it('should respond to KPI metrics within 1 second', async () => {
       const startTime = Date.now();
-      
+
       await request(app.getHttpServer())
         .get('/dashboard-data/kpis')
         .set('Authorization', `Bearer ${authToken}`)
@@ -358,10 +361,10 @@ describe('Dashboard E2E Tests', () => {
       // Should include Zambian mobile money providers
       const providers = response.body.byProvider || [];
       const providerNames = providers.map((p: any) => p.provider);
-      
+
       // At least one Zambian provider should be present
       const zambianProviders = ['airtel', 'mtn', 'zamtel'];
-      const hasZambianProvider = zambianProviders.some(provider => 
+      const hasZambianProvider = zambianProviders.some(provider =>
         providerNames.includes(provider)
       );
       expect(hasZambianProvider).toBe(true);

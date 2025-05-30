@@ -1,16 +1,16 @@
-import { 
-  Injectable, 
-  ConflictException, 
-  NotFoundException,
+import {
   BadRequestException,
-  Logger 
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
 } from '@nestjs/common';
 import { Organization } from '@prisma/client';
 import { OrganizationRepository } from './organization.repository';
-import { 
-  CreateOrganizationDto, 
+import {
+  CreateOrganizationDto,
+  OrganizationResponseDto,
   UpdateOrganizationDto,
-  OrganizationResponseDto 
 } from './dto/organization.dto';
 import { ZraTinValidator } from './validators/zra-tin.validator';
 
@@ -19,10 +19,12 @@ export class OrganizationService {
   private readonly logger = new Logger(OrganizationService.name);
 
   constructor(
-    private readonly organizationRepository: OrganizationRepository,
+    private readonly organizationRepository: OrganizationRepository
   ) {}
 
-  async create(createOrganizationDto: CreateOrganizationDto): Promise<OrganizationResponseDto> {
+  async create(
+    createOrganizationDto: CreateOrganizationDto
+  ): Promise<OrganizationResponseDto> {
     this.logger.log(`Creating organization: ${createOrganizationDto.name}`);
 
     // Validate ZRA TIN format
@@ -31,9 +33,13 @@ export class OrganizationService {
     }
 
     // Check if ZRA TIN already exists
-    const existingOrg = await this.organizationRepository.findByZraTin(createOrganizationDto.zraTin);
+    const existingOrg = await this.organizationRepository.findByZraTin(
+      createOrganizationDto.zraTin
+    );
     if (existingOrg) {
-      throw new ConflictException('An organization with this ZRA TIN already exists');
+      throw new ConflictException(
+        'An organization with this ZRA TIN already exists'
+      );
     }
 
     try {
@@ -60,7 +66,10 @@ export class OrganizationService {
       this.logger.log(`Organization created successfully: ${organization.id}`);
       return this.mapToResponseDto(organization);
     } catch (error) {
-      this.logger.error(`Failed to create organization: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to create organization: ${error.message}`,
+        error.stack
+      );
       throw new BadRequestException('Failed to create organization');
     }
   }
@@ -87,7 +96,10 @@ export class OrganizationService {
     return this.mapToResponseDto(organization);
   }
 
-  async update(id: string, updateOrganizationDto: UpdateOrganizationDto): Promise<OrganizationResponseDto> {
+  async update(
+    id: string,
+    updateOrganizationDto: UpdateOrganizationDto
+  ): Promise<OrganizationResponseDto> {
     this.logger.log(`Updating organization: ${id}`);
 
     // Check if organization exists
@@ -111,7 +123,10 @@ export class OrganizationService {
       this.logger.log(`Organization updated successfully: ${organization.id}`);
       return this.mapToResponseDto(organization);
     } catch (error) {
-      this.logger.error(`Failed to update organization: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to update organization: ${error.message}`,
+        error.stack
+      );
       throw new BadRequestException('Failed to update organization');
     }
   }
@@ -128,19 +143,28 @@ export class OrganizationService {
       await this.organizationRepository.delete(id);
       this.logger.log(`Organization deleted successfully: ${id}`);
     } catch (error) {
-      this.logger.error(`Failed to delete organization: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to delete organization: ${error.message}`,
+        error.stack
+      );
       throw new BadRequestException('Failed to delete organization');
     }
   }
 
-  async validateZraTinAvailability(zraTin: string, excludeId?: string): Promise<boolean> {
+  async validateZraTinAvailability(
+    zraTin: string,
+    excludeId?: string
+  ): Promise<boolean> {
     this.logger.log(`Validating ZRA TIN availability: ${zraTin}`);
 
     if (!this.validateZraTin(zraTin)) {
       return false;
     }
 
-    const exists = await this.organizationRepository.existsByZraTin(zraTin, excludeId);
+    const exists = await this.organizationRepository.existsByZraTin(
+      zraTin,
+      excludeId
+    );
     return !exists;
   }
 
@@ -149,7 +173,9 @@ export class OrganizationService {
     return validator.validate(zraTin, {} as any);
   }
 
-  private mapToResponseDto(organization: Organization): OrganizationResponseDto {
+  private mapToResponseDto(
+    organization: Organization
+  ): OrganizationResponseDto {
     return {
       id: organization.id,
       name: organization.name,
@@ -176,7 +202,10 @@ export class OrganizationService {
     return [
       { value: 'SOLE_PROPRIETORSHIP', label: 'Sole Proprietorship' },
       { value: 'PARTNERSHIP', label: 'Partnership' },
-      { value: 'LIMITED_LIABILITY_COMPANY', label: 'Limited Liability Company' },
+      {
+        value: 'LIMITED_LIABILITY_COMPANY',
+        label: 'Limited Liability Company',
+      },
       { value: 'PUBLIC_LIMITED_COMPANY', label: 'Public Limited Company' },
       { value: 'COOPERATIVE', label: 'Cooperative' },
       { value: 'NGO', label: 'Non-Governmental Organization' },
@@ -198,13 +227,25 @@ export class OrganizationService {
       { value: 'WHOLESALE_RETAIL', label: 'Wholesale and Retail Trade' },
       { value: 'TRANSPORT_LOGISTICS', label: 'Transportation and Storage' },
       { value: 'ACCOMMODATION_FOOD', label: 'Accommodation and Food Service' },
-      { value: 'INFORMATION_COMMUNICATION', label: 'Information and Communication' },
-      { value: 'FINANCIAL_INSURANCE', label: 'Financial and Insurance Activities' },
+      {
+        value: 'INFORMATION_COMMUNICATION',
+        label: 'Information and Communication',
+      },
+      {
+        value: 'FINANCIAL_INSURANCE',
+        label: 'Financial and Insurance Activities',
+      },
       { value: 'REAL_ESTATE', label: 'Real Estate Activities' },
-      { value: 'PROFESSIONAL_SERVICES', label: 'Professional, Scientific and Technical Activities' },
+      {
+        value: 'PROFESSIONAL_SERVICES',
+        label: 'Professional, Scientific and Technical Activities',
+      },
       { value: 'EDUCATION', label: 'Education' },
       { value: 'HEALTH_SOCIAL', label: 'Human Health and Social Work' },
-      { value: 'ARTS_ENTERTAINMENT', label: 'Arts, Entertainment and Recreation' },
+      {
+        value: 'ARTS_ENTERTAINMENT',
+        label: 'Arts, Entertainment and Recreation',
+      },
       { value: 'OTHER_SERVICES', label: 'Other Service Activities' },
     ];
   }

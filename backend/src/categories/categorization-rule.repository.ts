@@ -1,10 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
-import { 
-  CategorizationRule, 
-  CategorizationRuleType, 
+import {
   CategorizationConfidence,
-  Prisma 
+  CategorizationRule,
+  CategorizationRuleType,
+  Prisma,
 } from '@prisma/client';
 
 export interface CreateRuleData {
@@ -107,8 +107,14 @@ export class CategorizationRuleRepository {
         },
       });
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to create categorization rule';
-      this.logger.error(`Failed to create categorization rule: ${errorMessage}`, error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Failed to create categorization rule';
+      this.logger.error(
+        `Failed to create categorization rule: ${errorMessage}`,
+        error
+      );
       throw error;
     }
   }
@@ -116,7 +122,10 @@ export class CategorizationRuleRepository {
   /**
    * Find rule by ID
    */
-  async findById(id: string, organizationId: string): Promise<CategorizationRule | null> {
+  async findById(
+    id: string,
+    organizationId: string
+  ): Promise<CategorizationRule | null> {
     try {
       return await this.prisma.categorizationRule.findFirst({
         where: {
@@ -135,7 +144,8 @@ export class CategorizationRuleRepository {
         },
       });
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to find rule by ID';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to find rule by ID';
       this.logger.error(`Failed to find rule by ID: ${errorMessage}`, error);
       throw error;
     }
@@ -146,7 +156,9 @@ export class CategorizationRuleRepository {
    */
   async findMany(
     filters: RuleFilters,
-    orderBy: Prisma.CategorizationRuleOrderByWithRelationInput = { priority: 'desc' }
+    orderBy: Prisma.CategorizationRuleOrderByWithRelationInput = {
+      priority: 'desc',
+    }
   ): Promise<CategorizationRule[]> {
     try {
       const where = this.buildWhereClause(filters);
@@ -203,7 +215,10 @@ export class CategorizationRuleRepository {
       });
     } catch (error: unknown) {
       if (error instanceof Error) {
-        this.logger.error(`Failed to get active rules: ${error.message}`, error);
+        this.logger.error(
+          `Failed to get active rules: ${error.message}`,
+          error
+        );
       } else {
         this.logger.error('Failed to get active rules: Unknown error', error);
       }
@@ -250,21 +265,27 @@ export class CategorizationRuleRepository {
 
       for (const rule of rules) {
         // Get suggestion statistics using the relation
-        const suggestions = await this.prisma.transactionCategorySuggestion.findMany({
-          where: {
-            ruleId: rule.id,
-            createdAt: {
-              gte: thirtyDaysAgo,
+        const suggestions =
+          await this.prisma.transactionCategorySuggestion.findMany({
+            where: {
+              ruleId: rule.id,
+              createdAt: {
+                gte: thirtyDaysAgo,
+              },
             },
-          },
-          select: {
-            isAccepted: true,
-          },
-        });
+            select: {
+              isAccepted: true,
+            },
+          });
 
         const totalSuggestions = suggestions.length;
-        const acceptedSuggestions = suggestions.filter(s => s.isAccepted === true).length;
-        const accuracy = totalSuggestions > 0 ? (acceptedSuggestions / totalSuggestions) * 100 : 0;
+        const acceptedSuggestions = suggestions.filter(
+          s => s.isAccepted === true
+        ).length;
+        const accuracy =
+          totalSuggestions > 0
+            ? (acceptedSuggestions / totalSuggestions) * 100
+            : 0;
 
         const ruleWithStats: RuleWithStats = {
           id: rule.id,
@@ -287,8 +308,8 @@ export class CategorizationRuleRepository {
             id: rule.category?.id || '',
             name: rule.category?.name || 'Uncategorized',
             type: rule.category?.type || 'EXPENSE',
-            color: rule.category?.color
-          }
+            color: rule.category?.color,
+          },
         };
 
         rulesWithStats.push(ruleWithStats);
@@ -297,9 +318,15 @@ export class CategorizationRuleRepository {
       return rulesWithStats;
     } catch (error: unknown) {
       if (error instanceof Error) {
-        this.logger.error(`Failed to get rules with stats: ${error.message}`, error);
+        this.logger.error(
+          `Failed to get rules with stats: ${error.message}`,
+          error
+        );
       } else {
-        this.logger.error('Failed to get rules with stats: Unknown error', error);
+        this.logger.error(
+          'Failed to get rules with stats: Unknown error',
+          error
+        );
       }
       throw error;
     }
@@ -308,7 +335,11 @@ export class CategorizationRuleRepository {
   /**
    * Update rule
    */
-  async update(id: string, organizationId: string, data: UpdateRuleData): Promise<CategorizationRule> {
+  async update(
+    id: string,
+    organizationId: string,
+    data: UpdateRuleData
+  ): Promise<CategorizationRule> {
     try {
       return await this.prisma.categorizationRule.update({
         where: {
@@ -377,7 +408,10 @@ export class CategorizationRuleRepository {
       });
     } catch (error: unknown) {
       if (error instanceof Error) {
-        this.logger.error(`Failed to update match stats: ${error.message}`, error);
+        this.logger.error(
+          `Failed to update match stats: ${error.message}`,
+          error
+        );
       } else {
         this.logger.error('Failed to update match stats: Unknown error', error);
       }
@@ -409,8 +443,14 @@ export class CategorizationRuleRepository {
       const count = await this.prisma.categorizationRule.count({ where });
       return count > 0;
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to check rule name existence';
-      this.logger.error(`Failed to check rule name existence: ${errorMessage}`, error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Failed to check rule name existence';
+      this.logger.error(
+        `Failed to check rule name existence: ${errorMessage}`,
+        error
+      );
       throw error;
     }
   }
@@ -418,7 +458,10 @@ export class CategorizationRuleRepository {
   /**
    * Get rules by category
    */
-  async getRulesByCategory(categoryId: string, organizationId: string): Promise<CategorizationRule[]> {
+  async getRulesByCategory(
+    categoryId: string,
+    organizationId: string
+  ): Promise<CategorizationRule[]> {
     try {
       return await this.prisma.categorizationRule.findMany({
         where: {
@@ -439,8 +482,14 @@ export class CategorizationRuleRepository {
         },
       });
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to get rules by category';
-      this.logger.error(`Failed to get rules by category: ${errorMessage}`, error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Failed to get rules by category';
+      this.logger.error(
+        `Failed to get rules by category: ${errorMessage}`,
+        error
+      );
       throw error;
     }
   }
@@ -448,7 +497,10 @@ export class CategorizationRuleRepository {
   /**
    * Create default rules for common patterns
    */
-  async createDefaultRules(organizationId: string, createdBy: string): Promise<CategorizationRule[]> {
+  async createDefaultRules(
+    organizationId: string,
+    createdBy: string
+  ): Promise<CategorizationRule[]> {
     try {
       // Get existing categories
       const categories = await this.prisma.category.findMany({
@@ -465,7 +517,13 @@ export class CategorizationRuleRepository {
           categoryName: 'Bank Fees',
           type: CategorizationRuleType.KEYWORD_MATCH,
           conditions: {
-            keywords: ['transaction charge', 'bank fee', 'service charge', 'atm fee', 'withdrawal fee'],
+            keywords: [
+              'transaction charge',
+              'bank fee',
+              'service charge',
+              'atm fee',
+              'withdrawal fee',
+            ],
             excludeKeywords: [],
           },
           confidence: CategorizationConfidence.HIGH,
@@ -477,7 +535,12 @@ export class CategorizationRuleRepository {
           categoryName: 'Bank Fees',
           type: CategorizationRuleType.KEYWORD_MATCH,
           conditions: {
-            keywords: ['airtel money', 'mtn money', 'zamtel kwacha', 'transaction fee'],
+            keywords: [
+              'airtel money',
+              'mtn money',
+              'zamtel kwacha',
+              'transaction fee',
+            ],
             excludeKeywords: [],
           },
           confidence: CategorizationConfidence.HIGH,
@@ -489,7 +552,12 @@ export class CategorizationRuleRepository {
           categoryName: 'Utilities',
           type: CategorizationRuleType.KEYWORD_MATCH,
           conditions: {
-            keywords: ['zesco', 'electricity', 'power bill', 'prepaid electricity'],
+            keywords: [
+              'zesco',
+              'electricity',
+              'power bill',
+              'prepaid electricity',
+            ],
             excludeKeywords: [],
           },
           confidence: CategorizationConfidence.HIGH,
@@ -501,7 +569,15 @@ export class CategorizationRuleRepository {
           categoryName: 'Travel',
           type: CategorizationRuleType.KEYWORD_MATCH,
           conditions: {
-            keywords: ['fuel', 'petrol', 'diesel', 'gas station', 'total', 'shell', 'puma'],
+            keywords: [
+              'fuel',
+              'petrol',
+              'diesel',
+              'gas station',
+              'total',
+              'shell',
+              'puma',
+            ],
             excludeKeywords: [],
           },
           confidence: CategorizationConfidence.MEDIUM,
@@ -513,7 +589,13 @@ export class CategorizationRuleRepository {
           categoryName: 'Office Supplies',
           type: CategorizationRuleType.KEYWORD_MATCH,
           conditions: {
-            keywords: ['stationery', 'office supplies', 'paper', 'pens', 'printing'],
+            keywords: [
+              'stationery',
+              'office supplies',
+              'paper',
+              'pens',
+              'printing',
+            ],
             excludeKeywords: [],
           },
           confidence: CategorizationConfidence.MEDIUM,
@@ -545,8 +627,14 @@ export class CategorizationRuleRepository {
 
       return createdRules;
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to create default rules';
-      this.logger.error(`Failed to create default rules: ${errorMessage}`, error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Failed to create default rules';
+      this.logger.error(
+        `Failed to create default rules: ${errorMessage}`,
+        error
+      );
       throw error;
     }
   }
@@ -554,7 +642,9 @@ export class CategorizationRuleRepository {
   /**
    * Build where clause for rule queries
    */
-  private buildWhereClause(filters: RuleFilters): Prisma.CategorizationRuleWhereInput {
+  private buildWhereClause(
+    filters: RuleFilters
+  ): Prisma.CategorizationRuleWhereInput {
     const where: Prisma.CategorizationRuleWhereInput = {
       organizationId: filters.organizationId,
     };

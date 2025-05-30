@@ -2,9 +2,11 @@ import { StatisticalForecastingEngine } from './engines/statistical/statistical-
 import { StatisticalAnomalyEngine } from './engines/statistical/statistical-anomaly.engine';
 import { AnalyticsEngineFactory } from './engines/analytics-engine.factory';
 import {
-  TimeSeriesData,
+  AnalyticsData,
   ForecastingOptions,
-  AnalyticsData
+  IAnomalyDetectionEngine,
+  IForecastingEngine,
+  TimeSeriesData,
 } from './interfaces/analytics-engine.interface';
 
 /**
@@ -16,14 +18,21 @@ import {
  * - Scalability with various data sizes
  */
 export class AnalyticsPerformanceBenchmark {
-  private forecastingEngine: StatisticalForecastingEngine;
-  private anomalyEngine: StatisticalAnomalyEngine;
+  private forecastingEngine: IForecastingEngine;
+  private anomalyEngine: IAnomalyDetectionEngine;
   private engineFactory: AnalyticsEngineFactory;
 
-  constructor() {
-    this.forecastingEngine = new StatisticalForecastingEngine();
-    this.anomalyEngine = new StatisticalAnomalyEngine();
-    this.engineFactory = new AnalyticsEngineFactory();
+  constructor(private readonly factory: AnalyticsEngineFactory) {
+    this.engineFactory = factory;
+    this.forecastingEngine = this.engineFactory.getForecastingEngine(
+      1000,
+      'COMPLEX',
+      false
+    );
+    this.anomalyEngine = this.engineFactory.getAnomalyDetectionEngine(
+      { size: 1000, dimensions: 10, hasSeasonality: true },
+      false
+    );
   }
 
   /**
@@ -35,13 +44,19 @@ export class AnalyticsPerformanceBenchmark {
     engineFactory: any;
     summary: any;
   }> {
-    console.log('🚀 Starting IntelliFin Enhanced Analytics Performance Benchmarks...\n');
+    console.log(
+      '🚀 Starting IntelliFin Enhanced Analytics Performance Benchmarks...\n'
+    );
 
     const forecastingResults = await this.benchmarkForecasting();
     const anomalyResults = await this.benchmarkAnomalyDetection();
     const factoryResults = await this.benchmarkEngineFactory();
 
-    const summary = this.generateSummary(forecastingResults, anomalyResults, factoryResults);
+    const summary = this.generateSummary(
+      forecastingResults,
+      anomalyResults,
+      factoryResults
+    );
 
     console.log('\n✅ Benchmark Results Summary:');
     console.log(JSON.stringify(summary, null, 2));
@@ -50,7 +65,7 @@ export class AnalyticsPerformanceBenchmark {
       forecasting: forecastingResults,
       anomalyDetection: anomalyResults,
       engineFactory: factoryResults,
-      summary
+      summary,
     };
   }
 
@@ -64,7 +79,7 @@ export class AnalyticsPerformanceBenchmark {
       smallDataset: await this.testForecastingPerformance(50),
       mediumDataset: await this.testForecastingPerformance(200),
       largeDataset: await this.testForecastingPerformance(1000),
-      concurrentRequests: await this.testConcurrentForecasting()
+      concurrentRequests: await this.testConcurrentForecasting(),
     };
 
     console.log('   ✓ Forecasting benchmarks completed');
@@ -81,7 +96,7 @@ export class AnalyticsPerformanceBenchmark {
       smallDataset: await this.testAnomalyDetectionPerformance(50),
       mediumDataset: await this.testAnomalyDetectionPerformance(200),
       largeDataset: await this.testAnomalyDetectionPerformance(1000),
-      concurrentRequests: await this.testConcurrentAnomalyDetection()
+      concurrentRequests: await this.testConcurrentAnomalyDetection(),
     };
 
     console.log('   ✓ Anomaly detection benchmarks completed');
@@ -97,7 +112,7 @@ export class AnalyticsPerformanceBenchmark {
     const results = {
       engineCreation: await this.testEngineCreationPerformance(),
       healthCheck: await this.testHealthCheckPerformance(),
-      recommendations: await this.testRecommendationPerformance()
+      recommendations: await this.testRecommendationPerformance(),
     };
 
     console.log('   ✓ Engine factory benchmarks completed');
@@ -114,13 +129,16 @@ export class AnalyticsPerformanceBenchmark {
       periods: 6,
       confidence: 0.95,
       includeSeasonality: true,
-      zambianContext: true
+      zambianContext: true,
     };
 
     const startTime = Date.now();
 
     try {
-      const result = await this.forecastingEngine.generateForecast(timeSeriesData, options);
+      const result = await this.forecastingEngine.generateForecast(
+        timeSeriesData,
+        options
+      );
       const endTime = Date.now();
       const executionTime = endTime - startTime;
 
@@ -132,13 +150,13 @@ export class AnalyticsPerformanceBenchmark {
         insightsCount: result.insights.length,
         recommendationsCount: result.recommendations.length,
         meetsPerformanceTarget: executionTime < 2000,
-        meetsAccuracyTarget: result.accuracy.confidence > 0.8
+        meetsAccuracyTarget: result.accuracy.confidence > 0.8,
       };
     } catch (error) {
       return {
         dataSize,
         error: error instanceof Error ? error.message : 'Unknown error',
-        executionTime: Date.now() - startTime
+        executionTime: Date.now() - startTime,
       };
     }
   }
@@ -146,13 +164,18 @@ export class AnalyticsPerformanceBenchmark {
   /**
    * Test anomaly detection performance with different data sizes
    */
-  private async testAnomalyDetectionPerformance(dataSize: number): Promise<any> {
+  private async testAnomalyDetectionPerformance(
+    dataSize: number
+  ): Promise<any> {
     const analyticsData = this.generateAnalyticsData(dataSize);
 
     const startTime = Date.now();
 
     try {
-      const result = await this.anomalyEngine.detectAnomalies(analyticsData, 'MEDIUM');
+      const result = await this.anomalyEngine.detectAnomalies(
+        analyticsData,
+        'MEDIUM'
+      );
       const endTime = Date.now();
       const executionTime = endTime - startTime;
 
@@ -162,13 +185,13 @@ export class AnalyticsPerformanceBenchmark {
         anomaliesDetected: result.anomalies.length,
         patternsDetected: result.patterns.length,
         recommendationsCount: result.recommendations.length,
-        meetsPerformanceTarget: executionTime < 2000
+        meetsPerformanceTarget: executionTime < 2000,
       };
     } catch (error) {
       return {
         dataSize,
         error: error instanceof Error ? error.message : 'Unknown error',
-        executionTime: Date.now() - startTime
+        executionTime: Date.now() - startTime,
       };
     }
   }
@@ -183,7 +206,7 @@ export class AnalyticsPerformanceBenchmark {
       periods: 6,
       confidence: 0.95,
       includeSeasonality: false,
-      zambianContext: false
+      zambianContext: false,
     };
 
     const concurrentRequests = 5;
@@ -203,13 +226,13 @@ export class AnalyticsPerformanceBenchmark {
         totalExecutionTime,
         averageExecutionTime: totalExecutionTime / concurrentRequests,
         successfulRequests: results.length,
-        meetsPerformanceTarget: totalExecutionTime < 5000
+        meetsPerformanceTarget: totalExecutionTime < 5000,
       };
     } catch (error) {
       return {
         concurrentRequests,
         error: error instanceof Error ? error.message : 'Unknown error',
-        totalExecutionTime: Date.now() - startTime
+        totalExecutionTime: Date.now() - startTime,
       };
     }
   }
@@ -236,13 +259,13 @@ export class AnalyticsPerformanceBenchmark {
         totalExecutionTime,
         averageExecutionTime: totalExecutionTime / concurrentRequests,
         successfulRequests: results.length,
-        meetsPerformanceTarget: totalExecutionTime < 3000
+        meetsPerformanceTarget: totalExecutionTime < 3000,
       };
     } catch (error) {
       return {
         concurrentRequests,
         error: error instanceof Error ? error.message : 'Unknown error',
-        totalExecutionTime: Date.now() - startTime
+        totalExecutionTime: Date.now() - startTime,
       };
     }
   }
@@ -256,12 +279,23 @@ export class AnalyticsPerformanceBenchmark {
     try {
       const engines = [];
       for (let i = 0; i < 10; i++) {
-        engines.push(this.engineFactory.getForecastingEngine(100 + i * 10, 'MODERATE', false));
-        engines.push(this.engineFactory.getAnomalyDetectionEngine({
-          size: 100 + i * 10,
-          dimensions: 1,
-          hasSeasonality: false
-        }, false));
+        engines.push(
+          this.engineFactory.getForecastingEngine(
+            100 + i * 10,
+            'MODERATE',
+            false
+          )
+        );
+        engines.push(
+          this.engineFactory.getAnomalyDetectionEngine(
+            {
+              size: 100 + i * 10,
+              dimensions: 1,
+              hasSeasonality: false,
+            },
+            false
+          )
+        );
       }
 
       const endTime = Date.now();
@@ -271,12 +305,12 @@ export class AnalyticsPerformanceBenchmark {
         enginesCreated: engines.length,
         executionTime,
         averageCreationTime: executionTime / engines.length,
-        meetsPerformanceTarget: executionTime < 100
+        meetsPerformanceTarget: executionTime < 100,
       };
     } catch (error) {
       return {
         error: error instanceof Error ? error.message : 'Unknown error',
-        executionTime: Date.now() - startTime
+        executionTime: Date.now() - startTime,
       };
     }
   }
@@ -295,12 +329,12 @@ export class AnalyticsPerformanceBenchmark {
       return {
         executionTime,
         healthStatus: health,
-        meetsPerformanceTarget: executionTime < 100
+        meetsPerformanceTarget: executionTime < 100,
       };
     } catch (error) {
       return {
         error: error instanceof Error ? error.message : 'Unknown error',
-        executionTime: Date.now() - startTime
+        executionTime: Date.now() - startTime,
       };
     }
   }
@@ -310,9 +344,24 @@ export class AnalyticsPerformanceBenchmark {
    */
   private async testRecommendationPerformance(): Promise<any> {
     const testCases = [
-      { size: 50, complexity: 0.3, accuracy_requirements: 0.8, performance_requirements: 0.9 },
-      { size: 200, complexity: 0.6, accuracy_requirements: 0.85, performance_requirements: 0.8 },
-      { size: 1000, complexity: 0.9, accuracy_requirements: 0.95, performance_requirements: 0.7 }
+      {
+        size: 50,
+        complexity: 0.3,
+        accuracy_requirements: 0.8,
+        performance_requirements: 0.9,
+      },
+      {
+        size: 200,
+        complexity: 0.6,
+        accuracy_requirements: 0.85,
+        performance_requirements: 0.8,
+      },
+      {
+        size: 1000,
+        complexity: 0.9,
+        accuracy_requirements: 0.95,
+        performance_requirements: 0.7,
+      },
     ];
 
     const startTime = Date.now();
@@ -329,12 +378,12 @@ export class AnalyticsPerformanceBenchmark {
         testCases: testCases.length,
         executionTime,
         recommendations,
-        meetsPerformanceTarget: executionTime < 50
+        meetsPerformanceTarget: executionTime < 50,
       };
     } catch (error) {
       return {
         error: error instanceof Error ? error.message : 'Unknown error',
-        executionTime: Date.now() - startTime
+        executionTime: Date.now() - startTime,
       };
     }
   }
@@ -364,15 +413,15 @@ export class AnalyticsPerformanceBenchmark {
         dataType: 'REVENUE',
         dateRange: {
           startDate: timestamps[0],
-          endDate: timestamps[timestamps.length - 1]
+          endDate: timestamps[timestamps.length - 1],
         },
         quality: {
           completeness: 1.0,
           accuracy: 0.95,
           consistency: 0.9,
-          timeliness: 1.0
-        }
-      }
+          timeliness: 1.0,
+        },
+      },
     };
   }
 
@@ -386,7 +435,7 @@ export class AnalyticsPerformanceBenchmark {
     const anomalyIndices = [
       Math.floor(size * 0.2),
       Math.floor(size * 0.6),
-      Math.floor(size * 0.8)
+      Math.floor(size * 0.8),
     ];
 
     anomalyIndices.forEach(index => {
@@ -402,42 +451,47 @@ export class AnalyticsPerformanceBenchmark {
         dataType: 'REVENUE',
         dateRange: {
           startDate: timeSeriesData.timestamps[0],
-          endDate: timeSeriesData.timestamps[timeSeriesData.timestamps.length - 1]
+          endDate:
+            timeSeriesData.timestamps[timeSeriesData.timestamps.length - 1],
         },
         quality: {
           completeness: 1.0,
           accuracy: 0.95,
           consistency: 0.9,
-          timeliness: 1.0
-        }
-      }
+          timeliness: 1.0,
+        },
+      },
     };
   }
 
   /**
    * Generate performance summary
    */
-  private generateSummary(forecastingResults: any, anomalyResults: any, factoryResults: any): any {
+  private generateSummary(
+    forecastingResults: any,
+    anomalyResults: any,
+    factoryResults: any
+  ): any {
     const allTests = [
       ...Object.values(forecastingResults),
       ...Object.values(anomalyResults),
-      ...Object.values(factoryResults)
+      ...Object.values(factoryResults),
     ].filter(result => typeof result === 'object' && result !== null);
 
-    const performanceTests = allTests.filter((test: any) =>
-      test && typeof test.meetsPerformanceTarget === 'boolean'
+    const performanceTests = allTests.filter(
+      (test: any) => test && typeof test.meetsPerformanceTarget === 'boolean'
     );
 
-    const passedPerformanceTests = performanceTests.filter((test: any) =>
-      test.meetsPerformanceTarget
+    const passedPerformanceTests = performanceTests.filter(
+      (test: any) => test.meetsPerformanceTarget
     ).length;
 
-    const accuracyTests = allTests.filter((test: any) =>
-      test && typeof test.meetsAccuracyTarget === 'boolean'
+    const accuracyTests = allTests.filter(
+      (test: any) => test && typeof test.meetsAccuracyTarget === 'boolean'
     );
 
-    const passedAccuracyTests = accuracyTests.filter((test: any) =>
-      test.meetsAccuracyTarget
+    const passedAccuracyTests = accuracyTests.filter(
+      (test: any) => test.meetsAccuracyTarget
     ).length;
 
     return {
@@ -445,21 +499,31 @@ export class AnalyticsPerformanceBenchmark {
       performanceTests: {
         total: performanceTests.length,
         passed: passedPerformanceTests,
-        passRate: performanceTests.length > 0 ? (passedPerformanceTests / performanceTests.length) * 100 : 0
+        passRate:
+          performanceTests.length > 0
+            ? (passedPerformanceTests / performanceTests.length) * 100
+            : 0,
       },
       accuracyTests: {
         total: accuracyTests.length,
         passed: passedAccuracyTests,
-        passRate: accuracyTests.length > 0 ? (passedAccuracyTests / accuracyTests.length) * 100 : 0
+        passRate:
+          accuracyTests.length > 0
+            ? (passedAccuracyTests / accuracyTests.length) * 100
+            : 0,
       },
-      overallSuccess: passedPerformanceTests === performanceTests.length &&
-                     passedAccuracyTests === accuracyTests.length,
+      overallSuccess:
+        passedPerformanceTests === performanceTests.length &&
+        passedAccuracyTests === accuracyTests.length,
       recommendations: [
-        performanceTests.length > 0 && passedPerformanceTests < performanceTests.length ?
-          'Some performance tests failed - consider optimization' : null,
-        accuracyTests.length > 0 && passedAccuracyTests < accuracyTests.length ?
-          'Some accuracy tests failed - review algorithm parameters' : null
-      ].filter(Boolean)
+        performanceTests.length > 0 &&
+        passedPerformanceTests < performanceTests.length
+          ? 'Some performance tests failed - consider optimization'
+          : null,
+        accuracyTests.length > 0 && passedAccuracyTests < accuracyTests.length
+          ? 'Some accuracy tests failed - review algorithm parameters'
+          : null,
+      ].filter(Boolean),
     };
   }
 }

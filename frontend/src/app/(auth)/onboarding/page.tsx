@@ -1,8 +1,9 @@
 'use client';
 
 import React from 'react';
-import { OnboardingProvider } from '../../../contexts/OnboardingContext';
+
 import { OnboardingWizard } from '../../../components/onboarding/OnboardingWizard';
+import { OnboardingProvider } from '../../../contexts/OnboardingContext';
 
 export default function OnboardingPage() {
   return (

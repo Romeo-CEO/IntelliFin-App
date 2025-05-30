@@ -1,4 +1,4 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ProductRepository } from '../products/product.repository';
 import { InventoryCacheService } from './inventory-cache.service';
 
@@ -32,11 +32,22 @@ export class BarcodeService {
 
   // Common barcode prefixes for different regions/manufacturers
   private readonly ZAMBIAN_PREFIXES = ['894', '895']; // Zambian GS1 prefixes
-  private readonly COMMON_PREFIXES = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+  private readonly COMMON_PREFIXES = [
+    '0',
+    '1',
+    '2',
+    '3',
+    '4',
+    '5',
+    '6',
+    '7',
+    '8',
+    '9',
+  ];
 
   constructor(
     private readonly productRepository: ProductRepository,
-    private readonly cacheService: InventoryCacheService,
+    private readonly cacheService: InventoryCacheService
   ) {}
 
   /**
@@ -100,17 +111,23 @@ export class BarcodeService {
   /**
    * Look up product by barcode
    */
-  async lookupProductByBarcode(barcode: string, organizationId: string): Promise<ProductLookupResult> {
+  async lookupProductByBarcode(
+    barcode: string,
+    organizationId: string
+  ): Promise<ProductLookupResult> {
     try {
       const cleanBarcode = this.cleanBarcode(barcode);
-      
+
       if (!cleanBarcode) {
         throw new BadRequestException('Invalid barcode format');
       }
 
       // Try exact match first
-      const product = await this.productRepository.findByBarcode(cleanBarcode, organizationId);
-      
+      const product = await this.productRepository.findByBarcode(
+        cleanBarcode,
+        organizationId
+      );
+
       if (product) {
         return {
           found: true,
@@ -119,14 +136,20 @@ export class BarcodeService {
       }
 
       // If no exact match, try to find similar barcodes
-      const suggestions = await this.findSimilarBarcodes(cleanBarcode, organizationId);
+      const suggestions = await this.findSimilarBarcodes(
+        cleanBarcode,
+        organizationId
+      );
 
       return {
         found: false,
         suggestions,
       };
     } catch (error) {
-      this.logger.error(`Failed to lookup product by barcode: ${error.message}`, error);
+      this.logger.error(
+        `Failed to lookup product by barcode: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -146,7 +169,9 @@ export class BarcodeService {
         case 'QR':
           return this.generateQRCode(options.data);
         default:
-          throw new BadRequestException(`Unsupported barcode format: ${options.format}`);
+          throw new BadRequestException(
+            `Unsupported barcode format: ${options.format}`
+          );
       }
     } catch (error) {
       this.logger.error(`Failed to generate barcode: ${error.message}`, error);
@@ -157,16 +182,25 @@ export class BarcodeService {
   /**
    * Generate unique barcode for organization
    */
-  async generateUniqueBarcode(organizationId: string, format: 'EAN13' | 'UPC' = 'EAN13'): Promise<string> {
+  async generateUniqueBarcode(
+    organizationId: string,
+    format: 'EAN13' | 'UPC' = 'EAN13'
+  ): Promise<string> {
     try {
       let attempts = 0;
       const maxAttempts = 100;
 
       while (attempts < maxAttempts) {
-        const barcode = await this.generateRandomBarcode(format, organizationId);
-        
+        const barcode = await this.generateRandomBarcode(
+          format,
+          organizationId
+        );
+
         // Check if barcode already exists
-        const existing = await this.productRepository.findByBarcode(barcode, organizationId);
+        const existing = await this.productRepository.findByBarcode(
+          barcode,
+          organizationId
+        );
         if (!existing) {
           return barcode;
         }
@@ -174,9 +208,14 @@ export class BarcodeService {
         attempts++;
       }
 
-      throw new Error('Failed to generate unique barcode after maximum attempts');
+      throw new Error(
+        'Failed to generate unique barcode after maximum attempts'
+      );
     } catch (error) {
-      this.logger.error(`Failed to generate unique barcode: ${error.message}`, error);
+      this.logger.error(
+        `Failed to generate unique barcode: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -184,14 +223,19 @@ export class BarcodeService {
   /**
    * Batch validate barcodes
    */
-  async validateBarcodes(barcodes: string[]): Promise<BarcodeValidationResult[]> {
+  async validateBarcodes(
+    barcodes: string[]
+  ): Promise<BarcodeValidationResult[]> {
     try {
       const results = await Promise.all(
         barcodes.map(barcode => this.validateBarcode(barcode))
       );
       return results;
     } catch (error) {
-      this.logger.error(`Failed to batch validate barcodes: ${error.message}`, error);
+      this.logger.error(
+        `Failed to batch validate barcodes: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -201,7 +245,7 @@ export class BarcodeService {
    */
   private cleanBarcode(barcode: string): string {
     if (!barcode) return '';
-    
+
     // Remove spaces, hyphens, and other non-numeric characters for numeric barcodes
     return barcode.replace(/[\s\-]/g, '').trim();
   }
@@ -230,12 +274,12 @@ export class BarcodeService {
 
     const digits = barcode.split('').map(Number);
     const checkDigit = digits.pop();
-    
+
     let sum = 0;
     for (let i = 0; i < digits.length; i++) {
       sum += digits[i] * (i % 2 === 0 ? 1 : 3);
     }
-    
+
     const calculatedCheckDigit = (10 - (sum % 10)) % 10;
     return calculatedCheckDigit === checkDigit;
   }
@@ -248,12 +292,12 @@ export class BarcodeService {
 
     const digits = barcode.split('').map(Number);
     const checkDigit = digits.pop();
-    
+
     let sum = 0;
     for (let i = 0; i < digits.length; i++) {
       sum += digits[i] * (i % 2 === 0 ? 3 : 1);
     }
-    
+
     const calculatedCheckDigit = (10 - (sum % 10)) % 10;
     return calculatedCheckDigit === checkDigit;
   }
@@ -264,17 +308,17 @@ export class BarcodeService {
   private generateEAN13(data: string): string {
     // Ensure data is 12 digits (without check digit)
     let baseCode = data.replace(/\D/g, '').substring(0, 12);
-    
+
     // Pad with zeros if needed
     baseCode = baseCode.padStart(12, '0');
-    
+
     // Calculate check digit
     const digits = baseCode.split('').map(Number);
     let sum = 0;
     for (let i = 0; i < digits.length; i++) {
       sum += digits[i] * (i % 2 === 0 ? 1 : 3);
     }
-    
+
     const checkDigit = (10 - (sum % 10)) % 10;
     return baseCode + checkDigit;
   }
@@ -285,17 +329,17 @@ export class BarcodeService {
   private generateUPC(data: string): string {
     // Ensure data is 11 digits (without check digit)
     let baseCode = data.replace(/\D/g, '').substring(0, 11);
-    
+
     // Pad with zeros if needed
     baseCode = baseCode.padStart(11, '0');
-    
+
     // Calculate check digit
     const digits = baseCode.split('').map(Number);
     let sum = 0;
     for (let i = 0; i < digits.length; i++) {
       sum += digits[i] * (i % 2 === 0 ? 3 : 1);
     }
-    
+
     const checkDigit = (10 - (sum % 10)) % 10;
     return baseCode + checkDigit;
   }
@@ -321,11 +365,16 @@ export class BarcodeService {
   /**
    * Generate random barcode
    */
-  private async generateRandomBarcode(format: 'EAN13' | 'UPC', organizationId: string): Promise<string> {
+  private async generateRandomBarcode(
+    format: 'EAN13' | 'UPC',
+    organizationId: string
+  ): Promise<string> {
     const timestamp = Date.now().toString();
     const orgHash = this.hashString(organizationId).substring(0, 4);
-    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-    
+    const random = Math.floor(Math.random() * 10000)
+      .toString()
+      .padStart(4, '0');
+
     if (format === 'EAN13') {
       // Use Zambian prefix if available, otherwise use generic
       const prefix = this.ZAMBIAN_PREFIXES[0] || '200';
@@ -340,7 +389,10 @@ export class BarcodeService {
   /**
    * Find similar barcodes
    */
-  private async findSimilarBarcodes(barcode: string, organizationId: string): Promise<any[]> {
+  private async findSimilarBarcodes(
+    barcode: string,
+    organizationId: string
+  ): Promise<any[]> {
     try {
       // This is a simplified implementation
       // In a real system, you might use fuzzy matching or Levenshtein distance
@@ -351,11 +403,15 @@ export class BarcodeService {
         },
         { name: 'asc' },
         0,
-        10,
+        10
       );
 
       return products
-        .filter(product => product.barcode && this.calculateSimilarity(barcode, product.barcode) > 0.7)
+        .filter(
+          product =>
+            product.barcode &&
+            this.calculateSimilarity(barcode, product.barcode) > 0.7
+        )
         .map(product => ({
           id: product.id,
           sku: product.sku,
@@ -365,7 +421,10 @@ export class BarcodeService {
         }))
         .sort((a, b) => b.similarity - a.similarity);
     } catch (error) {
-      this.logger.error(`Failed to find similar barcodes: ${error.message}`, error);
+      this.logger.error(
+        `Failed to find similar barcodes: ${error.message}`,
+        error
+      );
       return [];
     }
   }
@@ -376,9 +435,9 @@ export class BarcodeService {
   private calculateSimilarity(str1: string, str2: string): number {
     const longer = str1.length > str2.length ? str1 : str2;
     const shorter = str1.length > str2.length ? str2 : str1;
-    
+
     if (longer.length === 0) return 1.0;
-    
+
     const editDistance = this.levenshteinDistance(longer, shorter);
     return (longer.length - editDistance) / longer.length;
   }
@@ -388,15 +447,15 @@ export class BarcodeService {
    */
   private levenshteinDistance(str1: string, str2: string): number {
     const matrix = [];
-    
+
     for (let i = 0; i <= str2.length; i++) {
       matrix[i] = [i];
     }
-    
+
     for (let j = 0; j <= str1.length; j++) {
       matrix[0][j] = j;
     }
-    
+
     for (let i = 1; i <= str2.length; i++) {
       for (let j = 1; j <= str1.length; j++) {
         if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
@@ -410,7 +469,7 @@ export class BarcodeService {
         }
       }
     }
-    
+
     return matrix[str2.length][str1.length];
   }
 
@@ -421,7 +480,7 @@ export class BarcodeService {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash; // Convert to 32-bit integer
     }
     return Math.abs(hash).toString();

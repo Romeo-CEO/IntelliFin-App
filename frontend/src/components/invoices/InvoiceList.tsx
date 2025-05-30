@@ -1,6 +1,5 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Search, 
   Plus, 
@@ -14,11 +13,11 @@ import {
   DollarSign,
   Calendar,
   AlertTriangle,
-  CheckCircle,
-  Clock,
   FileText,
   Building
 } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+
 import { Invoice, InvoiceQuery, InvoiceStatus, ZraSubmissionStatus, invoiceService } from '../../services/invoice.service';
 
 interface InvoiceListProps {

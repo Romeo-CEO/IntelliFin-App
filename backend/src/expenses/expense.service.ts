@@ -1,8 +1,22 @@
-import { Injectable, Logger, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { Expense, ExpenseStatus, Prisma } from '@prisma/client';
-import { ExpenseRepository, ExpenseFilters, ExpenseStats } from './expense.repository';
+import {
+  ExpenseFilters,
+  ExpenseRepository,
+  ExpenseStats,
+} from './expense.repository';
 import { CategoryService } from '../categories/category.service';
-import { CreateExpenseDto, UpdateExpenseDto, ExpenseQueryDto } from './dto/expense.dto';
+import {
+  CreateExpenseDto,
+  ExpenseQueryDto,
+  UpdateExpenseDto,
+} from './dto/expense.dto';
 
 @Injectable()
 export class ExpenseService {
@@ -10,7 +24,7 @@ export class ExpenseService {
 
   constructor(
     private readonly expenseRepository: ExpenseRepository,
-    private readonly categoryService: CategoryService,
+    private readonly categoryService: CategoryService
   ) {}
 
   /**
@@ -19,11 +33,14 @@ export class ExpenseService {
   async createExpense(
     organizationId: string,
     userId: string,
-    createExpenseDto: CreateExpenseDto,
+    createExpenseDto: CreateExpenseDto
   ): Promise<Expense> {
     try {
       // Validate category exists and belongs to organization
-      await this.categoryService.getCategoryById(createExpenseDto.categoryId, organizationId);
+      await this.categoryService.getCategoryById(
+        createExpenseDto.categoryId,
+        organizationId
+      );
 
       // Validate transaction if provided
       if (createExpenseDto.transactionId) {
@@ -33,11 +50,15 @@ export class ExpenseService {
 
       // Validate recurrence settings
       if (createExpenseDto.isRecurring && !createExpenseDto.recurrencePattern) {
-        throw new BadRequestException('Recurrence pattern is required for recurring expenses');
+        throw new BadRequestException(
+          'Recurrence pattern is required for recurring expenses'
+        );
       }
 
       if (!createExpenseDto.isRecurring && createExpenseDto.recurrencePattern) {
-        throw new BadRequestException('Recurrence pattern should not be set for non-recurring expenses');
+        throw new BadRequestException(
+          'Recurrence pattern should not be set for non-recurring expenses'
+        );
       }
 
       // Calculate VAT if not provided (16% VAT rate for Zambia)
@@ -68,7 +89,9 @@ export class ExpenseService {
         reference: createExpenseDto.reference,
         isRecurring: createExpenseDto.isRecurring || false,
         recurrencePattern: createExpenseDto.recurrencePattern,
-        recurrenceEndDate: createExpenseDto.recurrenceEndDate ? new Date(createExpenseDto.recurrenceEndDate) : null,
+        recurrenceEndDate: createExpenseDto.recurrenceEndDate
+          ? new Date(createExpenseDto.recurrenceEndDate)
+          : null,
         isTaxDeductible: createExpenseDto.isTaxDeductible ?? true,
         vatAmount,
         withholdingTax: createExpenseDto.withholdingTax || 0,
@@ -84,7 +107,9 @@ export class ExpenseService {
         await this.createRecurringExpenses(expense, organizationId, userId);
       }
 
-      this.logger.log(`Created expense: ${expense.id} for organization: ${organizationId}`);
+      this.logger.log(
+        `Created expense: ${expense.id} for organization: ${organizationId}`
+      );
       return expense;
     } catch (error) {
       this.logger.error(`Failed to create expense: ${error.message}`, error);
@@ -112,7 +137,7 @@ export class ExpenseService {
     id: string,
     organizationId: string,
     userId: string,
-    updateExpenseDto: UpdateExpenseDto,
+    updateExpenseDto: UpdateExpenseDto
   ): Promise<Expense> {
     try {
       // Check if expense exists
@@ -120,7 +145,10 @@ export class ExpenseService {
 
       // Validate category if provided
       if (updateExpenseDto.categoryId) {
-        await this.categoryService.getCategoryById(updateExpenseDto.categoryId, organizationId);
+        await this.categoryService.getCategoryById(
+          updateExpenseDto.categoryId,
+          organizationId
+        );
       }
 
       // Validate transaction if provided
@@ -131,16 +159,30 @@ export class ExpenseService {
 
       // Validate status transitions
       if (updateExpenseDto.status) {
-        this.validateStatusTransition(existingExpense.status, updateExpenseDto.status);
+        this.validateStatusTransition(
+          existingExpense.status,
+          updateExpenseDto.status
+        );
       }
 
       // Validate recurrence settings
       if (updateExpenseDto.isRecurring !== undefined) {
-        if (updateExpenseDto.isRecurring && !updateExpenseDto.recurrencePattern && !existingExpense.recurrencePattern) {
-          throw new BadRequestException('Recurrence pattern is required for recurring expenses');
+        if (
+          updateExpenseDto.isRecurring &&
+          !updateExpenseDto.recurrencePattern &&
+          !existingExpense.recurrencePattern
+        ) {
+          throw new BadRequestException(
+            'Recurrence pattern is required for recurring expenses'
+          );
         }
-        if (!updateExpenseDto.isRecurring && updateExpenseDto.recurrencePattern) {
-          throw new BadRequestException('Recurrence pattern should not be set for non-recurring expenses');
+        if (
+          !updateExpenseDto.isRecurring &&
+          updateExpenseDto.recurrencePattern
+        ) {
+          throw new BadRequestException(
+            'Recurrence pattern should not be set for non-recurring expenses'
+          );
         }
       }
 
@@ -152,24 +194,40 @@ export class ExpenseService {
       }
 
       if (updateExpenseDto.transactionId) {
-        updateData.transaction = { connect: { id: updateExpenseDto.transactionId } };
+        updateData.transaction = {
+          connect: { id: updateExpenseDto.transactionId },
+        };
       }
 
-      if (updateExpenseDto.vendor !== undefined) updateData.vendor = updateExpenseDto.vendor;
-      if (updateExpenseDto.date) updateData.date = new Date(updateExpenseDto.date);
-      if (updateExpenseDto.amount !== undefined) updateData.amount = updateExpenseDto.amount;
-      if (updateExpenseDto.currency) updateData.currency = updateExpenseDto.currency;
-      if (updateExpenseDto.description) updateData.description = updateExpenseDto.description;
-      if (updateExpenseDto.paymentMethod) updateData.paymentMethod = updateExpenseDto.paymentMethod;
-      if (updateExpenseDto.reference !== undefined) updateData.reference = updateExpenseDto.reference;
-      if (updateExpenseDto.isRecurring !== undefined) updateData.isRecurring = updateExpenseDto.isRecurring;
-      if (updateExpenseDto.recurrencePattern) updateData.recurrencePattern = updateExpenseDto.recurrencePattern;
+      if (updateExpenseDto.vendor !== undefined)
+        updateData.vendor = updateExpenseDto.vendor;
+      if (updateExpenseDto.date)
+        updateData.date = new Date(updateExpenseDto.date);
+      if (updateExpenseDto.amount !== undefined)
+        updateData.amount = updateExpenseDto.amount;
+      if (updateExpenseDto.currency)
+        updateData.currency = updateExpenseDto.currency;
+      if (updateExpenseDto.description)
+        updateData.description = updateExpenseDto.description;
+      if (updateExpenseDto.paymentMethod)
+        updateData.paymentMethod = updateExpenseDto.paymentMethod;
+      if (updateExpenseDto.reference !== undefined)
+        updateData.reference = updateExpenseDto.reference;
+      if (updateExpenseDto.isRecurring !== undefined)
+        updateData.isRecurring = updateExpenseDto.isRecurring;
+      if (updateExpenseDto.recurrencePattern)
+        updateData.recurrencePattern = updateExpenseDto.recurrencePattern;
       if (updateExpenseDto.recurrenceEndDate) {
-        updateData.recurrenceEndDate = new Date(updateExpenseDto.recurrenceEndDate);
+        updateData.recurrenceEndDate = new Date(
+          updateExpenseDto.recurrenceEndDate
+        );
       }
-      if (updateExpenseDto.isTaxDeductible !== undefined) updateData.isTaxDeductible = updateExpenseDto.isTaxDeductible;
-      if (updateExpenseDto.vatAmount !== undefined) updateData.vatAmount = updateExpenseDto.vatAmount;
-      if (updateExpenseDto.withholdingTax !== undefined) updateData.withholdingTax = updateExpenseDto.withholdingTax;
+      if (updateExpenseDto.isTaxDeductible !== undefined)
+        updateData.isTaxDeductible = updateExpenseDto.isTaxDeductible;
+      if (updateExpenseDto.vatAmount !== undefined)
+        updateData.vatAmount = updateExpenseDto.vatAmount;
+      if (updateExpenseDto.withholdingTax !== undefined)
+        updateData.withholdingTax = updateExpenseDto.withholdingTax;
       if (updateExpenseDto.status) {
         updateData.status = updateExpenseDto.status;
         if (updateExpenseDto.status === ExpenseStatus.APPROVED) {
@@ -177,9 +235,14 @@ export class ExpenseService {
           updateData.approvedAt = new Date();
         }
       }
-      if (updateExpenseDto.notes !== undefined) updateData.notes = updateExpenseDto.notes;
+      if (updateExpenseDto.notes !== undefined)
+        updateData.notes = updateExpenseDto.notes;
 
-      const expense = await this.expenseRepository.update(id, organizationId, updateData);
+      const expense = await this.expenseRepository.update(
+        id,
+        organizationId,
+        updateData
+      );
 
       this.logger.log(`Updated expense: ${expense.id}`);
       return expense;
@@ -238,7 +301,7 @@ export class ExpenseService {
         filters,
         query.page || 1,
         query.limit || 20,
-        orderBy,
+        orderBy
       );
     } catch (error) {
       this.logger.error(`Failed to get expenses: ${error.message}`, error);
@@ -249,12 +312,20 @@ export class ExpenseService {
   /**
    * Get expense statistics
    */
-  async getExpenseStats(organizationId: string, dateFrom?: string, dateTo?: string): Promise<ExpenseStats> {
+  async getExpenseStats(
+    organizationId: string,
+    dateFrom?: string,
+    dateTo?: string
+  ): Promise<ExpenseStats> {
     try {
       const fromDate = dateFrom ? new Date(dateFrom) : undefined;
       const toDate = dateTo ? new Date(dateTo) : undefined;
 
-      return await this.expenseRepository.getStats(organizationId, fromDate, toDate);
+      return await this.expenseRepository.getStats(
+        organizationId,
+        fromDate,
+        toDate
+      );
     } catch (error) {
       this.logger.error(`Failed to get expense stats: ${error.message}`, error);
       throw error;
@@ -264,7 +335,11 @@ export class ExpenseService {
   /**
    * Approve expense
    */
-  async approveExpense(id: string, organizationId: string, userId: string): Promise<Expense> {
+  async approveExpense(
+    id: string,
+    organizationId: string,
+    userId: string
+  ): Promise<Expense> {
     return await this.updateExpense(id, organizationId, userId, {
       status: ExpenseStatus.APPROVED,
     });
@@ -273,7 +348,12 @@ export class ExpenseService {
   /**
    * Reject expense
    */
-  async rejectExpense(id: string, organizationId: string, userId: string, notes?: string): Promise<Expense> {
+  async rejectExpense(
+    id: string,
+    organizationId: string,
+    userId: string,
+    notes?: string
+  ): Promise<Expense> {
     return await this.updateExpense(id, organizationId, userId, {
       status: ExpenseStatus.REJECTED,
       notes,
@@ -283,24 +363,38 @@ export class ExpenseService {
   /**
    * Submit expense for approval
    */
-  async submitForApproval(id: string, organizationId: string, userId: string): Promise<Expense> {
+  async submitForApproval(
+    id: string,
+    organizationId: string,
+    userId: string
+  ): Promise<Expense> {
     try {
       // Check if expense exists and is in draft status
       const expense = await this.getExpenseById(id, organizationId);
 
       if (expense.status !== ExpenseStatus.DRAFT) {
-        throw new BadRequestException('Only draft expenses can be submitted for approval');
+        throw new BadRequestException(
+          'Only draft expenses can be submitted for approval'
+        );
       }
 
       // Update expense status to pending approval
-      const updatedExpense = await this.updateExpense(id, organizationId, userId, {
-        status: ExpenseStatus.PENDING_APPROVAL,
-      });
+      const updatedExpense = await this.updateExpense(
+        id,
+        organizationId,
+        userId,
+        {
+          status: ExpenseStatus.PENDING_APPROVAL,
+        }
+      );
 
       this.logger.log(`Submitted expense ${id} for approval`);
       return updatedExpense;
     } catch (error) {
-      this.logger.error(`Failed to submit expense for approval: ${error.message}`, error);
+      this.logger.error(
+        `Failed to submit expense for approval: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -308,17 +402,30 @@ export class ExpenseService {
   /**
    * Validate status transition
    */
-  private validateStatusTransition(currentStatus: ExpenseStatus, newStatus: ExpenseStatus): void {
+  private validateStatusTransition(
+    currentStatus: ExpenseStatus,
+    newStatus: ExpenseStatus
+  ): void {
     const validTransitions: Record<ExpenseStatus, ExpenseStatus[]> = {
-      [ExpenseStatus.DRAFT]: [ExpenseStatus.PENDING_APPROVAL, ExpenseStatus.APPROVED],
-      [ExpenseStatus.PENDING_APPROVAL]: [ExpenseStatus.APPROVED, ExpenseStatus.REJECTED, ExpenseStatus.DRAFT],
+      [ExpenseStatus.DRAFT]: [
+        ExpenseStatus.PENDING_APPROVAL,
+        ExpenseStatus.APPROVED,
+      ],
+      [ExpenseStatus.PENDING_APPROVAL]: [
+        ExpenseStatus.APPROVED,
+        ExpenseStatus.REJECTED,
+        ExpenseStatus.DRAFT,
+      ],
       [ExpenseStatus.APPROVED]: [], // Cannot change from approved
-      [ExpenseStatus.REJECTED]: [ExpenseStatus.DRAFT, ExpenseStatus.PENDING_APPROVAL],
+      [ExpenseStatus.REJECTED]: [
+        ExpenseStatus.DRAFT,
+        ExpenseStatus.PENDING_APPROVAL,
+      ],
     };
 
     if (!validTransitions[currentStatus].includes(newStatus)) {
       throw new BadRequestException(
-        `Invalid status transition from ${currentStatus} to ${newStatus}`,
+        `Invalid status transition from ${currentStatus} to ${newStatus}`
       );
     }
   }
@@ -329,10 +436,12 @@ export class ExpenseService {
   private async createRecurringExpenses(
     parentExpense: Expense,
     organizationId: string,
-    userId: string,
+    userId: string
   ): Promise<void> {
     // TODO: Implement recurring expense creation logic
     // This would create future expense records based on the recurrence pattern
-    this.logger.log(`Creating recurring expenses for parent: ${parentExpense.id}`);
+    this.logger.log(
+      `Creating recurring expenses for parent: ${parentExpense.id}`
+    );
   }
 }

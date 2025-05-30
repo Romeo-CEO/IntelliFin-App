@@ -1,24 +1,24 @@
 import {
+  Body,
   Controller,
+  Delete,
   Get,
+  Param,
+  ParseUUIDPipe,
   Post,
   Put,
-  Delete,
-  Body,
-  Param,
   Query,
   UseGuards,
-  ParseUUIDPipe,
   ValidationPipe,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
   ApiBearerAuth,
+  ApiBody,
+  ApiOperation,
   ApiParam,
   ApiQuery,
-  ApiBody,
+  ApiResponse,
+  ApiTags,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 
@@ -27,7 +27,11 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/auth.interface';
 
 import { CategoryService } from './category.service';
-import { CreateCategoryDto, UpdateCategoryDto, CategoryFiltersDto } from './dto/category.dto';
+import {
+  CategoryFiltersDto,
+  CreateCategoryDto,
+  UpdateCategoryDto,
+} from './dto/category.dto';
 
 @ApiTags('Categories')
 @Controller('categories')
@@ -57,7 +61,7 @@ export class CategoryController {
   })
   async createCategory(
     @CurrentUser() user: AuthenticatedUser,
-    @Body(ValidationPipe) createCategoryDto: CreateCategoryDto,
+    @Body(ValidationPipe) createCategoryDto: CreateCategoryDto
   ) {
     return await this.categoryService.createCategory({
       organizationId: user.organizationId,
@@ -80,7 +84,7 @@ export class CategoryController {
   })
   async getCategories(
     @CurrentUser() user: AuthenticatedUser,
-    @Query(ValidationPipe) filters: CategoryFiltersDto,
+    @Query(ValidationPipe) filters: CategoryFiltersDto
   ) {
     return await this.categoryService.getCategories({
       organizationId: user.organizationId,
@@ -100,34 +104,48 @@ export class CategoryController {
   })
   async getCategoryHierarchy(
     @CurrentUser() user: AuthenticatedUser,
-    @Query('type') type?: string,
+    @Query('type') type?: string
   ) {
     return await this.categoryService.getCategoryHierarchy(
       user.organizationId,
-      type as any,
+      type as any
     );
   }
 
   @Get('stats')
   @ApiOperation({
     summary: 'Get categories with statistics',
-    description: 'Retrieve categories with usage statistics and transaction counts',
+    description:
+      'Retrieve categories with usage statistics and transaction counts',
   })
   @ApiResponse({
     status: 200,
     description: 'Category statistics retrieved successfully',
   })
   async getCategoriesWithStats(@CurrentUser() user: AuthenticatedUser) {
-    return await this.categoryService.getCategoriesWithStats(user.organizationId);
+    return await this.categoryService.getCategoriesWithStats(
+      user.organizationId
+    );
   }
 
   @Get('analytics')
   @ApiOperation({
     summary: 'Get category analytics',
-    description: 'Retrieve comprehensive analytics about category usage and performance',
+    description:
+      'Retrieve comprehensive analytics about category usage and performance',
   })
-  @ApiQuery({ name: 'startDate', required: false, type: 'string', format: 'date' })
-  @ApiQuery({ name: 'endDate', required: false, type: 'string', format: 'date' })
+  @ApiQuery({
+    name: 'startDate',
+    required: false,
+    type: 'string',
+    format: 'date',
+  })
+  @ApiQuery({
+    name: 'endDate',
+    required: false,
+    type: 'string',
+    format: 'date',
+  })
   @ApiResponse({
     status: 200,
     description: 'Category analytics retrieved successfully',
@@ -135,19 +153,20 @@ export class CategoryController {
   async getCategoryAnalytics(
     @CurrentUser() user: AuthenticatedUser,
     @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
+    @Query('endDate') endDate?: string
   ) {
     return await this.categoryService.getCategoryAnalytics(
       user.organizationId,
       startDate ? new Date(startDate) : undefined,
-      endDate ? new Date(endDate) : undefined,
+      endDate ? new Date(endDate) : undefined
     );
   }
 
   @Get('suggestions')
   @ApiOperation({
     summary: 'Get category suggestions',
-    description: 'Get AI-powered category suggestions for uncategorized transactions',
+    description:
+      'Get AI-powered category suggestions for uncategorized transactions',
   })
   @ApiQuery({ name: 'limit', required: false, type: 'number' })
   @ApiResponse({
@@ -156,11 +175,11 @@ export class CategoryController {
   })
   async getCategorySuggestions(
     @CurrentUser() user: AuthenticatedUser,
-    @Query('limit') limit?: number,
+    @Query('limit') limit?: number
   ) {
     return await this.categoryService.suggestCategoriesForUncategorized(
       user.organizationId,
-      limit ? parseInt(limit.toString()) : 50,
+      limit ? parseInt(limit.toString()) : 50
     );
   }
 
@@ -188,11 +207,11 @@ export class CategoryController {
   })
   async autoCategorizeTransactions(
     @CurrentUser() user: AuthenticatedUser,
-    @Body() body: { transactionIds?: string[] },
+    @Body() body: { transactionIds?: string[] }
   ) {
     return await this.categoryService.autoCategorizeTransactions(
       user.organizationId,
-      body.transactionIds,
+      body.transactionIds
     );
   }
 
@@ -207,7 +226,9 @@ export class CategoryController {
     description: 'Default categories initialized successfully',
   })
   async initializeDefaultCategories(@CurrentUser() user: AuthenticatedUser) {
-    return await this.categoryService.initializeDefaultCategories(user.organizationId);
+    return await this.categoryService.initializeDefaultCategories(
+      user.organizationId
+    );
   }
 
   @Get(':id')
@@ -231,7 +252,7 @@ export class CategoryController {
   })
   async getCategoryById(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ParseUUIDPipe) id: string
   ) {
     return await this.categoryService.getCategoryById(id, user.organizationId);
   }
@@ -264,12 +285,12 @@ export class CategoryController {
   async updateCategory(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,
-    @Body(ValidationPipe) updateCategoryDto: UpdateCategoryDto,
+    @Body(ValidationPipe) updateCategoryDto: UpdateCategoryDto
   ) {
     return await this.categoryService.updateCategory(
       id,
       user.organizationId,
-      updateCategoryDto,
+      updateCategoryDto
     );
   }
 
@@ -299,7 +320,7 @@ export class CategoryController {
   })
   async deleteCategory(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ParseUUIDPipe) id: string
   ) {
     await this.categoryService.deleteCategory(id, user.organizationId);
     return { success: true, message: 'Category deleted successfully' };

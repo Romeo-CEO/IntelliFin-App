@@ -1,17 +1,17 @@
-import { 
-  IsString, 
-  IsEmail, 
-  IsOptional, 
-  IsBoolean, 
-  IsNumber, 
-  IsUUID,
-  MinLength, 
-  MaxLength, 
-  Min, 
-  Max,
-  IsPhoneNumber,
+import {
+  IsBoolean,
+  IsEmail,
   IsIn,
-  ValidateIf
+  IsNumber,
+  IsOptional,
+  IsPhoneNumber,
+  IsString,
+  IsUUID,
+  Max,
+  MaxLength,
+  Min,
+  MinLength,
+  ValidateIf,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
@@ -37,7 +37,9 @@ export class CreateCustomerDto {
   })
   @IsOptional()
   @IsString()
-  @MaxLength(100, { message: 'Contact person name cannot exceed 100 characters' })
+  @MaxLength(100, {
+    message: 'Contact person name cannot exceed 100 characters',
+  })
   @Transform(({ value }) => value?.trim())
   contactPerson?: string;
 
@@ -121,7 +123,7 @@ export class CreateCustomerDto {
 
   @ApiPropertyOptional({
     description: 'Credit limit in ZMW',
-    example: 50000.00,
+    example: 50000.0,
     minimum: 0,
   })
   @IsOptional()
@@ -168,7 +170,8 @@ export class UpdateCustomerDto extends PartialType(CreateCustomerDto) {
 
 export class CustomerQueryDto {
   @ApiPropertyOptional({
-    description: 'Search term for customer name, contact person, email, phone, or ZRA TIN',
+    description:
+      'Search term for customer name, contact person, email, phone, or ZRA TIN',
     example: 'Acme',
   })
   @IsOptional()
@@ -276,11 +279,29 @@ export class CustomerQueryDto {
   @ApiPropertyOptional({
     description: 'Sort field',
     example: 'name',
-    enum: ['name', 'contactPerson', 'email', 'city', 'paymentTerms', 'creditLimit', 'createdAt', 'updatedAt'],
+    enum: [
+      'name',
+      'contactPerson',
+      'email',
+      'city',
+      'paymentTerms',
+      'creditLimit',
+      'createdAt',
+      'updatedAt',
+    ],
   })
   @IsOptional()
   @IsString()
-  @IsIn(['name', 'contactPerson', 'email', 'city', 'paymentTerms', 'creditLimit', 'createdAt', 'updatedAt'])
+  @IsIn([
+    'name',
+    'contactPerson',
+    'email',
+    'city',
+    'paymentTerms',
+    'creditLimit',
+    'createdAt',
+    'updatedAt',
+  ])
   sortBy?: string;
 
   @ApiPropertyOptional({
@@ -364,7 +385,7 @@ export class CustomerResponseDto {
 
   @ApiPropertyOptional({
     description: 'Credit limit in ZMW',
-    example: 50000.00,
+    example: 50000.0,
   })
   creditLimit?: number;
 

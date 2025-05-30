@@ -28,18 +28,25 @@ export class InvoiceNumberGenerator {
    */
   async generateInvoiceNumber(
     organizationId: string,
-    format?: InvoiceNumberFormat,
+    format?: InvoiceNumberFormat
   ): Promise<GeneratedInvoiceNumber> {
     try {
       // Get organization settings or use defaults
       const settings = await this.getOrganizationSettings(organizationId);
-      const finalFormat = { ...this.getDefaultFormat(), ...settings, ...format };
+      const finalFormat = {
+        ...this.getDefaultFormat(),
+        ...settings,
+        ...format,
+      };
 
       // Get next sequence number
       const sequenceNumber = await this.getNextSequenceNumber(organizationId);
 
       // Generate invoice number
-      const invoiceNumber = this.formatInvoiceNumber(sequenceNumber, finalFormat);
+      const invoiceNumber = this.formatInvoiceNumber(
+        sequenceNumber,
+        finalFormat
+      );
 
       // Validate uniqueness
       await this.validateUniqueness(organizationId, invoiceNumber);
@@ -50,7 +57,10 @@ export class InvoiceNumberGenerator {
         format: this.formatToString(finalFormat),
       };
     } catch (error) {
-      this.logger.error(`Failed to generate invoice number: ${error.message}`, error);
+      this.logger.error(
+        `Failed to generate invoice number: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -72,7 +82,9 @@ export class InvoiceNumberGenerator {
   /**
    * Get organization-specific settings (placeholder for future implementation)
    */
-  private async getOrganizationSettings(organizationId: string): Promise<Partial<InvoiceNumberFormat>> {
+  private async getOrganizationSettings(
+    organizationId: string
+  ): Promise<Partial<InvoiceNumberFormat>> {
     // TODO: Implement organization settings table
     // For now, return empty object to use defaults
     return {};
@@ -109,10 +121,15 @@ export class InvoiceNumberGenerator {
       }
 
       // Extract sequence number from the latest invoice number
-      const sequenceNumber = this.extractSequenceNumber(latestInvoice.invoiceNumber);
+      const sequenceNumber = this.extractSequenceNumber(
+        latestInvoice.invoiceNumber
+      );
       return sequenceNumber + 1;
     } catch (error) {
-      this.logger.error(`Failed to get next sequence number: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get next sequence number: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -148,7 +165,10 @@ export class InvoiceNumberGenerator {
   /**
    * Format invoice number based on format settings
    */
-  private formatInvoiceNumber(sequenceNumber: number, format: InvoiceNumberFormat): string {
+  private formatInvoiceNumber(
+    sequenceNumber: number,
+    format: InvoiceNumberFormat
+  ): string {
     if (format.customFormat) {
       return this.applyCustomFormat(sequenceNumber, format.customFormat);
     }
@@ -175,7 +195,9 @@ export class InvoiceNumberGenerator {
     }
 
     // Add sequence number
-    const paddedSequence = sequenceNumber.toString().padStart(format.sequenceLength || 5, '0');
+    const paddedSequence = sequenceNumber
+      .toString()
+      .padStart(format.sequenceLength || 5, '0');
     parts.push(paddedSequence);
 
     // Join with separator
@@ -185,7 +207,10 @@ export class InvoiceNumberGenerator {
   /**
    * Apply custom format string
    */
-  private applyCustomFormat(sequenceNumber: number, customFormat: string): string {
+  private applyCustomFormat(
+    sequenceNumber: number,
+    customFormat: string
+  ): string {
     const date = new Date();
     const replacements = {
       '{YYYY}': date.getFullYear().toString(),
@@ -201,7 +226,10 @@ export class InvoiceNumberGenerator {
 
     let result = customFormat;
     for (const [placeholder, value] of Object.entries(replacements)) {
-      result = result.replace(new RegExp(placeholder.replace(/[{}]/g, '\\$&'), 'g'), value);
+      result = result.replace(
+        new RegExp(placeholder.replace(/[{}]/g, '\\$&'), 'g'),
+        value
+      );
     }
 
     return result;
@@ -210,7 +238,10 @@ export class InvoiceNumberGenerator {
   /**
    * Validate that the generated invoice number is unique
    */
-  private async validateUniqueness(organizationId: string, invoiceNumber: string): Promise<void> {
+  private async validateUniqueness(
+    organizationId: string,
+    invoiceNumber: string
+  ): Promise<void> {
     const existingInvoice = await this.prisma.invoice.findFirst({
       where: {
         organizationId,
@@ -260,7 +291,7 @@ export class InvoiceNumberGenerator {
    */
   async previewInvoiceNumber(
     organizationId: string,
-    format?: InvoiceNumberFormat,
+    format?: InvoiceNumberFormat
   ): Promise<{
     preview: string;
     nextNumber: string;
@@ -269,13 +300,20 @@ export class InvoiceNumberGenerator {
     try {
       // Get organization settings or use defaults
       const settings = await this.getOrganizationSettings(organizationId);
-      const finalFormat = { ...this.getDefaultFormat(), ...settings, ...format };
+      const finalFormat = {
+        ...this.getDefaultFormat(),
+        ...settings,
+        ...format,
+      };
 
       // Get next sequence number
       const sequenceNumber = await this.getNextSequenceNumber(organizationId);
 
       // Generate preview with current sequence
-      const preview = this.formatInvoiceNumber(sequenceNumber - 1 || 1, finalFormat);
+      const preview = this.formatInvoiceNumber(
+        sequenceNumber - 1 || 1,
+        finalFormat
+      );
       const nextNumber = this.formatInvoiceNumber(sequenceNumber, finalFormat);
 
       return {
@@ -284,7 +322,10 @@ export class InvoiceNumberGenerator {
         format: this.formatToString(finalFormat),
       };
     } catch (error) {
-      this.logger.error(`Failed to preview invoice number: ${error.message}`, error);
+      this.logger.error(
+        `Failed to preview invoice number: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -309,7 +350,9 @@ export class InvoiceNumberGenerator {
 
     // Check for invalid characters
     if (!/^[A-Za-z0-9\-_\/]+$/.test(invoiceNumber)) {
-      errors.push('Invoice number can only contain letters, numbers, hyphens, underscores, and forward slashes');
+      errors.push(
+        'Invoice number can only contain letters, numbers, hyphens, underscores, and forward slashes'
+      );
     }
 
     // Check for consecutive separators

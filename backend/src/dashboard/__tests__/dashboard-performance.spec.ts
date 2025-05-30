@@ -34,8 +34,12 @@ describe('Dashboard Performance Tests', () => {
         {
           provide: 'AnalyticsService',
           useValue: {
-            getCashFlowAnalysis: jest.fn().mockResolvedValue({ inflow: 100000, outflow: 60000 }),
-            getRevenueBreakdown: jest.fn().mockResolvedValue({ categories: [] }),
+            getCashFlowAnalysis: jest
+              .fn()
+              .mockResolvedValue({ inflow: 100000, outflow: 60000 }),
+            getRevenueBreakdown: jest
+              .fn()
+              .mockResolvedValue({ categories: [] }),
             getTrendAnalysis: jest.fn().mockResolvedValue({ trends: [] }),
           },
         },
@@ -54,14 +58,20 @@ describe('Dashboard Performance Tests', () => {
               profitMargin: 40,
               cashBalance: 25000,
             }),
-            getTotalRevenue: jest.fn().mockResolvedValue({ amount: 100000, trend: 15 }),
+            getTotalRevenue: jest
+              .fn()
+              .mockResolvedValue({ amount: 100000, trend: 15 }),
           },
         },
         {
           provide: 'EnhancedRevenueForecastingService',
           useValue: {
-            generateRevenueForecast: jest.fn().mockResolvedValue({ periods: [] }),
-            generateExpenseForecast: jest.fn().mockResolvedValue({ periods: [] }),
+            generateRevenueForecast: jest
+              .fn()
+              .mockResolvedValue({ periods: [] }),
+            generateExpenseForecast: jest
+              .fn()
+              .mockResolvedValue({ periods: [] }),
           },
         },
         {
@@ -81,15 +91,21 @@ describe('Dashboard Performance Tests', () => {
         {
           provide: 'TaxManagementService',
           useValue: {
-            getComplianceStatus: jest.fn().mockResolvedValue({ overallScore: 85 }),
-            getZraIntegrationStatus: jest.fn().mockResolvedValue({ connected: true }),
+            getComplianceStatus: jest
+              .fn()
+              .mockResolvedValue({ overallScore: 85 }),
+            getZraIntegrationStatus: jest
+              .fn()
+              .mockResolvedValue({ connected: true }),
             getVatSummary: jest.fn().mockResolvedValue({ amount: 5000 }),
           },
         },
         {
           provide: 'PaymentService',
           useValue: {
-            getMobileMoneySummary: jest.fn().mockResolvedValue({ totalAmount: 50000 }),
+            getMobileMoneySummary: jest
+              .fn()
+              .mockResolvedValue({ totalAmount: 50000 }),
           },
         },
         {
@@ -124,17 +140,24 @@ describe('Dashboard Performance Tests', () => {
       ],
     }).compile();
 
-    dashboardDataService = module.get<DashboardDataService>(DashboardDataService);
+    dashboardDataService =
+      module.get<DashboardDataService>(DashboardDataService);
     widgetDataService = module.get<WidgetDataService>(WidgetDataService);
     cacheService = module.get<DashboardCacheService>(DashboardCacheService);
-    realtimeService = module.get<DashboardRealtimeService>(DashboardRealtimeService);
+    realtimeService = module.get<DashboardRealtimeService>(
+      DashboardRealtimeService
+    );
   });
 
   describe('Dashboard Overview Performance', () => {
     it('should load dashboard overview within 3 seconds (3G requirement)', async () => {
       const startTime = performance.now();
 
-      await dashboardDataService.getDashboardOverview(mockOrganizationId, 'month', true);
+      await dashboardDataService.getDashboardOverview(
+        mockOrganizationId,
+        'month',
+        true
+      );
 
       const endTime = performance.now();
       const duration = endTime - startTime;
@@ -147,7 +170,11 @@ describe('Dashboard Performance Tests', () => {
       const startTime = performance.now();
 
       const promises = Array.from({ length: concurrentRequests }, () =>
-        dashboardDataService.getDashboardOverview(mockOrganizationId, 'month', false)
+        dashboardDataService.getDashboardOverview(
+          mockOrganizationId,
+          'month',
+          false
+        )
       );
 
       await Promise.all(promises);
@@ -156,7 +183,9 @@ describe('Dashboard Performance Tests', () => {
       const duration = endTime - startTime;
 
       // Should handle concurrent requests within reasonable time
-      expect(duration).toBeLessThan(PERFORMANCE_THRESHOLDS.DASHBOARD_OVERVIEW * 2);
+      expect(duration).toBeLessThan(
+        PERFORMANCE_THRESHOLDS.DASHBOARD_OVERVIEW * 2
+      );
     });
 
     it('should benefit from caching on subsequent requests', async () => {
@@ -176,12 +205,20 @@ describe('Dashboard Performance Tests', () => {
 
       // First request (cache miss)
       const startTime1 = performance.now();
-      await dashboardDataService.getDashboardOverview(mockOrganizationId, 'month', false);
+      await dashboardDataService.getDashboardOverview(
+        mockOrganizationId,
+        'month',
+        false
+      );
       const duration1 = performance.now() - startTime1;
 
       // Second request (cache hit)
       const startTime2 = performance.now();
-      await dashboardDataService.getDashboardOverview(mockOrganizationId, 'month', false);
+      await dashboardDataService.getDashboardOverview(
+        mockOrganizationId,
+        'month',
+        false
+      );
       const duration2 = performance.now() - startTime2;
 
       // Cached request should be significantly faster
@@ -205,7 +242,10 @@ describe('Dashboard Performance Tests', () => {
     it('should handle filtered KPI requests efficiently', async () => {
       const startTime = performance.now();
 
-      await dashboardDataService.getKpiMetrics(mockOrganizationId, ['totalRevenue', 'customerCount']);
+      await dashboardDataService.getKpiMetrics(mockOrganizationId, [
+        'totalRevenue',
+        'customerCount',
+      ]);
 
       const endTime = performance.now();
       const duration = endTime - startTime;
@@ -275,7 +315,9 @@ describe('Dashboard Performance Tests', () => {
       await cacheService.mset(keyValuePairs);
       const duration = performance.now() - startTime;
 
-      expect(duration).toBeLessThan(PERFORMANCE_THRESHOLDS.CACHE_OPERATIONS * 2);
+      expect(duration).toBeLessThan(
+        PERFORMANCE_THRESHOLDS.CACHE_OPERATIONS * 2
+      );
     });
   });
 
@@ -284,7 +326,10 @@ describe('Dashboard Performance Tests', () => {
       const dashboardId = 'dashboard-123';
 
       const startTime = performance.now();
-      await realtimeService.subscribeToDashboard(mockOrganizationId, dashboardId);
+      await realtimeService.subscribeToDashboard(
+        mockOrganizationId,
+        dashboardId
+      );
       const duration = performance.now() - startTime;
 
       expect(duration).toBeLessThan(PERFORMANCE_THRESHOLDS.REALTIME_UPDATES);
@@ -294,7 +339,10 @@ describe('Dashboard Performance Tests', () => {
       const dashboardId = 'dashboard-123';
 
       const startTime = performance.now();
-      await realtimeService.triggerDashboardRefresh(mockOrganizationId, dashboardId);
+      await realtimeService.triggerDashboardRefresh(
+        mockOrganizationId,
+        dashboardId
+      );
       const duration = performance.now() - startTime;
 
       expect(duration).toBeLessThan(PERFORMANCE_THRESHOLDS.REALTIME_UPDATES);
@@ -309,7 +357,7 @@ describe('Dashboard Performance Tests', () => {
       // Perform repeated operations
       for (let i = 0; i < iterations; i++) {
         await dashboardDataService.getKpiMetrics(mockOrganizationId);
-        
+
         // Force garbage collection if available
         if (global.gc) {
           global.gc();
@@ -327,20 +375,30 @@ describe('Dashboard Performance Tests', () => {
   describe('Low-bandwidth Optimization', () => {
     it('should reduce data payload for low-bandwidth mode', async () => {
       // Mock reduced data for low-bandwidth
-      const fullData = await dashboardDataService.getKpiMetrics(mockOrganizationId);
+      const fullData =
+        await dashboardDataService.getKpiMetrics(mockOrganizationId);
       const reducedMetrics = ['totalRevenue', 'netProfit'];
-      const reducedData = await dashboardDataService.getKpiMetrics(mockOrganizationId, reducedMetrics);
+      const reducedData = await dashboardDataService.getKpiMetrics(
+        mockOrganizationId,
+        reducedMetrics
+      );
 
       // Reduced data should have fewer properties
       expect(Object.keys(reducedData)).toHaveLength(4); // 2 metrics + currency + lastUpdated
-      expect(Object.keys(fullData)).toBeGreaterThan(Object.keys(reducedData).length);
+      expect(Object.keys(fullData)).toBeGreaterThan(
+        Object.keys(reducedData).length
+      );
     });
 
     it('should handle analytics summary with reduced complexity', async () => {
       const startTime = performance.now();
 
       // Request analytics without forecasts and anomalies for low-bandwidth
-      await dashboardDataService.getAnalyticsSummary(mockOrganizationId, false, false);
+      await dashboardDataService.getAnalyticsSummary(
+        mockOrganizationId,
+        false,
+        false
+      );
 
       const duration = performance.now() - startTime;
 
@@ -369,7 +427,7 @@ describe('Dashboard Performance Tests', () => {
 
       expect(results).toHaveLength(totalRequests);
       expect(results.every(result => result.currency === 'ZMW')).toBe(true);
-      
+
       // Should handle stress load within reasonable time (10 seconds)
       expect(duration).toBeLessThan(10000);
     });
@@ -380,7 +438,10 @@ describe('Dashboard Performance Tests', () => {
       const metrics: Array<{ name: string; duration: number }> = [];
 
       // Wrap operations with performance tracking
-      const trackPerformance = async (name: string, operation: () => Promise<any>) => {
+      const trackPerformance = async (
+        name: string,
+        operation: () => Promise<any>
+      ) => {
         const startTime = performance.now();
         await operation();
         const duration = performance.now() - startTime;
@@ -401,7 +462,9 @@ describe('Dashboard Performance Tests', () => {
 
       // Verify all operations completed within thresholds
       metrics.forEach(metric => {
-        const threshold = PERFORMANCE_THRESHOLDS[metric.name.toUpperCase().replace('-', '_')] || 1000;
+        const threshold =
+          PERFORMANCE_THRESHOLDS[metric.name.toUpperCase().replace('-', '_')] ||
+          1000;
         expect(metric.duration).toBeLessThan(threshold);
       });
 

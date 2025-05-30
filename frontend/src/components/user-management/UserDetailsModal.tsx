@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+
 import { useUserManagement, User, UserRole, UserStatus } from '../../contexts/UserManagementContext';
 
 interface UserDetailsModalProps {

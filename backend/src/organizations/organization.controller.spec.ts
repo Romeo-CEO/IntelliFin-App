@@ -1,7 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { OrganizationController } from './organization.controller';
 import { OrganizationService } from './organization.service';
-import { CreateOrganizationDto, ZambianBusinessType, ZambianIndustry } from './dto/organization.dto';
+import {
+  CreateOrganizationDto,
+  ZambianBusinessType,
+  ZambianIndustry,
+} from './dto/organization.dto';
 
 describe('OrganizationController', () => {
   let controller: OrganizationController;
@@ -78,11 +82,16 @@ describe('OrganizationController', () => {
         message: 'ZRA TIN is valid and available',
       };
 
-      mockOrganizationService.validateZraTinAvailability.mockResolvedValue(true);
+      mockOrganizationService.validateZraTinAvailability.mockResolvedValue(
+        true
+      );
 
       const result = await controller.validateZraTin(zraTin);
 
-      expect(service.validateZraTinAvailability).toHaveBeenCalledWith(zraTin, undefined);
+      expect(service.validateZraTinAvailability).toHaveBeenCalledWith(
+        zraTin,
+        undefined
+      );
       expect(result).toEqual(expectedResult);
     });
 
@@ -94,11 +103,16 @@ describe('OrganizationController', () => {
         message: 'ZRA TIN is already in use by another organization',
       };
 
-      mockOrganizationService.validateZraTinAvailability.mockResolvedValue(false);
+      mockOrganizationService.validateZraTinAvailability.mockResolvedValue(
+        false
+      );
 
       const result = await controller.validateZraTin(zraTin);
 
-      expect(service.validateZraTinAvailability).toHaveBeenCalledWith(zraTin, undefined);
+      expect(service.validateZraTinAvailability).toHaveBeenCalledWith(
+        zraTin,
+        undefined
+      );
       expect(result).toEqual(expectedResult);
     });
   });
@@ -107,10 +121,15 @@ describe('OrganizationController', () => {
     it('should return business type options', async () => {
       const expectedOptions = [
         { value: 'SOLE_PROPRIETORSHIP', label: 'Sole Proprietorship' },
-        { value: 'LIMITED_LIABILITY_COMPANY', label: 'Limited Liability Company' },
+        {
+          value: 'LIMITED_LIABILITY_COMPANY',
+          label: 'Limited Liability Company',
+        },
       ];
 
-      mockOrganizationService.getBusinessTypeOptions.mockReturnValue(expectedOptions);
+      mockOrganizationService.getBusinessTypeOptions.mockReturnValue(
+        expectedOptions
+      );
 
       const result = await controller.getBusinessTypeOptions();
 
@@ -126,7 +145,9 @@ describe('OrganizationController', () => {
         { value: 'MANUFACTURING', label: 'Manufacturing' },
       ];
 
-      mockOrganizationService.getIndustryOptions.mockReturnValue(expectedOptions);
+      mockOrganizationService.getIndustryOptions.mockReturnValue(
+        expectedOptions
+      );
 
       const result = await controller.getIndustryOptions();
 

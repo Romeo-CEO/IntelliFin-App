@@ -30,7 +30,7 @@ describe('Authentication (e2e)', () => {
         tenantId: '550e8400-e29b-41d4-a716-446655440000',
       })
       .expect(201)
-      .expect((res) => {
+      .expect(res => {
         expect(res.body).toHaveProperty('user');
         expect(res.body).toHaveProperty('message');
         expect(res.body.user).toHaveProperty('email', 'test@example.com');
@@ -45,7 +45,7 @@ describe('Authentication (e2e)', () => {
         password: 'SecureP@ssw0rd123',
       })
       .expect(200)
-      .expect((res) => {
+      .expect(res => {
         expect(res.body).toHaveProperty('user');
         expect(res.body).toHaveProperty('tokens');
         expect(res.body.tokens).toHaveProperty('accessToken');
@@ -54,22 +54,18 @@ describe('Authentication (e2e)', () => {
   });
 
   it('/auth/me (GET) - should require authentication', () => {
-    return request(app.getHttpServer())
-      .get('/auth/me')
-      .expect(401);
+    return request(app.getHttpServer()).get('/auth/me').expect(401);
   });
 
   it('/auth/me (GET) - should return user profile with valid token', async () => {
     // First register a user
-    await request(app.getHttpServer())
-      .post('/auth/register')
-      .send({
-        email: 'test2@example.com',
-        password: 'SecureP@ssw0rd123',
-        firstName: 'Jane',
-        lastName: 'Doe',
-        tenantId: '550e8400-e29b-41d4-a716-446655440000',
-      });
+    await request(app.getHttpServer()).post('/auth/register').send({
+      email: 'test2@example.com',
+      password: 'SecureP@ssw0rd123',
+      firstName: 'Jane',
+      lastName: 'Doe',
+      tenantId: '550e8400-e29b-41d4-a716-446655440000',
+    });
 
     // Then login to get tokens
     const loginResponse = await request(app.getHttpServer())
@@ -86,7 +82,7 @@ describe('Authentication (e2e)', () => {
       .get('/auth/me')
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(200)
-      .expect((res) => {
+      .expect(res => {
         expect(res.body).toHaveProperty('user');
         expect(res.body.user).toHaveProperty('email', 'test2@example.com');
       });

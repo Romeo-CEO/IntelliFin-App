@@ -1,26 +1,26 @@
 import {
+  Body,
   Controller,
+  Delete,
   Get,
+  HttpStatus,
+  Param,
+  ParseUUIDPipe,
+  Patch,
   Post,
   Put,
-  Delete,
-  Body,
-  Param,
   Query,
   UseGuards,
   ValidationPipe,
-  ParseUUIDPipe,
-  HttpStatus,
-  Patch,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiParam,
-  ApiQuery,
   ApiBearerAuth,
   ApiBody,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -33,11 +33,11 @@ import { ProductService } from './product.service';
 import { OrganizationResolverService } from '../services/organization-resolver.service';
 import {
   CreateProductDto,
-  UpdateProductDto,
+  ProductListResponseDto,
   ProductQueryDto,
   ProductResponseDto,
-  ProductListResponseDto,
   ProductStatsDto,
+  UpdateProductDto,
 } from './dto/product.dto';
 
 @ApiTags('Products')
@@ -47,7 +47,7 @@ import {
 export class ProductController {
   constructor(
     private readonly productService: ProductService,
-    private readonly organizationResolver: OrganizationResolverService,
+    private readonly organizationResolver: OrganizationResolverService
   ) {}
 
   @Post()
@@ -73,10 +73,13 @@ export class ProductController {
   })
   async createProduct(
     @CurrentUser() user: AuthenticatedUser,
-    @Body(ValidationPipe) createProductDto: CreateProductDto,
+    @Body(ValidationPipe) createProductDto: CreateProductDto
   ) {
     const organizationId = await this.organizationResolver.getOrganizationId();
-    return await this.productService.createProduct(organizationId, createProductDto);
+    return await this.productService.createProduct(
+      organizationId,
+      createProductDto
+    );
   }
 
   @Get()
@@ -94,7 +97,7 @@ export class ProductController {
   })
   async getProducts(
     @CurrentUser() user: AuthenticatedUser,
-    @Query(ValidationPipe) query: ProductQueryDto,
+    @Query(ValidationPipe) query: ProductQueryDto
   ) {
     const organizationId = await this.organizationResolver.getOrganizationId();
     return await this.productService.getProducts(organizationId, query);
@@ -112,7 +115,7 @@ export class ProductController {
     description: 'Product statistics retrieved successfully',
     type: ProductStatsDto,
   })
-  async getProductStats(@CurrentUser() user: AuthenticatedUser) {
+  async getProductStats() {
     const organizationId = await this.organizationResolver.getOrganizationId();
     return await this.productService.getProductStats(organizationId);
   }
@@ -143,15 +146,14 @@ export class ProductController {
     type: [ProductResponseDto],
   })
   async searchProducts(
-    @CurrentUser() user: AuthenticatedUser,
     @Query('q') searchTerm: string,
-    @Query('limit') limit?: number,
+    @Query('limit') limit?: number
   ) {
     const organizationId = await this.organizationResolver.getOrganizationId();
     return await this.productService.searchProducts(
       organizationId,
       searchTerm,
-      limit ? parseInt(limit.toString()) : 10,
+      limit ? parseInt(limit.toString()) : 10
     );
   }
 
@@ -166,7 +168,7 @@ export class ProductController {
     status: HttpStatus.OK,
     description: 'Products for select retrieved successfully',
   })
-  async getProductsForSelect(@CurrentUser() user: AuthenticatedUser) {
+  async getProductsForSelect() {
     const organizationId = await this.organizationResolver.getOrganizationId();
     return await this.productService.getProductsForSelect(organizationId);
   }
@@ -183,7 +185,7 @@ export class ProductController {
     description: 'Low stock products retrieved successfully',
     type: [ProductResponseDto],
   })
-  async getLowStockProducts(@CurrentUser() user: AuthenticatedUser) {
+  async getLowStockProducts() {
     const organizationId = await this.organizationResolver.getOrganizationId();
     return await this.productService.getLowStockProducts(organizationId);
   }
@@ -229,7 +231,7 @@ export class ProductController {
   })
   async getProductBySku(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('sku') sku: string,
+    @Param('sku') sku: string
   ) {
     const organizationId = await this.organizationResolver.getOrganizationId();
     return await this.productService.getProductBySku(sku, organizationId);
@@ -259,10 +261,13 @@ export class ProductController {
   })
   async getProductByBarcode(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('barcode') barcode: string,
+    @Param('barcode') barcode: string
   ) {
     const organizationId = await this.organizationResolver.getOrganizationId();
-    return await this.productService.getProductByBarcode(barcode, organizationId);
+    return await this.productService.getProductByBarcode(
+      barcode,
+      organizationId
+    );
   }
 
   @Get(':id')
@@ -289,7 +294,7 @@ export class ProductController {
   })
   async getProductById(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ParseUUIDPipe) id: string
   ) {
     const organizationId = await this.organizationResolver.getOrganizationId();
     return await this.productService.getProductById(id, organizationId);
@@ -329,10 +334,14 @@ export class ProductController {
   async updateProduct(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,
-    @Body(ValidationPipe) updateProductDto: UpdateProductDto,
+    @Body(ValidationPipe) updateProductDto: UpdateProductDto
   ) {
     const organizationId = await this.organizationResolver.getOrganizationId();
-    return await this.productService.updateProduct(id, organizationId, updateProductDto);
+    return await this.productService.updateProduct(
+      id,
+      organizationId,
+      updateProductDto
+    );
   }
 
   @Patch(':id/stock')
@@ -381,14 +390,14 @@ export class ProductController {
   async updateProductStock(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() body: { stock: number; reason?: string },
+    @Body() body: { stock: number; reason?: string }
   ) {
     const organizationId = await this.organizationResolver.getOrganizationId();
     return await this.productService.updateProductStock(
       id,
       organizationId,
       body.stock,
-      body.reason,
+      body.reason
     );
   }
 
@@ -415,7 +424,7 @@ export class ProductController {
   })
   async deleteProduct(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ParseUUIDPipe) id: string
   ) {
     const organizationId = await this.organizationResolver.getOrganizationId();
     await this.productService.deleteProduct(id, organizationId);

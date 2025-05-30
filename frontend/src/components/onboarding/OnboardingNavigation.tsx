@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+
 import { useOnboarding } from '../../contexts/OnboardingContext';
 
 export function OnboardingNavigation() {

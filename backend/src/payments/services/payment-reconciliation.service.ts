@@ -42,35 +42,50 @@ export class PaymentReconciliationService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly paymentRepository: PaymentRepository,
+    private readonly paymentRepository: PaymentRepository
   ) {}
 
   /**
    * Perform automatic payment reconciliation
    */
-  async reconcilePayments(organizationId: string): Promise<ReconciliationResult> {
+  async reconcilePayments(
+    organizationId: string
+  ): Promise<ReconciliationResult> {
     try {
-      this.logger.log(`Starting payment reconciliation for organization: ${organizationId}`);
+      this.logger.log(
+        `Starting payment reconciliation for organization: ${organizationId}`
+      );
 
       // Get unreconciled payments
-      const unreconciledPayments = await this.paymentRepository.findUnreconciledPayments(organizationId);
+      const unreconciledPayments =
+        await this.paymentRepository.findUnreconciledPayments(organizationId);
 
       // Get unreconciled transactions
-      const unreconciledTransactions = await this.getUnreconciledTransactions(organizationId);
+      const unreconciledTransactions =
+        await this.getUnreconciledTransactions(organizationId);
 
       // Find matches
-      const matches = await this.findMatches(unreconciledPayments, unreconciledTransactions);
+      const matches = await this.findMatches(
+        unreconciledPayments,
+        unreconciledTransactions
+      );
 
       // Categorize matches by confidence
       const automaticMatches = matches.filter(match => match.confidence >= 0.9);
-      const suggestedMatches = matches.filter(match => match.confidence >= 0.7 && match.confidence < 0.9);
+      const suggestedMatches = matches.filter(
+        match => match.confidence >= 0.7 && match.confidence < 0.9
+      );
 
       // Get unmatched items
       const matchedPaymentIds = new Set(matches.map(m => m.paymentId));
       const matchedTransactionIds = new Set(matches.map(m => m.transactionId));
 
-      const unmatchedPayments = unreconciledPayments.filter(p => !matchedPaymentIds.has(p.id));
-      const unmatchedTransactions = unreconciledTransactions.filter(t => !matchedTransactionIds.has(t.id));
+      const unmatchedPayments = unreconciledPayments.filter(
+        p => !matchedPaymentIds.has(p.id)
+      );
+      const unmatchedTransactions = unreconciledTransactions.filter(
+        t => !matchedTransactionIds.has(t.id)
+      );
 
       const result: ReconciliationResult = {
         automaticMatches,
@@ -87,10 +102,15 @@ export class PaymentReconciliationService {
         },
       };
 
-      this.logger.log(`Reconciliation completed: ${JSON.stringify(result.summary)}`);
+      this.logger.log(
+        `Reconciliation completed: ${JSON.stringify(result.summary)}`
+      );
       return result;
     } catch (error) {
-      this.logger.error(`Failed to reconcile payments: ${error.message}`, error);
+      this.logger.error(
+        `Failed to reconcile payments: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -98,12 +118,15 @@ export class PaymentReconciliationService {
   /**
    * Apply automatic reconciliation matches
    */
-  async applyAutomaticMatches(organizationId: string, matches: ReconciliationMatch[]): Promise<number> {
+  async applyAutomaticMatches(
+    organizationId: string,
+    matches: ReconciliationMatch[]
+  ): Promise<number> {
     try {
       let appliedCount = 0;
 
       for (const match of matches) {
-        await this.prisma.$transaction(async (tx) => {
+        await this.prisma.$transaction(async tx => {
           // Update payment with transaction ID
           await tx.payment.update({
             where: { id: match.paymentId },
@@ -120,10 +143,15 @@ export class PaymentReconciliationService {
         });
       }
 
-      this.logger.log(`Applied ${appliedCount} automatic reconciliation matches`);
+      this.logger.log(
+        `Applied ${appliedCount} automatic reconciliation matches`
+      );
       return appliedCount;
     } catch (error) {
-      this.logger.error(`Failed to apply automatic matches: ${error.message}`, error);
+      this.logger.error(
+        `Failed to apply automatic matches: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -134,10 +162,10 @@ export class PaymentReconciliationService {
   async manualReconcile(
     organizationId: string,
     paymentId: string,
-    transactionId: string,
+    transactionId: string
   ): Promise<PaymentWithRelations> {
     try {
-      return await this.prisma.$transaction(async (tx) => {
+      return await this.prisma.$transaction(async tx => {
         // Verify payment belongs to organization
         const payment = await tx.payment.findFirst({
           where: { id: paymentId, organizationId },
@@ -172,7 +200,10 @@ export class PaymentReconciliationService {
         return await this.paymentRepository.findById(paymentId, organizationId);
       });
     } catch (error) {
-      this.logger.error(`Failed to manually reconcile payment: ${error.message}`, error);
+      this.logger.error(
+        `Failed to manually reconcile payment: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -182,21 +213,29 @@ export class PaymentReconciliationService {
    */
   async bulkReconcile(
     organizationId: string,
-    mappings: Array<{ paymentId: string; transactionId: string }>,
+    mappings: Array<{ paymentId: string; transactionId: string }>
   ): Promise<{ success: number; failed: number; errors: string[] }> {
     const result = { success: 0, failed: 0, errors: [] };
 
     for (const mapping of mappings) {
       try {
-        await this.manualReconcile(organizationId, mapping.paymentId, mapping.transactionId);
+        await this.manualReconcile(
+          organizationId,
+          mapping.paymentId,
+          mapping.transactionId
+        );
         result.success++;
       } catch (error) {
         result.failed++;
-        result.errors.push(`Failed to reconcile payment ${mapping.paymentId}: ${error.message}`);
+        result.errors.push(
+          `Failed to reconcile payment ${mapping.paymentId}: ${error.message}`
+        );
       }
     }
 
-    this.logger.log(`Bulk reconciliation completed: ${result.success} success, ${result.failed} failed`);
+    this.logger.log(
+      `Bulk reconciliation completed: ${result.success} success, ${result.failed} failed`
+    );
     return result;
   }
 
@@ -231,7 +270,7 @@ export class PaymentReconciliationService {
    */
   private async findMatches(
     payments: PaymentWithRelations[],
-    transactions: any[],
+    transactions: any[]
   ): Promise<ReconciliationMatch[]> {
     const matches: ReconciliationMatch[] = [];
 
@@ -252,12 +291,17 @@ export class PaymentReconciliationService {
   /**
    * Calculate match confidence between payment and transaction
    */
-  private calculateMatch(payment: PaymentWithRelations, transaction: any): ReconciliationMatch {
+  private calculateMatch(
+    payment: PaymentWithRelations,
+    transaction: any
+  ): ReconciliationMatch {
     let confidence = 0;
     const reasons: string[] = [];
 
     // Exact amount match (high confidence)
-    if (Math.abs(payment.amount.toNumber() - transaction.amount.toNumber()) < 0.01) {
+    if (
+      Math.abs(payment.amount.toNumber() - transaction.amount.toNumber()) < 0.01
+    ) {
       confidence += 0.4;
       reasons.push('Exact amount match');
     }
@@ -265,7 +309,10 @@ export class PaymentReconciliationService {
     // Date proximity (within 3 days)
     const paymentDate = new Date(payment.paymentDate);
     const transactionDate = new Date(transaction.transactionDate);
-    const daysDiff = Math.abs((paymentDate.getTime() - transactionDate.getTime()) / (1000 * 60 * 60 * 24));
+    const daysDiff = Math.abs(
+      (paymentDate.getTime() - transactionDate.getTime()) /
+        (1000 * 60 * 60 * 24)
+    );
 
     if (daysDiff <= 1) {
       confidence += 0.3;
@@ -280,7 +327,10 @@ export class PaymentReconciliationService {
       if (payment.reference === transaction.reference) {
         confidence += 0.3;
         reasons.push('Reference number match');
-      } else if (payment.reference.includes(transaction.reference) || transaction.reference.includes(payment.reference)) {
+      } else if (
+        payment.reference.includes(transaction.reference) ||
+        transaction.reference.includes(payment.reference)
+      ) {
         confidence += 0.15;
         reasons.push('Partial reference match');
       }
@@ -288,7 +338,10 @@ export class PaymentReconciliationService {
 
     // External ID match with payment reference
     if (payment.reference && transaction.externalId) {
-      if (payment.reference.includes(transaction.externalId) || transaction.externalId.includes(payment.reference)) {
+      if (
+        payment.reference.includes(transaction.externalId) ||
+        transaction.externalId.includes(payment.reference)
+      ) {
         confidence += 0.2;
         reasons.push('External ID match');
       }
@@ -296,9 +349,13 @@ export class PaymentReconciliationService {
 
     // Customer phone number match with counterparty
     if (payment.customer.phone && transaction.counterpartyNumber) {
-      const normalizedPaymentPhone = this.normalizePhoneNumber(payment.customer.phone);
-      const normalizedCounterpartyPhone = this.normalizePhoneNumber(transaction.counterpartyNumber);
-      
+      const normalizedPaymentPhone = this.normalizePhoneNumber(
+        payment.customer.phone
+      );
+      const normalizedCounterpartyPhone = this.normalizePhoneNumber(
+        transaction.counterpartyNumber
+      );
+
       if (normalizedPaymentPhone === normalizedCounterpartyPhone) {
         confidence += 0.25;
         reasons.push('Phone number match');
@@ -309,7 +366,7 @@ export class PaymentReconciliationService {
     if (payment.customer.name && transaction.counterpartyName) {
       const similarity = this.calculateStringSimilarity(
         payment.customer.name.toLowerCase(),
-        transaction.counterpartyName.toLowerCase(),
+        transaction.counterpartyName.toLowerCase()
       );
       if (similarity > 0.8) {
         confidence += 0.2;
@@ -321,7 +378,10 @@ export class PaymentReconciliationService {
     }
 
     // Payment method consistency
-    if (payment.paymentMethod === 'MOBILE_MONEY' && transaction.type === 'DEPOSIT') {
+    if (
+      payment.paymentMethod === 'MOBILE_MONEY' &&
+      transaction.type === 'DEPOSIT'
+    ) {
       confidence += 0.1;
       reasons.push('Payment method consistency');
     }
@@ -339,13 +399,18 @@ export class PaymentReconciliationService {
   /**
    * Remove duplicate matches (one payment can only match one transaction)
    */
-  private removeDuplicateMatches(matches: ReconciliationMatch[]): ReconciliationMatch[] {
+  private removeDuplicateMatches(
+    matches: ReconciliationMatch[]
+  ): ReconciliationMatch[] {
     const usedPayments = new Set<string>();
     const usedTransactions = new Set<string>();
     const uniqueMatches: ReconciliationMatch[] = [];
 
     for (const match of matches) {
-      if (!usedPayments.has(match.paymentId) && !usedTransactions.has(match.transactionId)) {
+      if (
+        !usedPayments.has(match.paymentId) &&
+        !usedTransactions.has(match.transactionId)
+      ) {
         uniqueMatches.push(match);
         usedPayments.add(match.paymentId);
         usedTransactions.add(match.transactionId);
@@ -361,16 +426,16 @@ export class PaymentReconciliationService {
   private normalizePhoneNumber(phone: string): string {
     // Remove all non-digit characters
     const digits = phone.replace(/\D/g, '');
-    
+
     // Handle Zambian phone numbers
     if (digits.startsWith('260')) {
       return digits; // Already in international format
     } else if (digits.startsWith('0')) {
-      return '260' + digits.substring(1); // Convert from local to international
+      return `260${  digits.substring(1)}`; // Convert from local to international
     } else if (digits.length === 9) {
-      return '260' + digits; // Add country code
+      return `260${  digits}`; // Add country code
     }
-    
+
     return digits;
   }
 
@@ -398,8 +463,8 @@ export class PaymentReconciliationService {
       for (let j = 1; j <= len2; j++) {
         const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
         matrix[i][j] = Math.min(
-          matrix[i - 1][j] + 1,     // deletion
-          matrix[i][j - 1] + 1,     // insertion
+          matrix[i - 1][j] + 1, // deletion
+          matrix[i][j - 1] + 1, // insertion
           matrix[i - 1][j - 1] + cost // substitution
         );
       }

@@ -1,5 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Prisma, Invoice, InvoiceItem, InvoiceStatus, ZraSubmissionStatus } from '@prisma/client';
+import {
+  Invoice,
+  InvoiceItem,
+  InvoiceStatus,
+  Prisma,
+  ZraSubmissionStatus,
+} from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
 
 export interface CreateInvoiceData {
@@ -95,7 +101,7 @@ export class InvoiceRepository {
    */
   async create(data: CreateInvoiceData): Promise<InvoiceWithRelations> {
     try {
-      return await this.prisma.$transaction(async (tx) => {
+      return await this.prisma.$transaction(async tx => {
         // Create the invoice
         const invoice = await tx.invoice.create({
           data: {
@@ -137,7 +143,7 @@ export class InvoiceRepository {
         }
 
         // Return invoice with relations
-        return await tx.invoice.findUnique({
+        return (await tx.invoice.findUnique({
           where: { id: invoice.id },
           include: {
             customer: {
@@ -156,7 +162,7 @@ export class InvoiceRepository {
               select: { payments: true },
             },
           },
-        }) as InvoiceWithRelations;
+        })) as InvoiceWithRelations;
       });
     } catch (error) {
       this.logger.error(`Failed to create invoice: ${error.message}`, error);
@@ -167,9 +173,12 @@ export class InvoiceRepository {
   /**
    * Find invoice by ID with relations
    */
-  async findById(id: string, organizationId: string): Promise<InvoiceWithRelations | null> {
+  async findById(
+    id: string,
+    organizationId: string
+  ): Promise<InvoiceWithRelations | null> {
     try {
-      return await this.prisma.invoice.findFirst({
+      return (await this.prisma.invoice.findFirst({
         where: {
           id,
           organizationId,
@@ -196,9 +205,12 @@ export class InvoiceRepository {
             select: { payments: true },
           },
         },
-      }) as InvoiceWithRelations;
+      })) as InvoiceWithRelations;
     } catch (error) {
-      this.logger.error(`Failed to find invoice by ID: ${error.message}`, error);
+      this.logger.error(
+        `Failed to find invoice by ID: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -210,12 +222,12 @@ export class InvoiceRepository {
     filters: InvoiceFilters,
     orderBy: Prisma.InvoiceOrderByWithRelationInput = { issueDate: 'desc' },
     skip?: number,
-    take?: number,
+    take?: number
   ): Promise<InvoiceWithRelations[]> {
     try {
       const where = this.buildWhereClause(filters);
 
-      return await this.prisma.invoice.findMany({
+      return (await this.prisma.invoice.findMany({
         where,
         include: {
           customer: {
@@ -237,7 +249,7 @@ export class InvoiceRepository {
         orderBy,
         skip,
         take,
-      }) as InvoiceWithRelations[];
+      })) as InvoiceWithRelations[];
     } catch (error) {
       this.logger.error(`Failed to find invoices: ${error.message}`, error);
       throw error;
@@ -260,7 +272,11 @@ export class InvoiceRepository {
   /**
    * Update invoice
    */
-  async update(id: string, organizationId: string, data: UpdateInvoiceData): Promise<InvoiceWithRelations> {
+  async update(
+    id: string,
+    organizationId: string,
+    data: UpdateInvoiceData
+  ): Promise<InvoiceWithRelations> {
     try {
       const updatedInvoice = await this.prisma.invoice.update({
         where: {
@@ -346,10 +362,13 @@ export class InvoiceRepository {
         }),
       ]);
 
-      const statusCounts = counts.reduce((acc, item) => {
-        acc[item.status.toLowerCase()] = item._count.id;
-        return acc;
-      }, {} as Record<string, number>);
+      const statusCounts = counts.reduce(
+        (acc, item) => {
+          acc[item.status.toLowerCase()] = item._count.id;
+          return acc;
+        },
+        {} as Record<string, number>
+      );
 
       const totalAmount = amounts._sum.totalAmount?.toNumber() || 0;
       const paidAmount = amounts._sum.paidAmount?.toNumber() || 0;
@@ -373,12 +392,14 @@ export class InvoiceRepository {
   /**
    * Find overdue invoices
    */
-  async findOverdueInvoices(organizationId: string): Promise<InvoiceWithRelations[]> {
+  async findOverdueInvoices(
+    organizationId: string
+  ): Promise<InvoiceWithRelations[]> {
     try {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      return await this.prisma.invoice.findMany({
+      return (await this.prisma.invoice.findMany({
         where: {
           organizationId,
           deletedAt: null,
@@ -405,9 +426,12 @@ export class InvoiceRepository {
           },
         },
         orderBy: { dueDate: 'asc' },
-      }) as InvoiceWithRelations[];
+      })) as InvoiceWithRelations[];
     } catch (error) {
-      this.logger.error(`Failed to find overdue invoices: ${error.message}`, error);
+      this.logger.error(
+        `Failed to find overdue invoices: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -467,7 +491,9 @@ export class InvoiceRepository {
       where.OR = [
         { invoiceNumber: { contains: filters.search, mode: 'insensitive' } },
         { reference: { contains: filters.search, mode: 'insensitive' } },
-        { customer: { name: { contains: filters.search, mode: 'insensitive' } } },
+        {
+          customer: { name: { contains: filters.search, mode: 'insensitive' } },
+        },
         { notes: { contains: filters.search, mode: 'insensitive' } },
       ];
     }

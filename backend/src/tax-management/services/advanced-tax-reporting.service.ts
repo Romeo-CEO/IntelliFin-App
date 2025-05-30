@@ -115,7 +115,7 @@ export class AdvancedTaxReportingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly taxCalculationService: TaxCalculationService,
-    private readonly taxAnalyticsService: TaxAnalyticsService,
+    private readonly taxAnalyticsService: TaxAnalyticsService
   ) {}
 
   /**
@@ -124,10 +124,12 @@ export class AdvancedTaxReportingService {
   async generateZRAComplianceReport(
     organizationId: string,
     startDate: Date,
-    endDate: Date,
+    endDate: Date
   ): Promise<ZRAComplianceReport> {
     try {
-      this.logger.log(`Generating ZRA compliance report for ${organizationId}: ${startDate} to ${endDate}`);
+      this.logger.log(
+        `Generating ZRA compliance report for ${organizationId}: ${startDate} to ${endDate}`
+      );
 
       // Get organization info
       const organization = await this.prisma.organization.findUnique({
@@ -153,19 +155,38 @@ export class AdvancedTaxReportingService {
       });
 
       // Calculate tax summary
-      const totalTaxLiability = taxObligations.reduce((sum, obl) => sum + obl.amountDue.toNumber(), 0);
-      const totalTaxPaid = taxObligations.reduce((sum, obl) => sum + obl.amountPaid.toNumber(), 0);
-      const totalPenalties = taxObligations.reduce((sum, obl) => sum + obl.penaltyAmount.toNumber(), 0);
-      const totalInterest = taxObligations.reduce((sum, obl) => sum + obl.interestAmount.toNumber(), 0);
+      const totalTaxLiability = taxObligations.reduce(
+        (sum, obl) => sum + obl.amountDue.toNumber(),
+        0
+      );
+      const totalTaxPaid = taxObligations.reduce(
+        (sum, obl) => sum + obl.amountPaid.toNumber(),
+        0
+      );
+      const totalPenalties = taxObligations.reduce(
+        (sum, obl) => sum + obl.penaltyAmount.toNumber(),
+        0
+      );
+      const totalInterest = taxObligations.reduce(
+        (sum, obl) => sum + obl.interestAmount.toNumber(),
+        0
+      );
 
       // Group by tax type
       const taxBreakdown = this.groupObligationsByTaxType(taxObligations);
 
       // Calculate compliance metrics
-      const complianceMetrics = await this.calculateComplianceMetrics(organizationId, startDate, endDate);
+      const complianceMetrics = await this.calculateComplianceMetrics(
+        organizationId,
+        startDate,
+        endDate
+      );
 
       // Generate recommendations
-      const recommendations = this.generateComplianceRecommendations(complianceMetrics, taxBreakdown);
+      const recommendations = this.generateComplianceRecommendations(
+        complianceMetrics,
+        taxBreakdown
+      );
 
       const report: ZRAComplianceReport = {
         organizationInfo: {
@@ -196,7 +217,10 @@ export class AdvancedTaxReportingService {
       this.logger.log(`ZRA compliance report generated successfully`);
       return report;
     } catch (error) {
-      this.logger.error(`Failed to generate ZRA compliance report: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to generate ZRA compliance report: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -204,9 +228,13 @@ export class AdvancedTaxReportingService {
   /**
    * Generate executive tax dashboard
    */
-  async generateExecutiveTaxDashboard(organizationId: string): Promise<ExecutiveTaxDashboard> {
+  async generateExecutiveTaxDashboard(
+    organizationId: string
+  ): Promise<ExecutiveTaxDashboard> {
     try {
-      this.logger.log(`Generating executive tax dashboard for ${organizationId}`);
+      this.logger.log(
+        `Generating executive tax dashboard for ${organizationId}`
+      );
 
       // Get current period
       const currentDate = new Date();
@@ -214,7 +242,10 @@ export class AdvancedTaxReportingService {
       const period = `${currentYear}`;
 
       // Calculate KPIs
-      const kpis = await this.calculateExecutiveKPIs(organizationId, currentYear);
+      const kpis = await this.calculateExecutiveKPIs(
+        organizationId,
+        currentYear
+      );
 
       // Get trends data
       const trends = await this.getTaxTrends(organizationId, 12); // Last 12 months
@@ -236,7 +267,10 @@ export class AdvancedTaxReportingService {
       this.logger.log(`Executive tax dashboard generated successfully`);
       return dashboard;
     } catch (error) {
-      this.logger.error(`Failed to generate executive tax dashboard: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to generate executive tax dashboard: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -246,26 +280,39 @@ export class AdvancedTaxReportingService {
    */
   async generateTaxPlanningReport(
     organizationId: string,
-    planningMonths: number = 12,
+    planningMonths: number = 12
   ): Promise<TaxPlanningReport> {
     try {
-      this.logger.log(`Generating tax planning report for ${organizationId}: ${planningMonths} months`);
+      this.logger.log(
+        `Generating tax planning report for ${organizationId}: ${planningMonths} months`
+      );
 
       const startDate = new Date();
       const endDate = new Date();
       endDate.setMonth(endDate.getMonth() + planningMonths);
 
       // Project tax liabilities
-      const projectedTaxLiability = await this.projectTaxLiabilities(organizationId, planningMonths);
+      const projectedTaxLiability = await this.projectTaxLiabilities(
+        organizationId,
+        planningMonths
+      );
 
       // Generate cash flow projection
-      const cashFlowProjection = await this.generateCashFlowProjection(organizationId, projectedTaxLiability, planningMonths);
+      const cashFlowProjection = await this.generateCashFlowProjection(
+        organizationId,
+        projectedTaxLiability,
+        planningMonths
+      );
 
       // Identify optimization opportunities
-      const optimizationOpportunities = await this.identifyOptimizationOpportunities(organizationId);
+      const optimizationOpportunities =
+        await this.identifyOptimizationOpportunities(organizationId);
 
       // Generate recommendations
-      const recommendations = await this.generatePlanningRecommendations(organizationId, projectedTaxLiability);
+      const recommendations = await this.generatePlanningRecommendations(
+        organizationId,
+        projectedTaxLiability
+      );
 
       const report: TaxPlanningReport = {
         organizationId,
@@ -282,7 +329,10 @@ export class AdvancedTaxReportingService {
       this.logger.log(`Tax planning report generated successfully`);
       return report;
     } catch (error) {
-      this.logger.error(`Failed to generate tax planning report: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to generate tax planning report: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -294,10 +344,12 @@ export class AdvancedTaxReportingService {
     reportType: string,
     organizationId: string,
     period: { startDate: Date; endDate: Date },
-    format: 'XML' | 'CSV' | 'PDF' = 'XML',
+    format: 'XML' | 'CSV' | 'PDF' = 'XML'
   ): Promise<{ content: string; filename: string; mimeType: string }> {
     try {
-      this.logger.log(`Exporting ZRA compliant report: ${reportType} in ${format} format`);
+      this.logger.log(
+        `Exporting ZRA compliant report: ${reportType} in ${format} format`
+      );
 
       let content: string;
       let filename: string;
@@ -305,19 +357,31 @@ export class AdvancedTaxReportingService {
 
       switch (format) {
         case 'XML':
-          content = await this.generateXMLReport(reportType, organizationId, period);
+          content = await this.generateXMLReport(
+            reportType,
+            organizationId,
+            period
+          );
           filename = `${reportType}_${period.startDate.toISOString().split('T')[0]}_${period.endDate.toISOString().split('T')[0]}.xml`;
           mimeType = 'application/xml';
           break;
 
         case 'CSV':
-          content = await this.generateCSVReport(reportType, organizationId, period);
+          content = await this.generateCSVReport(
+            reportType,
+            organizationId,
+            period
+          );
           filename = `${reportType}_${period.startDate.toISOString().split('T')[0]}_${period.endDate.toISOString().split('T')[0]}.csv`;
           mimeType = 'text/csv';
           break;
 
         case 'PDF':
-          content = await this.generatePDFReport(reportType, organizationId, period);
+          content = await this.generatePDFReport(
+            reportType,
+            organizationId,
+            period
+          );
           filename = `${reportType}_${period.startDate.toISOString().split('T')[0]}_${period.endDate.toISOString().split('T')[0]}.pdf`;
           mimeType = 'application/pdf';
           break;
@@ -329,7 +393,10 @@ export class AdvancedTaxReportingService {
       this.logger.log(`ZRA compliant report exported: ${filename}`);
       return { content, filename, mimeType };
     } catch (error) {
-      this.logger.error(`Failed to export ZRA compliant report: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to export ZRA compliant report: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -353,7 +420,8 @@ export class AdvancedTaxReportingService {
 
       acc[taxType].liability += obl.amountDue.toNumber();
       acc[taxType].paid += obl.amountPaid.toNumber();
-      acc[taxType].outstanding += (obl.amountDue.toNumber() - obl.amountPaid.toNumber());
+      acc[taxType].outstanding +=
+        obl.amountDue.toNumber() - obl.amountPaid.toNumber();
 
       return acc;
     }, {});
@@ -364,7 +432,11 @@ export class AdvancedTaxReportingService {
   /**
    * Calculate compliance metrics
    */
-  private async calculateComplianceMetrics(organizationId: string, startDate: Date, endDate: Date) {
+  private async calculateComplianceMetrics(
+    organizationId: string,
+    startDate: Date,
+    endDate: Date
+  ) {
     // TODO: Implement actual compliance metrics calculation
     return {
       filingComplianceRate: 95,
@@ -377,7 +449,10 @@ export class AdvancedTaxReportingService {
   /**
    * Generate compliance recommendations
    */
-  private generateComplianceRecommendations(complianceMetrics: any, taxBreakdown: any[]): string[] {
+  private generateComplianceRecommendations(
+    complianceMetrics: any,
+    taxBreakdown: any[]
+  ): string[] {
     const recommendations: string[] = [];
 
     if (complianceMetrics.overallComplianceScore < 80) {
@@ -392,13 +467,20 @@ export class AdvancedTaxReportingService {
       recommendations.push('Improve cash flow management for tax payments');
     }
 
-    const outstandingTax = taxBreakdown.reduce((sum, tax) => sum + tax.outstanding, 0);
+    const outstandingTax = taxBreakdown.reduce(
+      (sum, tax) => sum + tax.outstanding,
+      0
+    );
     if (outstandingTax > 0) {
-      recommendations.push('Settle outstanding tax obligations to avoid penalties');
+      recommendations.push(
+        'Settle outstanding tax obligations to avoid penalties'
+      );
     }
 
     if (recommendations.length === 0) {
-      recommendations.push('Maintain current compliance standards and continue monitoring');
+      recommendations.push(
+        'Maintain current compliance standards and continue monitoring'
+      );
     }
 
     return recommendations;
@@ -464,7 +546,11 @@ export class AdvancedTaxReportingService {
   /**
    * Generate cash flow projection
    */
-  private async generateCashFlowProjection(organizationId: string, projectedLiability: any, months: number) {
+  private async generateCashFlowProjection(
+    organizationId: string,
+    projectedLiability: any,
+    months: number
+  ) {
     // TODO: Implement actual cash flow projection
     return [];
   }
@@ -480,7 +566,10 @@ export class AdvancedTaxReportingService {
   /**
    * Generate planning recommendations
    */
-  private async generatePlanningRecommendations(organizationId: string, projectedLiability: any) {
+  private async generatePlanningRecommendations(
+    organizationId: string,
+    projectedLiability: any
+  ) {
     // TODO: Implement actual recommendations generation
     return [];
   }
@@ -488,7 +577,11 @@ export class AdvancedTaxReportingService {
   /**
    * Generate XML report
    */
-  private async generateXMLReport(reportType: string, organizationId: string, period: any): Promise<string> {
+  private async generateXMLReport(
+    reportType: string,
+    organizationId: string,
+    period: any
+  ): Promise<string> {
     // TODO: Implement XML generation
     return '<xml>Mock XML Report</xml>';
   }
@@ -496,7 +589,11 @@ export class AdvancedTaxReportingService {
   /**
    * Generate CSV report
    */
-  private async generateCSVReport(reportType: string, organizationId: string, period: any): Promise<string> {
+  private async generateCSVReport(
+    reportType: string,
+    organizationId: string,
+    period: any
+  ): Promise<string> {
     // TODO: Implement CSV generation
     return 'Mock CSV Report';
   }
@@ -504,7 +601,11 @@ export class AdvancedTaxReportingService {
   /**
    * Generate PDF report
    */
-  private async generatePDFReport(reportType: string, organizationId: string, period: any): Promise<string> {
+  private async generatePDFReport(
+    reportType: string,
+    organizationId: string,
+    period: any
+  ): Promise<string> {
     // TODO: Implement PDF generation
     return 'Mock PDF Report';
   }

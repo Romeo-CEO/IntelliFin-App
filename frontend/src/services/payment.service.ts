@@ -402,9 +402,9 @@ class PaymentService {
     if (digits.startsWith('260')) {
       return digits;
     } else if (digits.startsWith('0')) {
-      return '260' + digits.substring(1);
+      return `260${  digits.substring(1)}`;
     } else if (digits.length === 9) {
-      return '260' + digits;
+      return `260${  digits}`;
     }
     
     return digits;

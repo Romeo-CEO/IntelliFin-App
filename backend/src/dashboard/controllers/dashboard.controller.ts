@@ -1,23 +1,23 @@
 import {
+  Body,
   Controller,
+  Delete,
   Get,
+  HttpStatus,
+  Param,
   Post,
   Put,
-  Delete,
-  Body,
-  Param,
   Query,
   UseGuards,
-  HttpStatus,
   ValidationPipe,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
   ApiBearerAuth,
+  ApiOperation,
   ApiParam,
   ApiQuery,
+  ApiResponse,
+  ApiTags,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -27,13 +27,13 @@ import { AuthenticatedUser } from '../../auth/interfaces/auth.interface';
 import { DashboardConfigurationService } from '../services/dashboard-configuration.service';
 import { WidgetManagementService } from '../services/widget-management.service';
 import {
+  BulkUpdatePositionsDto,
   CreateDashboardDto,
-  UpdateDashboardDto,
   CreateWidgetDto,
+  DashboardResponseDto,
+  UpdateDashboardDto,
   UpdateWidgetDto,
   UpdateWidgetPositionDto,
-  BulkUpdatePositionsDto,
-  DashboardResponseDto,
   WidgetResponseDto,
 } from '../dto/dashboard.dto';
 
@@ -44,7 +44,7 @@ import {
 export class DashboardController {
   constructor(
     private readonly dashboardService: DashboardConfigurationService,
-    private readonly widgetService: WidgetManagementService,
+    private readonly widgetService: WidgetManagementService
   ) {}
 
   @Post()
@@ -64,12 +64,12 @@ export class DashboardController {
   })
   async createDashboard(
     @CurrentUser() user: AuthenticatedUser,
-    @Body(ValidationPipe) createDashboardDto: CreateDashboardDto,
+    @Body(ValidationPipe) createDashboardDto: CreateDashboardDto
   ) {
     return await this.dashboardService.createDashboard(
       user.organizationId,
       user.id,
-      createDashboardDto,
+      createDashboardDto
     );
   }
 
@@ -92,12 +92,12 @@ export class DashboardController {
   })
   async getDashboards(
     @CurrentUser() user: AuthenticatedUser,
-    @Query('includePrivate') includePrivate?: boolean,
+    @Query('includePrivate') includePrivate?: boolean
   ) {
     return await this.dashboardService.getDashboards(
       user.organizationId,
       user.id,
-      includePrivate,
+      includePrivate
     );
   }
 
@@ -142,9 +142,13 @@ export class DashboardController {
   })
   async getDashboard(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id') id: string,
+    @Param('id') id: string
   ) {
-    return await this.dashboardService.getDashboard(id, user.organizationId, user.id);
+    return await this.dashboardService.getDashboard(
+      id,
+      user.organizationId,
+      user.id
+    );
   }
 
   @Put(':id')
@@ -174,13 +178,13 @@ export class DashboardController {
   async updateDashboard(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
-    @Body(ValidationPipe) updateDashboardDto: UpdateDashboardDto,
+    @Body(ValidationPipe) updateDashboardDto: UpdateDashboardDto
   ) {
     return await this.dashboardService.updateDashboard(
       id,
       user.organizationId,
       user.id,
-      updateDashboardDto,
+      updateDashboardDto
     );
   }
 
@@ -203,13 +207,13 @@ export class DashboardController {
   async updateDashboardLayout(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
-    @Body() layout: any,
+    @Body() layout: any
   ) {
     return await this.dashboardService.updateLayout(
       id,
       user.organizationId,
       user.id,
-      layout,
+      layout
     );
   }
 
@@ -231,9 +235,13 @@ export class DashboardController {
   })
   async setAsDefault(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id') id: string,
+    @Param('id') id: string
   ) {
-    return await this.dashboardService.setAsDefault(id, user.organizationId, user.id);
+    return await this.dashboardService.setAsDefault(
+      id,
+      user.organizationId,
+      user.id
+    );
   }
 
   @Post(':id/duplicate')
@@ -255,13 +263,13 @@ export class DashboardController {
   async duplicateDashboard(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
-    @Body() body: { name?: string },
+    @Body() body: { name?: string }
   ) {
     return await this.dashboardService.duplicateDashboard(
       id,
       user.organizationId,
       user.id,
-      body.name,
+      body.name
     );
   }
 
@@ -290,9 +298,13 @@ export class DashboardController {
   })
   async deleteDashboard(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id') id: string,
+    @Param('id') id: string
   ) {
-    await this.dashboardService.deleteDashboard(id, user.organizationId, user.id);
+    await this.dashboardService.deleteDashboard(
+      id,
+      user.organizationId,
+      user.id
+    );
   }
 
   // Widget endpoints
@@ -315,9 +327,13 @@ export class DashboardController {
   async createWidget(
     @CurrentUser() user: AuthenticatedUser,
     @Param('dashboardId') dashboardId: string,
-    @Body(ValidationPipe) createWidgetDto: CreateWidgetDto,
+    @Body(ValidationPipe) createWidgetDto: CreateWidgetDto
   ) {
-    return await this.widgetService.createWidget(dashboardId, user.id, createWidgetDto);
+    return await this.widgetService.createWidget(
+      dashboardId,
+      user.id,
+      createWidgetDto
+    );
   }
 
   @Get(':dashboardId/widgets')
@@ -345,8 +361,12 @@ export class DashboardController {
   async getWidgets(
     @CurrentUser() user: AuthenticatedUser,
     @Param('dashboardId') dashboardId: string,
-    @Query('includeHidden') includeHidden?: boolean,
+    @Query('includeHidden') includeHidden?: boolean
   ) {
-    return await this.widgetService.getWidgets(dashboardId, user.id, includeHidden);
+    return await this.widgetService.getWidgets(
+      dashboardId,
+      user.id,
+      includeHidden
+    );
   }
 }

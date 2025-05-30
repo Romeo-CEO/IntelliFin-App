@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
-import { TaxType, TaxPeriodStatus, TaxObligationStatus } from '@prisma/client';
+import { TaxObligationStatus, TaxPeriodStatus, TaxType } from '@prisma/client';
 import { TaxPeriodService } from './tax-period.service';
 import { TaxObligationService } from './tax-obligation.service';
 
@@ -17,7 +17,12 @@ export interface ComplianceScore {
 
 export interface ComplianceAlert {
   id: string;
-  type: 'OVERDUE_FILING' | 'OVERDUE_PAYMENT' | 'UPCOMING_DEADLINE' | 'MISSING_PERIOD' | 'PENALTY_APPLIED';
+  type:
+    | 'OVERDUE_FILING'
+    | 'OVERDUE_PAYMENT'
+    | 'UPCOMING_DEADLINE'
+    | 'MISSING_PERIOD'
+    | 'PENALTY_APPLIED';
   severity: 'INFO' | 'WARNING' | 'ERROR' | 'CRITICAL';
   title: string;
   description: string;
@@ -63,19 +68,30 @@ export class TaxComplianceService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly taxPeriodService: TaxPeriodService,
-    private readonly taxObligationService: TaxObligationService,
+    private readonly taxObligationService: TaxObligationService
   ) {}
 
   /**
    * Calculate compliance score for organization
    */
-  async calculateComplianceScore(organizationId: string): Promise<ComplianceScore> {
+  async calculateComplianceScore(
+    organizationId: string
+  ): Promise<ComplianceScore> {
     try {
-      this.logger.log(`Calculating compliance score for organization: ${organizationId}`);
+      this.logger.log(
+        `Calculating compliance score for organization: ${organizationId}`
+      );
 
       const currentYear = new Date().getFullYear();
-      const periods = await this.taxPeriodService.getTaxPeriods(organizationId, undefined, currentYear);
-      const obligations = await this.taxObligationService.getObligations(organizationId, { year: currentYear });
+      const periods = await this.taxPeriodService.getTaxPeriods(
+        organizationId,
+        undefined,
+        currentYear
+      );
+      const obligations = await this.taxObligationService.getObligations(
+        organizationId,
+        { year: currentYear }
+      );
 
       // Calculate filing compliance (40% weight)
       const filingScore = this.calculateFilingScore(periods);
@@ -84,13 +100,19 @@ export class TaxComplianceService {
       const paymentScore = this.calculatePaymentScore(obligations);
 
       // Calculate timeliness (15% weight)
-      const timelinessScore = this.calculateTimelinessScore(periods, obligations);
+      const timelinessScore = this.calculateTimelinessScore(
+        periods,
+        obligations
+      );
 
       // Calculate accuracy (5% weight) - simplified for now
       const accuracyScore = 95; // Assume high accuracy for now
 
       const overall = Math.round(
-        filingScore * 0.4 + paymentScore * 0.4 + timelinessScore * 0.15 + accuracyScore * 0.05,
+        filingScore * 0.4 +
+          paymentScore * 0.4 +
+          timelinessScore * 0.15 +
+          accuracyScore * 0.05
       );
 
       const riskLevel = this.determineRiskLevel(overall);
@@ -106,10 +128,15 @@ export class TaxComplianceService {
         riskLevel,
       };
 
-      this.logger.log(`Compliance score calculated: ${overall}% (${riskLevel})`);
+      this.logger.log(
+        `Compliance score calculated: ${overall}% (${riskLevel})`
+      );
       return score;
-    } catch (error) {
-      this.logger.error(`Failed to calculate compliance score: ${error.message}`, error.stack);
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to calculate compliance score: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -117,9 +144,13 @@ export class TaxComplianceService {
   /**
    * Generate compliance alerts
    */
-  async generateComplianceAlerts(organizationId: string): Promise<ComplianceAlert[]> {
+  async generateComplianceAlerts(
+    organizationId: string
+  ): Promise<ComplianceAlert[]> {
     try {
-      this.logger.log(`Generating compliance alerts for organization: ${organizationId}`);
+      this.logger.log(
+        `Generating compliance alerts for organization: ${organizationId}`
+      );
 
       const alerts: ComplianceAlert[] = [];
       const now = new Date();
@@ -149,11 +180,15 @@ export class TaxComplianceService {
       });
 
       // Get overdue obligations
-      const overdueObligations = await this.taxObligationService.getObligations(organizationId, { overdue: true });
+      const overdueObligations = await this.taxObligationService.getObligations(
+        organizationId,
+        { overdue: true }
+      );
 
       // Generate overdue payment alerts
       overdueObligations.forEach(obligation => {
-        const outstanding = obligation.amountDue.toNumber() - obligation.amountPaid.toNumber();
+        const outstanding =
+          obligation.amountDue.toNumber() - obligation.amountPaid.toNumber();
         if (outstanding > 0) {
           alerts.push({
             id: `overdue-payment-${obligation.id}`,
@@ -164,14 +199,18 @@ export class TaxComplianceService {
             taxType: obligation.taxPeriod?.taxType || TaxType.VAT,
             dueDate: obligation.dueDate,
             amount: outstanding,
-            actionRequired: 'Make payment immediately to avoid additional penalties',
+            actionRequired:
+              'Make payment immediately to avoid additional penalties',
             createdAt: now,
           });
         }
       });
 
       // Get upcoming deadlines (next 7 days)
-      const upcomingDeadlines = await this.getUpcomingDeadlines(organizationId, 7);
+      const upcomingDeadlines = await this.getUpcomingDeadlines(
+        organizationId,
+        7
+      );
 
       // Generate upcoming deadline alerts
       upcomingDeadlines.forEach(deadline => {
@@ -201,8 +240,11 @@ export class TaxComplianceService {
 
       this.logger.log(`Generated ${alerts.length} compliance alerts`);
       return alerts;
-    } catch (error) {
-      this.logger.error(`Failed to generate compliance alerts: ${error.message}`, error.stack);
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to generate compliance alerts: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -210,9 +252,13 @@ export class TaxComplianceService {
   /**
    * Generate comprehensive compliance report
    */
-  async generateComplianceReport(organizationId: string): Promise<ComplianceReport> {
+  async generateComplianceReport(
+    organizationId: string
+  ): Promise<ComplianceReport> {
     try {
-      this.logger.log(`Generating compliance report for organization: ${organizationId}`);
+      this.logger.log(
+        `Generating compliance report for organization: ${organizationId}`
+      );
 
       const score = await this.calculateComplianceScore(organizationId);
       const alerts = await this.generateComplianceAlerts(organizationId);
@@ -230,8 +276,11 @@ export class TaxComplianceService {
 
       this.logger.log('Compliance report generated successfully');
       return report;
-    } catch (error) {
-      this.logger.error(`Failed to generate compliance report: ${error.message}`, error.stack);
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to generate compliance report: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -239,7 +288,10 @@ export class TaxComplianceService {
   /**
    * Get upcoming deadlines
    */
-  async getUpcomingDeadlines(organizationId: string, days: number = 30): Promise<DeadlineReminder[]> {
+  async getUpcomingDeadlines(
+    organizationId: string,
+    days: number = 30
+  ): Promise<DeadlineReminder[]> {
     try {
       const futureDate = new Date();
       futureDate.setDate(futureDate.getDate() + days);
@@ -259,10 +311,12 @@ export class TaxComplianceService {
       const reminders: DeadlineReminder[] = periods.map(period => {
         const now = new Date();
         const daysUntilFiling = Math.ceil(
-          (period.filingDeadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+          (period.filingDeadline.getTime() - now.getTime()) /
+            (1000 * 60 * 60 * 24)
         );
         const daysUntilPayment = Math.ceil(
-          (period.paymentDeadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+          (period.paymentDeadline.getTime() - now.getTime()) /
+            (1000 * 60 * 60 * 24)
         );
 
         let priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT' = 'LOW';
@@ -282,8 +336,11 @@ export class TaxComplianceService {
       });
 
       return reminders;
-    } catch (error) {
-      this.logger.error(`Failed to get upcoming deadlines: ${error.message}`, error.stack);
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to get upcoming deadlines: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -294,7 +351,9 @@ export class TaxComplianceService {
   private calculateFilingScore(periods: any[]): number {
     if (periods.length === 0) return 100;
 
-    const filedPeriods = periods.filter(p => p.status === TaxPeriodStatus.FILED).length;
+    const filedPeriods = periods.filter(
+      p => p.status === TaxPeriodStatus.FILED
+    ).length;
     return Math.round((filedPeriods / periods.length) * 100);
   }
 
@@ -304,7 +363,9 @@ export class TaxComplianceService {
   private calculatePaymentScore(obligations: any[]): number {
     if (obligations.length === 0) return 100;
 
-    const paidObligations = obligations.filter(o => o.status === TaxObligationStatus.COMPLETED).length;
+    const paidObligations = obligations.filter(
+      o => o.status === TaxObligationStatus.COMPLETED
+    ).length;
     return Math.round((paidObligations / obligations.length) * 100);
   }
 
@@ -342,7 +403,9 @@ export class TaxComplianceService {
   /**
    * Determine risk level based on score
    */
-  private determineRiskLevel(score: number): 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' {
+  private determineRiskLevel(
+    score: number
+  ): 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' {
     if (score >= 90) return 'LOW';
     if (score >= 75) return 'MEDIUM';
     if (score >= 60) return 'HIGH';
@@ -354,17 +417,27 @@ export class TaxComplianceService {
    */
   private async generateComplianceSummary(organizationId: string) {
     const currentYear = new Date().getFullYear();
-    const periods = await this.taxPeriodService.getTaxPeriods(organizationId, undefined, currentYear);
-    const obligationSummary = await this.taxObligationService.getObligationSummary(organizationId, currentYear);
+    const periods = await this.taxPeriodService.getTaxPeriods(
+      organizationId,
+      undefined,
+      currentYear
+    );
+    const obligationSummary =
+      await this.taxObligationService.getObligationSummary(
+        organizationId,
+        currentYear
+      );
 
     return {
       totalPeriods: periods.length,
-      filedPeriods: periods.filter(p => p.status === TaxPeriodStatus.FILED).length,
-      overduePeriods: periods.filter(p => 
-        p.filingDeadline < new Date() && p.status !== TaxPeriodStatus.FILED
+      filedPeriods: periods.filter(p => p.status === TaxPeriodStatus.FILED)
+        .length,
+      overduePeriods: periods.filter(
+        p => p.filingDeadline < new Date() && p.status !== TaxPeriodStatus.FILED
       ).length,
       totalObligations: obligationSummary.totalObligations,
-      paidObligations: obligationSummary.byStatus[TaxObligationStatus.COMPLETED]?.count || 0,
+      paidObligations:
+        obligationSummary.byStatus[TaxObligationStatus.COMPLETED]?.count || 0,
       overdueObligations: obligationSummary.totalOverdue,
       totalPenalties: 0, // Will be calculated from actual penalty data
     };
@@ -373,31 +446,46 @@ export class TaxComplianceService {
   /**
    * Generate recommendations based on compliance status
    */
-  private generateRecommendations(score: ComplianceScore, alerts: ComplianceAlert[]): string[] {
+  private generateRecommendations(
+    score: ComplianceScore,
+    alerts: ComplianceAlert[]
+  ): string[] {
     const recommendations: string[] = [];
 
     if (score.overall < 75) {
-      recommendations.push('Improve overall tax compliance by addressing overdue filings and payments');
+      recommendations.push(
+        'Improve overall tax compliance by addressing overdue filings and payments'
+      );
     }
 
     if (score.breakdown.filing < 80) {
-      recommendations.push('Set up automated reminders for tax filing deadlines');
+      recommendations.push(
+        'Set up automated reminders for tax filing deadlines'
+      );
     }
 
     if (score.breakdown.payment < 80) {
-      recommendations.push('Establish a tax payment schedule to avoid late payments');
+      recommendations.push(
+        'Establish a tax payment schedule to avoid late payments'
+      );
     }
 
     if (alerts.some(a => a.type === 'OVERDUE_FILING')) {
-      recommendations.push('File all overdue tax returns immediately to minimize penalties');
+      recommendations.push(
+        'File all overdue tax returns immediately to minimize penalties'
+      );
     }
 
     if (alerts.some(a => a.type === 'OVERDUE_PAYMENT')) {
-      recommendations.push('Make all overdue tax payments to avoid additional interest charges');
+      recommendations.push(
+        'Make all overdue tax payments to avoid additional interest charges'
+      );
     }
 
     if (recommendations.length === 0) {
-      recommendations.push('Maintain current compliance standards and continue monitoring deadlines');
+      recommendations.push(
+        'Maintain current compliance standards and continue monitoring deadlines'
+      );
     }
 
     return recommendations;
@@ -412,8 +500,18 @@ export class TaxComplianceService {
     }
     if (period.month) {
       const monthNames = [
-        'January', 'February', 'March', 'April', 'May', 'June',
-        'July', 'August', 'September', 'October', 'November', 'December'
+        'January',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December',
       ];
       return `${monthNames[period.month - 1]} ${period.year}`;
     }

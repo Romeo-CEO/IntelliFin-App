@@ -1,6 +1,5 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
 import {
   Plus,
   Search,
@@ -12,18 +11,20 @@ import {
   Clock,
   AlertCircle
 } from 'lucide-react';
-import { AccountingProvider, useAccounting } from '../../../../contexts/AccountingContext';
-import { DashboardLayout } from '../../../../components/layout/DashboardLayout';
+import React, { useState, useEffect } from 'react';
+
 import { JournalEntryForm } from '../../../../components/accounting/JournalEntryForm';
-import { JournalEntry } from '../../../../services/accounting.service';
+import { ErrorMessage } from '../../../../components/common/ErrorMessage';
+import { LoadingSpinner } from '../../../../components/common/LoadingSpinner';
+import { DashboardLayout } from '../../../../components/layout/DashboardLayout';
+import { Badge } from '../../../../components/ui/badge';
 import { Button } from '../../../../components/ui/button';
+import { Card } from '../../../../components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../../components/ui/dialog';
 import { Input } from '../../../../components/ui/input';
 import { Select } from '../../../../components/ui/select';
-import { Card } from '../../../../components/ui/card';
-import { Badge } from '../../../../components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../../components/ui/dialog';
-import { LoadingSpinner } from '../../../../components/common/LoadingSpinner';
-import { ErrorMessage } from '../../../../components/common/ErrorMessage';
+import { AccountingProvider, useAccounting } from '../../../../contexts/AccountingContext';
+import { JournalEntry } from '../../../../services/accounting.service';
 
 const JournalEntriesContent: React.FC = () => {
   const {

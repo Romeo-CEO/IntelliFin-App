@@ -1,17 +1,18 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { Doughnut } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   ArcElement,
   Tooltip,
   Legend,
 } from 'chart.js';
-import { DashboardWidget } from '../../../types/dashboard.types';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Doughnut } from 'react-chartjs-2';
+
 import { analyticsService, ReceivablesAnalytics } from '../../../services/analytics.service';
-import { LoadingSpinner } from '../../common/LoadingSpinner';
+import { DashboardWidget } from '../../../types/dashboard.types';
 import { ErrorMessage } from '../../common/ErrorMessage';
+import { LoadingSpinner } from '../../common/LoadingSpinner';
 
 // Register Chart.js components
 ChartJS.register(ArcElement, Tooltip, Legend);

@@ -1,7 +1,19 @@
-import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
-import { Receipt, OcrStatus, Prisma } from '@prisma/client';
-import { ReceiptRepository, ReceiptFilters, ReceiptStats } from './receipt.repository';
-import { ReceiptStorageService, UploadOptions } from '../storage/receipt-storage.service';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import { OcrStatus, Prisma, Receipt } from '@prisma/client';
+import {
+  ReceiptFilters,
+  ReceiptRepository,
+  ReceiptStats,
+} from './receipt.repository';
+import {
+  ReceiptStorageService,
+  UploadOptions,
+} from '../storage/receipt-storage.service';
 import { OcrService } from '../ocr/ocr.service';
 import { ExpenseService } from '../expenses/expense.service';
 
@@ -36,7 +48,7 @@ export class ReceiptService {
     private readonly receiptRepository: ReceiptRepository,
     private readonly storageService: ReceiptStorageService,
     private readonly ocrService: OcrService,
-    private readonly expenseService: ExpenseService,
+    private readonly expenseService: ExpenseService
   ) {}
 
   /**
@@ -45,13 +57,13 @@ export class ReceiptService {
   async createReceipt(
     organizationId: string,
     userId: string,
-    createReceiptDto: CreateReceiptDto,
+    createReceiptDto: CreateReceiptDto
   ): Promise<Receipt> {
     try {
       // Validate expense exists and belongs to organization
       const expense = await this.expenseService.getExpenseById(
         createReceiptDto.expenseId,
-        organizationId,
+        organizationId
       );
 
       if (!expense) {
@@ -69,7 +81,7 @@ export class ReceiptService {
 
       const uploadResult = await this.storageService.uploadReceipt(
         createReceiptDto.file.buffer,
-        uploadOptions,
+        uploadOptions
       );
 
       // Create receipt record
@@ -88,9 +100,15 @@ export class ReceiptService {
       const receipt = await this.receiptRepository.create(receiptData);
 
       // Queue OCR processing asynchronously
-      this.processOcrAsync(receipt.id, createReceiptDto.file.buffer, uploadResult.contentType);
+      this.processOcrAsync(
+        receipt.id,
+        createReceiptDto.file.buffer,
+        uploadResult.contentType
+      );
 
-      this.logger.log(`Created receipt: ${receipt.id} for expense: ${createReceiptDto.expenseId}`);
+      this.logger.log(
+        `Created receipt: ${receipt.id} for expense: ${createReceiptDto.expenseId}`
+      );
       return receipt;
     } catch (error) {
       this.logger.error(`Failed to create receipt: ${error.message}`, error);
@@ -103,7 +121,7 @@ export class ReceiptService {
    */
   async getReceiptById(id: string, organizationId: string): Promise<Receipt> {
     const receipt = await this.receiptRepository.findById(id);
-    
+
     if (!receipt) {
       throw new NotFoundException(`Receipt with ID ${id} not found`);
     }
@@ -121,7 +139,7 @@ export class ReceiptService {
    */
   async getReceiptsByExpenseId(
     expenseId: string,
-    organizationId: string,
+    organizationId: string
   ): Promise<Receipt[]> {
     // Verify expense belongs to organization
     await this.expenseService.getExpenseById(expenseId, organizationId);
@@ -156,7 +174,7 @@ export class ReceiptService {
         filters,
         query.page || 1,
         query.limit || 20,
-        orderBy,
+        orderBy
       );
     } catch (error) {
       this.logger.error(`Failed to get receipts: ${error.message}`, error);
@@ -173,7 +191,10 @@ export class ReceiptService {
       const receipt = await this.getReceiptById(id, organizationId);
 
       // Delete from storage
-      await this.storageService.deleteReceipt(receipt.storagePath, receipt.thumbnailPath);
+      await this.storageService.deleteReceipt(
+        receipt.storagePath,
+        receipt.thumbnailPath
+      );
 
       // Delete from database
       await this.receiptRepository.delete(id);
@@ -196,9 +217,12 @@ export class ReceiptService {
   /**
    * Get receipt thumbnail URL
    */
-  async getReceiptThumbnailUrl(id: string, organizationId: string): Promise<string | null> {
+  async getReceiptThumbnailUrl(
+    id: string,
+    organizationId: string
+  ): Promise<string | null> {
     const receipt = await this.getReceiptById(id, organizationId);
-    
+
     if (!receipt.thumbnailPath) {
       return null;
     }
@@ -209,13 +233,18 @@ export class ReceiptService {
   /**
    * Download receipt file
    */
-  async downloadReceipt(id: string, organizationId: string): Promise<{
+  async downloadReceipt(
+    id: string,
+    organizationId: string
+  ): Promise<{
     buffer: Buffer;
     fileName: string;
     contentType: string;
   }> {
     const receipt = await this.getReceiptById(id, organizationId);
-    const buffer = await this.storageService.downloadReceipt(receipt.storagePath);
+    const buffer = await this.storageService.downloadReceipt(
+      receipt.storagePath
+    );
 
     return {
       buffer,
@@ -227,7 +256,10 @@ export class ReceiptService {
   /**
    * Get receipt OCR data
    */
-  async getReceiptOcrData(id: string, organizationId: string): Promise<{
+  async getReceiptOcrData(
+    id: string,
+    organizationId: string
+  ): Promise<{
     ocrStatus: OcrStatus;
     ocrText?: string;
     ocrData?: any;
@@ -251,7 +283,9 @@ export class ReceiptService {
       const receipt = await this.getReceiptById(id, organizationId);
 
       // Download file from storage
-      const fileBuffer = await this.storageService.downloadReceipt(receipt.storagePath);
+      const fileBuffer = await this.storageService.downloadReceipt(
+        receipt.storagePath
+      );
 
       // Reset OCR status to pending
       await this.receiptRepository.updateOcrData(id, OcrStatus.PENDING);
@@ -270,12 +304,20 @@ export class ReceiptService {
   /**
    * Get receipt statistics
    */
-  async getReceiptStats(organizationId: string, dateFrom?: string, dateTo?: string): Promise<ReceiptStats> {
+  async getReceiptStats(
+    organizationId: string,
+    dateFrom?: string,
+    dateTo?: string
+  ): Promise<ReceiptStats> {
     try {
       const fromDate = dateFrom ? new Date(dateFrom) : undefined;
       const toDate = dateTo ? new Date(dateTo) : undefined;
 
-      return await this.receiptRepository.getStats(organizationId, fromDate, toDate);
+      return await this.receiptRepository.getStats(
+        organizationId,
+        fromDate,
+        toDate
+      );
     } catch (error) {
       this.logger.error(`Failed to get receipt stats: ${error.message}`, error);
       throw error;
@@ -288,14 +330,18 @@ export class ReceiptService {
   private async processOcrAsync(
     receiptId: string,
     fileBuffer: Buffer,
-    contentType: string,
+    contentType: string
   ): Promise<void> {
     try {
       // Process OCR
-      const ocrResult = await this.ocrService.processReceipt(fileBuffer, contentType, {
-        extractStructuredData: true,
-        language: 'en',
-      });
+      const ocrResult = await this.ocrService.processReceipt(
+        fileBuffer,
+        contentType,
+        {
+          extractStructuredData: true,
+          language: 'en',
+        }
+      );
 
       // Validate OCR result
       if (!this.ocrService.validateOcrResult(ocrResult)) {
@@ -309,14 +355,17 @@ export class ReceiptService {
         receiptId,
         OcrStatus.COMPLETED,
         ocrResult.text,
-        ocrResult.extractedData,
+        ocrResult.extractedData
       );
 
       this.logger.log(`OCR processing completed for receipt: ${receiptId}`);
     } catch (error) {
       // Update receipt with failed status
       await this.receiptRepository.updateOcrData(receiptId, OcrStatus.FAILED);
-      this.logger.error(`OCR processing failed for receipt ${receiptId}: ${error.message}`, error);
+      this.logger.error(
+        `OCR processing failed for receipt ${receiptId}: ${error.message}`,
+        error
+      );
     }
   }
 
@@ -325,30 +374,44 @@ export class ReceiptService {
    */
   async processPendingOcr(limit: number = 10): Promise<void> {
     try {
-      const pendingReceipts = await this.receiptRepository.findPendingOcr(limit);
+      const pendingReceipts =
+        await this.receiptRepository.findPendingOcr(limit);
 
       for (const receipt of pendingReceipts) {
         try {
           // Download file from storage
-          const fileBuffer = await this.storageService.downloadReceipt(receipt.storagePath);
+          const fileBuffer = await this.storageService.downloadReceipt(
+            receipt.storagePath
+          );
 
           // Process OCR
           await this.processOcrAsync(receipt.id, fileBuffer, receipt.fileType);
         } catch (error) {
-          this.logger.error(`Failed to process OCR for receipt ${receipt.id}: ${error.message}`, error);
+          this.logger.error(
+            `Failed to process OCR for receipt ${receipt.id}: ${error.message}`,
+            error
+          );
         }
       }
 
-      this.logger.log(`Processed ${pendingReceipts.length} pending OCR receipts`);
+      this.logger.log(
+        `Processed ${pendingReceipts.length} pending OCR receipts`
+      );
     } catch (error) {
-      this.logger.error(`Failed to process pending OCR receipts: ${error.message}`, error);
+      this.logger.error(
+        `Failed to process pending OCR receipts: ${error.message}`,
+        error
+      );
     }
   }
 
   /**
    * Suggest expense updates based on OCR data
    */
-  async suggestExpenseUpdates(receiptId: string, organizationId: string): Promise<{
+  async suggestExpenseUpdates(
+    receiptId: string,
+    organizationId: string
+  ): Promise<{
     suggestions: {
       vendor?: string;
       amount?: number;
@@ -361,7 +424,9 @@ export class ReceiptService {
       const receipt = await this.getReceiptById(receiptId, organizationId);
 
       if (receipt.ocrStatus !== OcrStatus.COMPLETED || !receipt.ocrData) {
-        throw new BadRequestException('OCR data not available for this receipt');
+        throw new BadRequestException(
+          'OCR data not available for this receipt'
+        );
       }
 
       const ocrData = receipt.ocrData as any;
@@ -393,8 +458,12 @@ export class ReceiptService {
           description += `Purchase from ${ocrData.vendor}`;
         }
         if (ocrData.items && ocrData.items.length > 0) {
-          const itemDescriptions = ocrData.items.slice(0, 3).map((item: any) => item.description);
-          description += description ? ` - ${itemDescriptions.join(', ')}` : itemDescriptions.join(', ');
+          const itemDescriptions = ocrData.items
+            .slice(0, 3)
+            .map((item: any) => item.description);
+          description += description
+            ? ` - ${itemDescriptions.join(', ')}`
+            : itemDescriptions.join(', ');
         }
         if (description) {
           suggestions.description = description;
@@ -407,7 +476,10 @@ export class ReceiptService {
         confidence: Math.min(confidence, 1.0),
       };
     } catch (error) {
-      this.logger.error(`Failed to suggest expense updates: ${error.message}`, error);
+      this.logger.error(
+        `Failed to suggest expense updates: ${error.message}`,
+        error
+      );
       throw error;
     }
   }

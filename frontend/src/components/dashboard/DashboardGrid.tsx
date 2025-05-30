@@ -2,12 +2,15 @@
 
 import React, { useState, useCallback, useMemo } from 'react';
 import { Responsive, WidthProvider, Layout } from 'react-grid-layout';
-import { Dashboard, DashboardWidget, GridLayoutItem, ResponsiveGridLayouts } from '../../types/dashboard.types';
+
 import { useDashboard } from '../../contexts/DashboardContext';
-import { WidgetContainer } from './WidgetContainer';
-import { DashboardToolbar } from './DashboardToolbar';
-import { LoadingSpinner } from '../common/LoadingSpinner';
+import { Dashboard, DashboardWidget, GridLayoutItem, ResponsiveGridLayouts } from '../../types/dashboard.types';
 import { ErrorMessage } from '../common/ErrorMessage';
+import { LoadingSpinner } from '../common/LoadingSpinner';
+
+import { DashboardToolbar } from './DashboardToolbar';
+import { WidgetContainer } from './WidgetContainer';
+
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 

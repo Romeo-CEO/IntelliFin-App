@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, User, UserStatus, UserRole } from '@prisma/client';
+import { Prisma, User, UserRole, UserStatus } from '@prisma/client';
 
 import { PrismaService } from '../database/prisma.service';
 
@@ -37,7 +37,10 @@ export class UsersRepository {
   /**
    * Find user by email within a tenant
    */
-  async findByEmailAndTenant(email: string, tenantId: string): Promise<User | null> {
+  async findByEmailAndTenant(
+    email: string,
+    tenantId: string
+  ): Promise<User | null> {
     return this.prisma.user.findFirst({
       where: {
         email,
@@ -79,7 +82,7 @@ export class UsersRepository {
       take?: number;
       orderBy?: Prisma.UserOrderByWithRelationInput;
       where?: Prisma.UserWhereInput;
-    },
+    }
   ): Promise<User[]> {
     return this.prisma.user.findMany({
       where: {
@@ -98,7 +101,7 @@ export class UsersRepository {
    */
   async countByTenant(
     tenantId: string,
-    where?: Prisma.UserWhereInput,
+    where?: Prisma.UserWhereInput
   ): Promise<number> {
     return this.prisma.user.count({
       where: {
@@ -227,7 +230,7 @@ export class UsersRepository {
     options?: {
       skip?: number;
       take?: number;
-    },
+    }
   ): Promise<User[]> {
     return this.prisma.user.findMany({
       where: {
@@ -269,8 +272,8 @@ export class UsersRepository {
       this.countByTenant(tenantId, { status: UserStatus.ACTIVE }),
       this.countByTenant(tenantId, { status: UserStatus.INACTIVE }),
       this.countByTenant(tenantId, { status: UserStatus.PENDING_VERIFICATION }),
-      this.countByTenant(tenantId, { 
-        role: { in: [UserRole.ADMIN, UserRole.TENANT_ADMIN] } 
+      this.countByTenant(tenantId, {
+        role: { in: [UserRole.ADMIN, UserRole.TENANT_ADMIN] },
       }),
     ]);
 

@@ -1,6 +1,16 @@
-import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
-import { TaxAdjustment, TaxAdjustmentType, TaxAdjustmentStatus, Prisma } from '@prisma/client';
+import {
+  Prisma,
+  TaxAdjustment,
+  TaxAdjustmentStatus,
+  TaxAdjustmentType,
+} from '@prisma/client';
 
 export interface CreateTaxAdjustmentDto {
   organizationId: string;
@@ -28,14 +38,20 @@ export interface TaxAdjustmentWithPeriod extends TaxAdjustment {
 export interface AdjustmentSummary {
   totalAdjustments: number;
   totalAdjustmentAmount: number;
-  byType: Record<TaxAdjustmentType, {
-    count: number;
-    totalAmount: number;
-  }>;
-  byStatus: Record<TaxAdjustmentStatus, {
-    count: number;
-    totalAmount: number;
-  }>;
+  byType: Record<
+    TaxAdjustmentType,
+    {
+      count: number;
+      totalAmount: number;
+    }
+  >;
+  byStatus: Record<
+    TaxAdjustmentStatus,
+    {
+      count: number;
+      totalAmount: number;
+    }
+  >;
   approvalRate: number;
   averageProcessingDays: number;
 }
@@ -85,7 +101,9 @@ export class TaxAdjustmentService {
           adjustmentAmount: new Prisma.Decimal(adjustmentAmount),
           reason: dto.reason,
           description: dto.description,
-          supportingDocs: dto.supportingDocs ? JSON.stringify(dto.supportingDocs) : null,
+          supportingDocs: dto.supportingDocs
+            ? JSON.stringify(dto.supportingDocs)
+            : null,
           requestedBy: dto.requestedBy,
           status: TaxAdjustmentStatus.PENDING,
         },
@@ -94,7 +112,10 @@ export class TaxAdjustmentService {
       this.logger.log(`Tax adjustment created: ${adjustment.id}`);
       return adjustment;
     } catch (error) {
-      this.logger.error(`Failed to create tax adjustment: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to create tax adjustment: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -110,7 +131,7 @@ export class TaxAdjustmentService {
       status?: TaxAdjustmentStatus;
       year?: number;
       requestedBy?: string;
-    },
+    }
   ): Promise<TaxAdjustmentWithPeriod[]> {
     try {
       const where: any = { organizationId };
@@ -156,7 +177,10 @@ export class TaxAdjustmentService {
 
       return adjustments;
     } catch (error) {
-      this.logger.error(`Failed to get tax adjustments: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to get tax adjustments: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -166,7 +190,7 @@ export class TaxAdjustmentService {
    */
   async processWorkflowAction(
     organizationId: string,
-    action: AdjustmentWorkflowAction,
+    action: AdjustmentWorkflowAction
   ): Promise<TaxAdjustment> {
     try {
       const adjustment = await this.prisma.taxAdjustment.findFirst({
@@ -181,7 +205,9 @@ export class TaxAdjustmentService {
       }
 
       if (adjustment.status !== TaxAdjustmentStatus.PENDING) {
-        throw new BadRequestException('Only pending adjustments can be processed');
+        throw new BadRequestException(
+          'Only pending adjustments can be processed'
+        );
       }
 
       const updateData: any = {};
@@ -202,10 +228,15 @@ export class TaxAdjustmentService {
         data: updateData,
       });
 
-      this.logger.log(`Tax adjustment ${action.action.toLowerCase()}: ${action.adjustmentId}`);
+      this.logger.log(
+        `Tax adjustment ${action.action.toLowerCase()}: ${action.adjustmentId}`
+      );
       return updated;
     } catch (error) {
-      this.logger.error(`Failed to process adjustment workflow: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to process adjustment workflow: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -215,7 +246,7 @@ export class TaxAdjustmentService {
    */
   async submitToZRA(
     organizationId: string,
-    adjustmentId: string,
+    adjustmentId: string
   ): Promise<TaxAdjustment> {
     try {
       const adjustment = await this.prisma.taxAdjustment.findFirst({
@@ -227,7 +258,9 @@ export class TaxAdjustmentService {
       }
 
       if (adjustment.status !== TaxAdjustmentStatus.APPROVED) {
-        throw new BadRequestException('Only approved adjustments can be submitted to ZRA');
+        throw new BadRequestException(
+          'Only approved adjustments can be submitted to ZRA'
+        );
       }
 
       // TODO: Implement actual ZRA submission
@@ -246,7 +279,10 @@ export class TaxAdjustmentService {
       this.logger.log(`Adjustment submitted to ZRA: ${adjustmentId}`);
       return updated;
     } catch (error) {
-      this.logger.error(`Failed to submit adjustment to ZRA: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to submit adjustment to ZRA: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -256,7 +292,7 @@ export class TaxAdjustmentService {
    */
   async getAdjustmentSummary(
     organizationId: string,
-    year?: number,
+    year?: number
   ): Promise<AdjustmentSummary> {
     try {
       const adjustments = await this.getAdjustments(organizationId, { year });
@@ -296,7 +332,10 @@ export class TaxAdjustmentService {
         summary.byStatus[adj.status].totalAmount += adjustmentAmount;
 
         // Calculate approval rate
-        if (adj.status === TaxAdjustmentStatus.APPROVED || adj.status === TaxAdjustmentStatus.COMPLETED) {
+        if (
+          adj.status === TaxAdjustmentStatus.APPROVED ||
+          adj.status === TaxAdjustmentStatus.COMPLETED
+        ) {
           approvedCount++;
         }
 
@@ -304,22 +343,30 @@ export class TaxAdjustmentService {
         if (adj.approvedAt || adj.rejectedAt) {
           const processedAt = adj.approvedAt || adj.rejectedAt;
           const processingDays = Math.ceil(
-            (processedAt!.getTime() - adj.requestedAt.getTime()) / (1000 * 60 * 60 * 24)
+            (processedAt!.getTime() - adj.requestedAt.getTime()) /
+              (1000 * 60 * 60 * 24)
           );
           totalProcessingDays += processingDays;
           processedCount++;
         }
       });
 
-      summary.approvalRate = adjustments.length > 0 ? 
-        Math.round((approvedCount / adjustments.length) * 100) : 0;
+      summary.approvalRate =
+        adjustments.length > 0
+          ? Math.round((approvedCount / adjustments.length) * 100)
+          : 0;
 
-      summary.averageProcessingDays = processedCount > 0 ? 
-        Math.round(totalProcessingDays / processedCount) : 0;
+      summary.averageProcessingDays =
+        processedCount > 0
+          ? Math.round(totalProcessingDays / processedCount)
+          : 0;
 
       return summary;
     } catch (error) {
-      this.logger.error(`Failed to get adjustment summary: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to get adjustment summary: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -327,13 +374,18 @@ export class TaxAdjustmentService {
   /**
    * Get pending adjustments requiring approval
    */
-  async getPendingApprovals(organizationId: string): Promise<TaxAdjustmentWithPeriod[]> {
+  async getPendingApprovals(
+    organizationId: string
+  ): Promise<TaxAdjustmentWithPeriod[]> {
     try {
       return await this.getAdjustments(organizationId, {
         status: TaxAdjustmentStatus.PENDING,
       });
     } catch (error) {
-      this.logger.error(`Failed to get pending approvals: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to get pending approvals: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -344,13 +396,13 @@ export class TaxAdjustmentService {
   async autoApproveSmallAdjustments(
     organizationId: string,
     threshold: number = 1000, // K1,000 threshold
-    approvedBy: string,
+    approvedBy: string
   ): Promise<{ approved: number; total: number }> {
     try {
       const pendingAdjustments = await this.getPendingApprovals(organizationId);
-      
-      const smallAdjustments = pendingAdjustments.filter(adj => 
-        Math.abs(adj.adjustmentAmount.toNumber()) <= threshold
+
+      const smallAdjustments = pendingAdjustments.filter(
+        adj => Math.abs(adj.adjustmentAmount.toNumber()) <= threshold
       );
 
       let approved = 0;
@@ -365,14 +417,21 @@ export class TaxAdjustmentService {
           });
           approved++;
         } catch (error) {
-          this.logger.warn(`Failed to auto-approve adjustment ${adjustment.id}: ${error.message}`);
+          this.logger.warn(
+            `Failed to auto-approve adjustment ${adjustment.id}: ${error.message}`
+          );
         }
       }
 
-      this.logger.log(`Auto-approved ${approved} of ${smallAdjustments.length} small adjustments`);
+      this.logger.log(
+        `Auto-approved ${approved} of ${smallAdjustments.length} small adjustments`
+      );
       return { approved, total: smallAdjustments.length };
     } catch (error) {
-      this.logger.error(`Failed to auto-approve adjustments: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to auto-approve adjustments: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -382,7 +441,7 @@ export class TaxAdjustmentService {
    */
   async generateAdjustmentReport(
     organizationId: string,
-    year: number,
+    year: number
   ): Promise<any> {
     try {
       this.logger.log(`Generating adjustment report for year ${year}`);
@@ -413,7 +472,10 @@ export class TaxAdjustmentService {
       this.logger.log('Adjustment report generated successfully');
       return report;
     } catch (error) {
-      this.logger.error(`Failed to generate adjustment report: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to generate adjustment report: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }

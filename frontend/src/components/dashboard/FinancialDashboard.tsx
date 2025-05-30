@@ -1,6 +1,5 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -15,6 +14,8 @@ import {
   PieChart,
   Activity
 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+
 import { 
   DashboardMetrics, 
   DashboardQuery, 

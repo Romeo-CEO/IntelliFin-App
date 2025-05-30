@@ -1,26 +1,26 @@
 import {
+  Body,
   Controller,
+  Delete,
   Get,
+  HttpStatus,
+  Param,
+  ParseUUIDPipe,
+  Patch,
   Post,
   Put,
-  Delete,
-  Body,
-  Param,
   Query,
   UseGuards,
   ValidationPipe,
-  ParseUUIDPipe,
-  HttpStatus,
-  Patch,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiParam,
-  ApiQuery,
   ApiBearerAuth,
   ApiBody,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -29,11 +29,11 @@ import { AuthenticatedUser } from '../auth/interfaces/auth.interface';
 import { InvoiceService } from './invoice.service';
 import {
   CreateInvoiceDto,
-  UpdateInvoiceDto,
+  InvoiceListResponseDto,
   InvoiceQueryDto,
   InvoiceResponseDto,
-  InvoiceListResponseDto,
   InvoiceStatsDto,
+  UpdateInvoiceDto,
 } from './dto/invoice.dto';
 
 @ApiTags('Invoices')
@@ -47,7 +47,8 @@ export class InvoiceController {
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 requests per minute
   @ApiOperation({
     summary: 'Create a new invoice',
-    description: 'Create a new invoice with automatic VAT calculations and invoice number generation',
+    description:
+      'Create a new invoice with automatic VAT calculations and invoice number generation',
   })
   @ApiBody({ type: CreateInvoiceDto })
   @ApiResponse({
@@ -61,12 +62,12 @@ export class InvoiceController {
   })
   async createInvoice(
     @CurrentUser() user: AuthenticatedUser,
-    @Body(ValidationPipe) createInvoiceDto: CreateInvoiceDto,
+    @Body(ValidationPipe) createInvoiceDto: CreateInvoiceDto
   ) {
     return await this.invoiceService.createInvoice(
       user.organizationId,
       user.id,
-      createInvoiceDto,
+      createInvoiceDto
     );
   }
 
@@ -84,7 +85,7 @@ export class InvoiceController {
   })
   async getInvoices(
     @CurrentUser() user: AuthenticatedUser,
-    @Query(ValidationPipe) query: InvoiceQueryDto,
+    @Query(ValidationPipe) query: InvoiceQueryDto
   ) {
     return await this.invoiceService.getInvoices(user.organizationId, query);
   }
@@ -142,7 +143,7 @@ export class InvoiceController {
   })
   async getInvoiceById(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ParseUUIDPipe) id: string
   ) {
     return await this.invoiceService.getInvoiceById(id, user.organizationId);
   }
@@ -176,9 +177,13 @@ export class InvoiceController {
   async updateInvoice(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,
-    @Body(ValidationPipe) updateInvoiceDto: UpdateInvoiceDto,
+    @Body(ValidationPipe) updateInvoiceDto: UpdateInvoiceDto
   ) {
-    return await this.invoiceService.updateInvoice(id, user.organizationId, updateInvoiceDto);
+    return await this.invoiceService.updateInvoice(
+      id,
+      user.organizationId,
+      updateInvoiceDto
+    );
   }
 
   @Delete(':id')
@@ -207,7 +212,7 @@ export class InvoiceController {
   })
   async deleteInvoice(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ParseUUIDPipe) id: string
   ) {
     await this.invoiceService.deleteInvoice(id, user.organizationId);
     return { message: 'Invoice deleted successfully' };
@@ -236,7 +241,7 @@ export class InvoiceController {
   })
   async sendInvoice(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ParseUUIDPipe) id: string
   ) {
     return await this.invoiceService.sendInvoice(id, user.organizationId);
   }
@@ -279,16 +284,21 @@ export class InvoiceController {
   async submitToZra(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,
-    @Body('organizationTin') organizationTin: string,
+    @Body('organizationTin') organizationTin: string
   ) {
-    return await this.invoiceService.submitToZra(id, user.organizationId, organizationTin);
+    return await this.invoiceService.submitToZra(
+      id,
+      user.organizationId,
+      organizationTin
+    );
   }
 
   @Patch(':id/payment')
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 requests per minute
   @ApiOperation({
     summary: 'Record payment for invoice',
-    description: 'Record a payment for an invoice and update status accordingly',
+    description:
+      'Record a payment for an invoice and update status accordingly',
   })
   @ApiParam({
     name: 'id',
@@ -304,7 +314,7 @@ export class InvoiceController {
         paidAmount: {
           type: 'number',
           description: 'Amount paid',
-          example: 1000.00,
+          example: 1000.0,
           minimum: 0.01,
         },
         paymentDate: {
@@ -329,14 +339,16 @@ export class InvoiceController {
   async recordPayment(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() paymentData: { paidAmount: number; paymentDate?: string },
+    @Body() paymentData: { paidAmount: number; paymentDate?: string }
   ) {
-    const paymentDate = paymentData.paymentDate ? new Date(paymentData.paymentDate) : undefined;
+    const paymentDate = paymentData.paymentDate
+      ? new Date(paymentData.paymentDate)
+      : undefined;
     return await this.invoiceService.markAsPaid(
       id,
       user.organizationId,
       paymentData.paidAmount,
-      paymentDate,
+      paymentDate
     );
   }
 
@@ -366,7 +378,9 @@ export class InvoiceController {
     },
   })
   async updateOverdueInvoices(@CurrentUser() user: AuthenticatedUser) {
-    const updatedCount = await this.invoiceService.updateOverdueInvoices(user.organizationId);
+    const updatedCount = await this.invoiceService.updateOverdueInvoices(
+      user.organizationId
+    );
     return {
       updatedCount,
       message: `Updated ${updatedCount} overdue invoices`,

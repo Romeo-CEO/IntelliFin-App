@@ -1,5 +1,15 @@
-import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
-import { DashboardWidget, WidgetType, DashboardPermissionType } from '@prisma/client';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  DashboardPermissionType,
+  DashboardWidget,
+  WidgetType,
+} from '@prisma/client';
 import { DashboardWidgetRepository } from '../repositories/dashboard-widget.repository';
 import { DashboardConfigurationRepository } from '../repositories/dashboard-configuration.repository';
 
@@ -13,7 +23,7 @@ export class WidgetManagementService {
 
   constructor(
     private readonly widgetRepository: DashboardWidgetRepository,
-    private readonly dashboardRepository: DashboardConfigurationRepository,
+    private readonly dashboardRepository: DashboardConfigurationRepository
   ) {}
 
   /**
@@ -30,18 +40,20 @@ export class WidgetManagementService {
       configuration?: any;
       dataSource?: any;
       refreshInterval?: number;
-    },
+    }
   ): Promise<DashboardWidget> {
     try {
       // Check if user has edit permission on dashboard
       const hasPermission = await this.dashboardRepository.hasPermission(
         dashboardId,
         userId,
-        DashboardPermissionType.EDIT,
+        DashboardPermissionType.EDIT
       );
 
       if (!hasPermission) {
-        throw new ForbiddenException('Insufficient permissions to add widgets to this dashboard');
+        throw new ForbiddenException(
+          'Insufficient permissions to add widgets to this dashboard'
+        );
       }
 
       // Validate widget data
@@ -54,7 +66,9 @@ export class WidgetManagementService {
       }
 
       // Set default configuration based on widget type
-      const defaultConfiguration = this.getDefaultConfiguration(data.widgetType);
+      const defaultConfiguration = this.getDefaultConfiguration(
+        data.widgetType
+      );
 
       const widget = await this.widgetRepository.create({
         widgetType: data.widgetType,
@@ -69,7 +83,9 @@ export class WidgetManagementService {
         },
       });
 
-      this.logger.log(`Created widget: ${widget.id} for dashboard: ${dashboardId}`);
+      this.logger.log(
+        `Created widget: ${widget.id} for dashboard: ${dashboardId}`
+      );
       return widget;
     } catch (error) {
       this.logger.error(`Failed to create widget: ${error.message}`, error);
@@ -92,11 +108,13 @@ export class WidgetManagementService {
       const hasPermission = await this.dashboardRepository.hasPermission(
         widget.dashboardId,
         userId,
-        DashboardPermissionType.VIEW,
+        DashboardPermissionType.VIEW
       );
 
       if (!hasPermission) {
-        throw new ForbiddenException('Insufficient permissions to view this widget');
+        throw new ForbiddenException(
+          'Insufficient permissions to view this widget'
+        );
       }
 
       this.logger.log(`Retrieved widget: ${widget.id} for user: ${userId}`);
@@ -113,23 +131,30 @@ export class WidgetManagementService {
   async getWidgets(
     dashboardId: string,
     userId: string,
-    includeHidden = false,
+    includeHidden = false
   ): Promise<DashboardWidget[]> {
     try {
       // Check if user has view permission on dashboard
       const hasPermission = await this.dashboardRepository.hasPermission(
         dashboardId,
         userId,
-        DashboardPermissionType.VIEW,
+        DashboardPermissionType.VIEW
       );
 
       if (!hasPermission) {
-        throw new ForbiddenException('Insufficient permissions to view widgets on this dashboard');
+        throw new ForbiddenException(
+          'Insufficient permissions to view widgets on this dashboard'
+        );
       }
 
-      const widgets = await this.widgetRepository.findByDashboard(dashboardId, includeHidden);
+      const widgets = await this.widgetRepository.findByDashboard(
+        dashboardId,
+        includeHidden
+      );
 
-      this.logger.log(`Retrieved ${widgets.length} widgets for dashboard: ${dashboardId}`);
+      this.logger.log(
+        `Retrieved ${widgets.length} widgets for dashboard: ${dashboardId}`
+      );
       return widgets;
     } catch (error) {
       this.logger.error(`Failed to get widgets: ${error.message}`, error);
@@ -149,7 +174,7 @@ export class WidgetManagementService {
       configuration?: any;
       dataSource?: any;
       refreshInterval?: number;
-    },
+    }
   ): Promise<DashboardWidget> {
     try {
       const widget = await this.widgetRepository.findById(id);
@@ -162,24 +187,33 @@ export class WidgetManagementService {
       const hasPermission = await this.dashboardRepository.hasPermission(
         widget.dashboardId,
         userId,
-        DashboardPermissionType.EDIT,
+        DashboardPermissionType.EDIT
       );
 
       if (!hasPermission) {
-        throw new ForbiddenException('Insufficient permissions to edit this widget');
+        throw new ForbiddenException(
+          'Insufficient permissions to edit this widget'
+        );
       }
 
       // Validate title if provided
-      if (data.title !== undefined && (!data.title || data.title.trim().length === 0)) {
+      if (
+        data.title !== undefined &&
+        (!data.title || data.title.trim().length === 0)
+      ) {
         throw new BadRequestException('Widget title cannot be empty');
       }
 
       const updateData: any = {};
       if (data.title !== undefined) updateData.title = data.title.trim();
-      if (data.description !== undefined) updateData.description = data.description?.trim();
-      if (data.configuration !== undefined) updateData.configuration = data.configuration;
-      if (data.dataSource !== undefined) updateData.dataSource = data.dataSource;
-      if (data.refreshInterval !== undefined) updateData.refreshInterval = data.refreshInterval;
+      if (data.description !== undefined)
+        updateData.description = data.description?.trim();
+      if (data.configuration !== undefined)
+        updateData.configuration = data.configuration;
+      if (data.dataSource !== undefined)
+        updateData.dataSource = data.dataSource;
+      if (data.refreshInterval !== undefined)
+        updateData.refreshInterval = data.refreshInterval;
 
       const updatedWidget = await this.widgetRepository.update(id, updateData);
 
@@ -197,7 +231,7 @@ export class WidgetManagementService {
   async updateWidgetPosition(
     id: string,
     userId: string,
-    position: any,
+    position: any
   ): Promise<DashboardWidget> {
     try {
       const widget = await this.widgetRepository.findById(id);
@@ -210,19 +244,27 @@ export class WidgetManagementService {
       const hasPermission = await this.dashboardRepository.hasPermission(
         widget.dashboardId,
         userId,
-        DashboardPermissionType.EDIT,
+        DashboardPermissionType.EDIT
       );
 
       if (!hasPermission) {
-        throw new ForbiddenException('Insufficient permissions to move this widget');
+        throw new ForbiddenException(
+          'Insufficient permissions to move this widget'
+        );
       }
 
-      const updatedWidget = await this.widgetRepository.updatePosition(id, position);
+      const updatedWidget = await this.widgetRepository.updatePosition(
+        id,
+        position
+      );
 
       this.logger.log(`Updated widget position: ${updatedWidget.id}`);
       return updatedWidget;
     } catch (error) {
-      this.logger.error(`Failed to update widget position: ${error.message}`, error);
+      this.logger.error(
+        `Failed to update widget position: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -230,7 +272,10 @@ export class WidgetManagementService {
   /**
    * Toggle widget visibility
    */
-  async toggleWidgetVisibility(id: string, userId: string): Promise<DashboardWidget> {
+  async toggleWidgetVisibility(
+    id: string,
+    userId: string
+  ): Promise<DashboardWidget> {
     try {
       const widget = await this.widgetRepository.findById(id);
 
@@ -242,19 +287,26 @@ export class WidgetManagementService {
       const hasPermission = await this.dashboardRepository.hasPermission(
         widget.dashboardId,
         userId,
-        DashboardPermissionType.EDIT,
+        DashboardPermissionType.EDIT
       );
 
       if (!hasPermission) {
-        throw new ForbiddenException('Insufficient permissions to modify this widget');
+        throw new ForbiddenException(
+          'Insufficient permissions to modify this widget'
+        );
       }
 
       const updatedWidget = await this.widgetRepository.toggleVisibility(id);
 
-      this.logger.log(`Toggled widget visibility: ${updatedWidget.id} to ${updatedWidget.isVisible}`);
+      this.logger.log(
+        `Toggled widget visibility: ${updatedWidget.id} to ${updatedWidget.isVisible}`
+      );
       return updatedWidget;
     } catch (error) {
-      this.logger.error(`Failed to toggle widget visibility: ${error.message}`, error);
+      this.logger.error(
+        `Failed to toggle widget visibility: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -274,11 +326,13 @@ export class WidgetManagementService {
       const hasPermission = await this.dashboardRepository.hasPermission(
         widget.dashboardId,
         userId,
-        DashboardPermissionType.EDIT,
+        DashboardPermissionType.EDIT
       );
 
       if (!hasPermission) {
-        throw new ForbiddenException('Insufficient permissions to delete this widget');
+        throw new ForbiddenException(
+          'Insufficient permissions to delete this widget'
+        );
       }
 
       await this.widgetRepository.delete(id);
@@ -296,25 +350,32 @@ export class WidgetManagementService {
   async bulkUpdatePositions(
     dashboardId: string,
     userId: string,
-    updates: Array<{ id: string; position: any }>,
+    updates: Array<{ id: string; position: any }>
   ): Promise<void> {
     try {
       // Check if user has edit permission on dashboard
       const hasPermission = await this.dashboardRepository.hasPermission(
         dashboardId,
         userId,
-        DashboardPermissionType.EDIT,
+        DashboardPermissionType.EDIT
       );
 
       if (!hasPermission) {
-        throw new ForbiddenException('Insufficient permissions to modify widgets on this dashboard');
+        throw new ForbiddenException(
+          'Insufficient permissions to modify widgets on this dashboard'
+        );
       }
 
       await this.widgetRepository.bulkUpdatePositions(updates);
 
-      this.logger.log(`Bulk updated positions for ${updates.length} widgets on dashboard: ${dashboardId}`);
+      this.logger.log(
+        `Bulk updated positions for ${updates.length} widgets on dashboard: ${dashboardId}`
+      );
     } catch (error) {
-      this.logger.error(`Failed to bulk update widget positions: ${error.message}`, error);
+      this.logger.error(
+        `Failed to bulk update widget positions: ${error.message}`,
+        error
+      );
       throw error;
     }
   }

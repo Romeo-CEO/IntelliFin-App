@@ -17,17 +17,12 @@ import { TransactionSchedulerService } from './transaction-scheduler.service';
     AirtelMoneyModule,
     ScheduleModule.forRoot(),
   ],
-  controllers: [
-    TransactionSyncController,
-  ],
+  controllers: [TransactionSyncController],
   providers: [
     TransactionRepository,
     TransactionSyncService,
     TransactionSchedulerService,
   ],
-  exports: [
-    TransactionRepository,
-    TransactionSyncService,
-  ],
+  exports: [TransactionRepository, TransactionSyncService],
 })
 export class TransactionsModule {}

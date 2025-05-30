@@ -1,11 +1,13 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+
 import { useUserManagement } from '../../contexts/UserManagementContext';
-import { UsersList } from './UsersList';
+
 import { InvitationsList } from './InvitationsList';
 import { InviteUserModal } from './InviteUserModal';
 import { UserDetailsModal } from './UserDetailsModal';
+import { UsersList } from './UsersList';
 
 export function UserManagementPage() {
   const {

@@ -2,8 +2,12 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getQueueToken } from '@nestjs/bull';
 import { Job, Queue } from 'bull';
 
-import { QueueService, SyncAccountJobData, SyncAllAccountsJobData } from '../../src/queue/queue.service';
-import { QUEUE_NAMES, JOB_TYPES } from '../../src/queue/queue.module';
+import {
+  QueueService,
+  SyncAccountJobData,
+  SyncAllAccountsJobData,
+} from '../../src/queue/queue.service';
+import { JOB_TYPES, QUEUE_NAMES } from '../../src/queue/queue.module';
 
 describe('QueueService', () => {
   let service: QueueService;
@@ -55,7 +59,9 @@ describe('QueueService', () => {
     }).compile();
 
     service = module.get<QueueService>(QueueService);
-    transactionSyncQueue = module.get(getQueueToken(QUEUE_NAMES.TRANSACTION_SYNC));
+    transactionSyncQueue = module.get(
+      getQueueToken(QUEUE_NAMES.TRANSACTION_SYNC)
+    );
     balanceUpdateQueue = module.get(getQueueToken(QUEUE_NAMES.BALANCE_UPDATE));
     errorHandlingQueue = module.get(getQueueToken(QUEUE_NAMES.ERROR_HANDLING));
     notificationQueue = module.get(getQueueToken(QUEUE_NAMES.NOTIFICATION));
@@ -221,8 +227,12 @@ describe('QueueService', () => {
         await service.addRetryFailedSyncJob(jobData);
 
         const callArgs = transactionSyncQueue.add.mock.calls[0][2];
-        expect(callArgs.delay).toBeGreaterThanOrEqual(testCase.expectedMinDelay * 0.9); // Account for jitter
-        expect(callArgs.delay).toBeLessThanOrEqual(Math.min(testCase.expectedMinDelay * 1.1, 300000)); // Max delay is 5 minutes
+        expect(callArgs.delay).toBeGreaterThanOrEqual(
+          testCase.expectedMinDelay * 0.9
+        ); // Account for jitter
+        expect(callArgs.delay).toBeLessThanOrEqual(
+          Math.min(testCase.expectedMinDelay * 1.1, 300000)
+        ); // Max delay is 5 minutes
       }
     });
   });
@@ -262,7 +272,12 @@ describe('QueueService', () => {
       };
 
       // Mock all queue methods
-      [transactionSyncQueue, balanceUpdateQueue, errorHandlingQueue, notificationQueue].forEach(queue => {
+      [
+        transactionSyncQueue,
+        balanceUpdateQueue,
+        errorHandlingQueue,
+        notificationQueue,
+      ].forEach(queue => {
         queue.getWaiting.mockResolvedValue(mockStats.waiting);
         queue.getActive.mockResolvedValue(mockStats.active);
         queue.getCompleted.mockResolvedValue(mockStats.completed);
@@ -292,9 +307,18 @@ describe('QueueService', () => {
   describe('getActiveJobsForAccount', () => {
     it('should return active jobs for specific account', async () => {
       const activeJobs = [
-        { ...mockJob, data: { accountId: 'account-1', organizationId: 'org-1' } },
-        { ...mockJob, data: { accountId: 'account-2', organizationId: 'org-1' } },
-        { ...mockJob, data: { accountId: 'account-1', organizationId: 'org-2' } },
+        {
+          ...mockJob,
+          data: { accountId: 'account-1', organizationId: 'org-1' },
+        },
+        {
+          ...mockJob,
+          data: { accountId: 'account-2', organizationId: 'org-1' },
+        },
+        {
+          ...mockJob,
+          data: { accountId: 'account-1', organizationId: 'org-2' },
+        },
       ];
 
       transactionSyncQueue.getActive.mockResolvedValue(activeJobs as Job[]);
@@ -302,13 +326,24 @@ describe('QueueService', () => {
       const result = await service.getActiveJobsForAccount('account-1');
 
       expect(result).toHaveLength(2);
-      expect(result.every(job => job.data.accountId === 'account-1')).toBe(true);
+      expect(result.every(job => job.data.accountId === 'account-1')).toBe(
+        true
+      );
     });
 
     it('should handle jobs with accounts array', async () => {
       const activeJobs = [
-        { ...mockJob, data: { accounts: ['account-1', 'account-2'], organizationId: 'org-1' } },
-        { ...mockJob, data: { accounts: ['account-3'], organizationId: 'org-1' } },
+        {
+          ...mockJob,
+          data: {
+            accounts: ['account-1', 'account-2'],
+            organizationId: 'org-1',
+          },
+        },
+        {
+          ...mockJob,
+          data: { accounts: ['account-3'], organizationId: 'org-1' },
+        },
       ];
 
       transactionSyncQueue.getActive.mockResolvedValue(activeJobs as Job[]);
@@ -360,17 +395,28 @@ describe('QueueService', () => {
 
   describe('cleanupOldJobs', () => {
     it('should clean up old jobs from all queues', async () => {
-      const queues = [transactionSyncQueue, balanceUpdateQueue, errorHandlingQueue, notificationQueue];
-      
+      const queues = [
+        transactionSyncQueue,
+        balanceUpdateQueue,
+        errorHandlingQueue,
+        notificationQueue,
+      ];
+
       queues.forEach(queue => {
-        queue.clean.mockResolvedValue(5); // Mock cleanup result
+        queue.clean.mockResolvedValue([]); // Mock cleanup result
       });
 
       await service.cleanupOldJobs();
 
       queues.forEach(queue => {
-        expect(queue.clean).toHaveBeenCalledWith(7 * 24 * 60 * 60 * 1000, 'completed');
-        expect(queue.clean).toHaveBeenCalledWith(30 * 24 * 60 * 60 * 1000, 'failed');
+        expect(queue.clean).toHaveBeenCalledWith(
+          7 * 24 * 60 * 60 * 1000,
+          'completed'
+        );
+        expect(queue.clean).toHaveBeenCalledWith(
+          30 * 24 * 60 * 60 * 1000,
+          'failed'
+        );
         expect(queue.clean).toHaveBeenCalledWith(60 * 60 * 1000, 'active');
       });
     });

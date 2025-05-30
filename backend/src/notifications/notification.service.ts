@@ -40,7 +40,9 @@ export class NotificationService {
     try {
       // For MVP, we'll log the notification
       // In production, integrate with email service (SendGrid, AWS SES, etc.)
-      this.logger.log(`Email notification sent to: ${notification.to.join(', ')}`);
+      this.logger.log(
+        `Email notification sent to: ${notification.to.join(', ')}`
+      );
       this.logger.log(`Subject: ${notification.subject}`);
       this.logger.log(`Body: ${notification.body}`);
 
@@ -53,7 +55,10 @@ export class NotificationService {
       //   html: notification.body,
       // });
     } catch (error) {
-      this.logger.error(`Failed to send email notification: ${error.message}`, error);
+      this.logger.error(
+        `Failed to send email notification: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -87,7 +92,10 @@ export class NotificationService {
       //   data: notification,
       // });
     } catch (error) {
-      this.logger.error(`Failed to send in-app notification: ${error.message}`, error);
+      this.logger.error(
+        `Failed to send in-app notification: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -101,7 +109,7 @@ export class NotificationService {
     expenseDescription: string,
     amount: number,
     currency: string,
-    approvalUrl: string,
+    approvalUrl: string
   ): Promise<void> {
     const subject = `Expense Approval Required - ${expenseDescription}`;
     const body = this.generateApprovalRequestEmail(
@@ -109,7 +117,7 @@ export class NotificationService {
       expenseDescription,
       amount,
       currency,
-      approvalUrl,
+      approvalUrl
     );
 
     await this.sendEmail({
@@ -128,14 +136,14 @@ export class NotificationService {
     approverName: string,
     expenseDescription: string,
     decision: 'APPROVED' | 'REJECTED',
-    comments?: string,
+    comments?: string
   ): Promise<void> {
     const subject = `Expense ${decision} - ${expenseDescription}`;
     const body = this.generateApprovalDecisionEmail(
       approverName,
       expenseDescription,
       decision,
-      comments,
+      comments
     );
 
     await this.sendEmail({
@@ -153,13 +161,13 @@ export class NotificationService {
     approverEmails: string[],
     expenseDescription: string,
     daysPending: number,
-    approvalUrl: string,
+    approvalUrl: string
   ): Promise<void> {
     const subject = `Reminder: Expense Approval Pending - ${expenseDescription}`;
     const body = this.generateApprovalReminderEmail(
       expenseDescription,
       daysPending,
-      approvalUrl,
+      approvalUrl
     );
 
     await this.sendEmail({
@@ -179,7 +187,7 @@ export class NotificationService {
     expenseDescription: string,
     amount: number,
     currency: string,
-    approvalUrl: string,
+    approvalUrl: string
   ): Promise<void> {
     const subject = `Escalated: Expense Approval Required - ${expenseDescription}`;
     const body = this.generateEscalationEmail(
@@ -187,7 +195,7 @@ export class NotificationService {
       expenseDescription,
       amount,
       currency,
-      approvalUrl,
+      approvalUrl
     );
 
     await this.sendEmail({
@@ -206,7 +214,7 @@ export class NotificationService {
     expenseDescription: string,
     amount: number,
     currency: string,
-    approvalUrl: string,
+    approvalUrl: string
   ): string {
     return `
       <html>
@@ -249,7 +257,7 @@ export class NotificationService {
     approverName: string,
     expenseDescription: string,
     decision: 'APPROVED' | 'REJECTED',
-    comments?: string,
+    comments?: string
   ): string {
     const statusColor = decision === 'APPROVED' ? '#27ae60' : '#e74c3c';
     const statusText = decision === 'APPROVED' ? 'Approved' : 'Rejected';
@@ -270,9 +278,10 @@ export class NotificationService {
               ${comments ? `<p><strong>Comments:</strong> ${comments}</p>` : ''}
             </div>
             
-            ${decision === 'REJECTED' ? 
-              '<p>You can edit and resubmit your expense if needed.</p>' : 
-              '<p>Your expense will now be processed for payment.</p>'
+            ${
+              decision === 'REJECTED'
+                ? '<p>You can edit and resubmit your expense if needed.</p>'
+                : '<p>Your expense will now be processed for payment.</p>'
             }
             
             <p style="color: #7f8c8d; font-size: 14px;">
@@ -290,7 +299,7 @@ export class NotificationService {
   private generateApprovalReminderEmail(
     expenseDescription: string,
     daysPending: number,
-    approvalUrl: string,
+    approvalUrl: string
   ): string {
     return `
       <html>
@@ -334,7 +343,7 @@ export class NotificationService {
     expenseDescription: string,
     amount: number,
     currency: string,
-    approvalUrl: string,
+    approvalUrl: string
   ): string {
     return `
       <html>
@@ -380,13 +389,24 @@ export class NotificationService {
         type: 'APPROVAL_REQUEST',
         subject: 'Expense Approval Required - {{expenseDescription}}',
         body: 'Approval request template',
-        variables: ['requesterName', 'expenseDescription', 'amount', 'currency', 'approvalUrl'],
+        variables: [
+          'requesterName',
+          'expenseDescription',
+          'amount',
+          'currency',
+          'approvalUrl',
+        ],
       },
       {
         type: 'APPROVAL_DECISION',
         subject: 'Expense {{decision}} - {{expenseDescription}}',
         body: 'Approval decision template',
-        variables: ['approverName', 'expenseDescription', 'decision', 'comments'],
+        variables: [
+          'approverName',
+          'expenseDescription',
+          'decision',
+          'comments',
+        ],
       },
       {
         type: 'APPROVAL_REMINDER',
@@ -396,9 +416,16 @@ export class NotificationService {
       },
       {
         type: 'APPROVAL_ESCALATION',
-        subject: 'Escalated: Expense Approval Required - {{expenseDescription}}',
+        subject:
+          'Escalated: Expense Approval Required - {{expenseDescription}}',
         body: 'Approval escalation template',
-        variables: ['originalApproverName', 'expenseDescription', 'amount', 'currency', 'approvalUrl'],
+        variables: [
+          'originalApproverName',
+          'expenseDescription',
+          'amount',
+          'currency',
+          'approvalUrl',
+        ],
       },
     ];
   }

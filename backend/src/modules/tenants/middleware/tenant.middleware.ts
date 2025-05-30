@@ -1,5 +1,11 @@
-import { Injectable, NestMiddleware, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
-import { Request, Response, NextFunction } from 'express';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NestMiddleware,
+  NotFoundException,
+} from '@nestjs/common';
+import { NextFunction, Request, Response } from 'express';
 
 import { TenantService } from '../tenant.service';
 
@@ -45,7 +51,9 @@ export class TenantMiddleware implements NestMiddleware {
 
       // Check tenant status
       if (tenant.status !== 'ACTIVE') {
-        throw new BadRequestException(`Tenant is ${tenant.status.toLowerCase()}`);
+        throw new BadRequestException(
+          `Tenant is ${tenant.status.toLowerCase()}`
+        );
       }
 
       // Attach tenant information to request
@@ -60,7 +68,8 @@ export class TenantMiddleware implements NestMiddleware {
 
       next();
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(`Tenant resolution failed: ${errorMessage}`);
       next(error);
     }

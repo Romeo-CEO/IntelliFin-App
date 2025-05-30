@@ -72,15 +72,19 @@ export class MobileOptimizationService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly taxCalculationService: TaxCalculationService,
+    private readonly taxCalculationService: TaxCalculationService
   ) {}
 
   /**
    * Get offline tax data package for mobile app
    */
-  async getOfflineTaxDataPackage(organizationId: string): Promise<OfflineTaxData> {
+  async getOfflineTaxDataPackage(
+    organizationId: string
+  ): Promise<OfflineTaxData> {
     try {
-      this.logger.log(`Generating offline tax data package for organization: ${organizationId}`);
+      this.logger.log(
+        `Generating offline tax data package for organization: ${organizationId}`
+      );
 
       // Get current tax rates
       const taxRates = await this.prisma.taxRate.findMany({
@@ -107,12 +111,32 @@ export class MobileOptimizationService {
 
       // Service types with rates
       const serviceTypes = [
-        { value: 'PROFESSIONAL_SERVICES', label: 'Professional Services', rate: 15, minimumThreshold: 200 },
+        {
+          value: 'PROFESSIONAL_SERVICES',
+          label: 'Professional Services',
+          rate: 15,
+          minimumThreshold: 200,
+        },
         { value: 'RENT', label: 'Rent', rate: 10, minimumThreshold: 500 },
         { value: 'INTEREST', label: 'Interest', rate: 15, minimumThreshold: 0 },
-        { value: 'DIVIDENDS', label: 'Dividends', rate: 15, minimumThreshold: 0 },
-        { value: 'CONSULTANCY', label: 'Consultancy', rate: 15, minimumThreshold: 200 },
-        { value: 'OTHER', label: 'Other Services', rate: 15, minimumThreshold: 200 },
+        {
+          value: 'DIVIDENDS',
+          label: 'Dividends',
+          rate: 15,
+          minimumThreshold: 0,
+        },
+        {
+          value: 'CONSULTANCY',
+          label: 'Consultancy',
+          rate: 15,
+          minimumThreshold: 200,
+        },
+        {
+          value: 'OTHER',
+          label: 'Other Services',
+          rate: 15,
+          minimumThreshold: 200,
+        },
       ];
 
       const offlineData: OfflineTaxData = {
@@ -135,10 +159,15 @@ export class MobileOptimizationService {
         version: '1.0.0',
       };
 
-      this.logger.log(`Offline tax data package generated: ${JSON.stringify(offlineData).length} bytes`);
+      this.logger.log(
+        `Offline tax data package generated: ${JSON.stringify(offlineData).length} bytes`
+      );
       return offlineData;
     } catch (error) {
-      this.logger.error(`Failed to generate offline tax data package: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to generate offline tax data package: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -149,10 +178,12 @@ export class MobileOptimizationService {
   async calculateTaxOffline(
     organizationId: string,
     request: OfflineCalculationRequest,
-    offlineData?: OfflineTaxData,
+    offlineData?: OfflineTaxData
   ): Promise<OfflineCalculationResult> {
     try {
-      this.logger.log(`Performing offline tax calculation: ${request.taxType}, amount: ${request.amount}`);
+      this.logger.log(
+        `Performing offline tax calculation: ${request.taxType}, amount: ${request.amount}`
+      );
 
       // If no offline data provided, get current data
       if (!offlineData) {
@@ -164,15 +195,20 @@ export class MobileOptimizationService {
       let applicableRate = 0;
 
       if (request.taxType === 'WITHHOLDING_TAX' && request.serviceType) {
-        const serviceType = offlineData.serviceTypes.find(st => st.value === request.serviceType);
+        const serviceType = offlineData.serviceTypes.find(
+          st => st.value === request.serviceType
+        );
         applicableRate = serviceType ? serviceType.rate : 15; // Default 15%
       } else {
-        const taxRate = offlineData.taxRates.find(rate => 
-          rate.taxType === request.taxType &&
-          new Date(rate.effectiveDate) <= calculationDate &&
-          (!rate.endDate || new Date(rate.endDate) >= calculationDate)
+        const taxRate = offlineData.taxRates.find(
+          rate =>
+            rate.taxType === request.taxType &&
+            new Date(rate.effectiveDate) <= calculationDate &&
+            (!rate.endDate || new Date(rate.endDate) >= calculationDate)
         );
-        applicableRate = taxRate ? taxRate.rate : this.getDefaultTaxRate(request.taxType);
+        applicableRate = taxRate
+          ? taxRate.rate
+          : this.getDefaultTaxRate(request.taxType);
       }
 
       // Calculate tax
@@ -192,10 +228,15 @@ export class MobileOptimizationService {
         isOfflineCalculation: true,
       };
 
-      this.logger.log(`Offline tax calculation completed: ${taxAmount} (${applicableRate}%)`);
+      this.logger.log(
+        `Offline tax calculation completed: ${taxAmount} (${applicableRate}%)`
+      );
       return result;
     } catch (error) {
-      this.logger.error(`Failed to calculate tax offline: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to calculate tax offline: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -206,7 +247,7 @@ export class MobileOptimizationService {
   async compressTaxReport(
     reportType: string,
     period: string,
-    reportData: any,
+    reportData: any
   ): Promise<CompressedTaxReport> {
     try {
       this.logger.log(`Compressing tax report: ${reportType} for ${period}`);
@@ -219,7 +260,8 @@ export class MobileOptimizationService {
       const compressedString = JSON.stringify(compressedData);
       const compressedSize = Buffer.byteLength(compressedString, 'utf8');
 
-      const compressionRatio = ((originalSize - compressedSize) / originalSize) * 100;
+      const compressionRatio =
+        ((originalSize - compressedSize) / originalSize) * 100;
 
       const result: CompressedTaxReport = {
         reportType,
@@ -230,10 +272,15 @@ export class MobileOptimizationService {
         compressionRatio,
       };
 
-      this.logger.log(`Report compressed: ${originalSize} -> ${compressedSize} bytes (${compressionRatio.toFixed(1)}% reduction)`);
+      this.logger.log(
+        `Report compressed: ${originalSize} -> ${compressedSize} bytes (${compressionRatio.toFixed(1)}% reduction)`
+      );
       return result;
     } catch (error) {
-      this.logger.error(`Failed to compress tax report: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to compress tax report: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -241,7 +288,9 @@ export class MobileOptimizationService {
   /**
    * Get mobile data sync status
    */
-  async getMobileDataSyncStatus(organizationId: string): Promise<MobileDataSync> {
+  async getMobileDataSyncStatus(
+    organizationId: string
+  ): Promise<MobileDataSync> {
     try {
       // TODO: Implement actual sync status tracking
       // For now, return mock status
@@ -255,7 +304,10 @@ export class MobileOptimizationService {
 
       return syncStatus;
     } catch (error) {
-      this.logger.error(`Failed to get mobile sync status: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to get mobile sync status: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -286,9 +338,12 @@ export class MobileOptimizationService {
 
       const optimizedString = JSON.stringify(optimizedData);
       const optimizedSize = Buffer.byteLength(optimizedString, 'utf8');
-      const optimizationRatio = ((originalSize - optimizedSize) / originalSize) * 100;
+      const optimizationRatio =
+        ((originalSize - optimizedSize) / originalSize) * 100;
 
-      this.logger.log(`Data optimized for low bandwidth: ${originalSize} -> ${optimizedSize} bytes (${optimizationRatio.toFixed(1)}% reduction)`);
+      this.logger.log(
+        `Data optimized for low bandwidth: ${originalSize} -> ${optimizedSize} bytes (${optimizationRatio.toFixed(1)}% reduction)`
+      );
 
       return {
         optimizedData,
@@ -297,7 +352,10 @@ export class MobileOptimizationService {
         optimizationRatio,
       };
     } catch (error) {
-      this.logger.error(`Failed to optimize data for low bandwidth: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to optimize data for low bandwidth: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -327,19 +385,20 @@ export class MobileOptimizationService {
 
     if (typeof data === 'object' && data !== null) {
       const compressed: any = {};
-      
+
       for (const [key, value] of Object.entries(data)) {
         // Skip null/undefined values
         if (value === null || value === undefined) continue;
-        
+
         // Skip empty arrays/objects
         if (Array.isArray(value) && value.length === 0) continue;
-        if (typeof value === 'object' && Object.keys(value).length === 0) continue;
-        
+        if (typeof value === 'object' && Object.keys(value).length === 0)
+          continue;
+
         // Recursively compress nested objects
         compressed[key] = this.compressReportData(value);
       }
-      
+
       return compressed;
     }
 
@@ -372,15 +431,15 @@ export class MobileOptimizationService {
    */
   private shortenFieldNames(obj: any): any {
     const fieldMap: Record<string, string> = {
-      'organizationId': 'orgId',
-      'customerId': 'custId',
-      'invoiceId': 'invId',
-      'paymentId': 'payId',
-      'createdAt': 'created',
-      'updatedAt': 'updated',
-      'description': 'desc',
-      'amount': 'amt',
-      'quantity': 'qty',
+      organizationId: 'orgId',
+      customerId: 'custId',
+      invoiceId: 'invId',
+      paymentId: 'payId',
+      createdAt: 'created',
+      updatedAt: 'updated',
+      description: 'desc',
+      amount: 'amt',
+      quantity: 'qty',
     };
 
     if (Array.isArray(obj)) {
@@ -416,7 +475,9 @@ export class MobileOptimizationService {
     }
 
     if (typeof obj === 'number' && !Number.isInteger(obj)) {
-      return Math.round(obj * Math.pow(10, precision)) / Math.pow(10, precision);
+      return (
+        Math.round(obj * Math.pow(10, precision)) / Math.pow(10, precision)
+      );
     }
 
     return obj;

@@ -1,6 +1,5 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
 import { 
   Edit, 
   X, 
@@ -16,13 +15,15 @@ import {
   Activity,
   Eye
 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+
 import { Account } from '../../services/accounting.service';
 import { accountingService } from '../../services/accounting.service';
-import { Button } from '../ui/button';
+import { LoadingSpinner } from '../common/LoadingSpinner';
 import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { LoadingSpinner } from '../common/LoadingSpinner';
 
 interface AccountDetailsProps {
   account: Account;

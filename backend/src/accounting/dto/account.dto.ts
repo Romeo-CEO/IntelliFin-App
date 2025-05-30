@@ -1,9 +1,22 @@
-import { IsString, IsEnum, IsOptional, IsBoolean, IsNumber, IsUUID, Length, Min, Max } from 'class-validator';
+import {
+  IsBoolean,
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Length,
+  Max,
+  Min,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { AccountType, AccountSubType, NormalBalance } from '@prisma/client';
+import { AccountSubType, AccountType, NormalBalance } from '@prisma/client';
 
 export class CreateAccountDto {
-  @ApiProperty({ description: 'Account code (4-digit number)', example: '1100' })
+  @ApiProperty({
+    description: 'Account code (4-digit number)',
+    example: '1100',
+  })
   @IsString()
   @Length(4, 4, { message: 'Account code must be exactly 4 digits' })
   accountCode: string;
@@ -17,7 +30,10 @@ export class CreateAccountDto {
   @IsEnum(AccountType)
   accountType: AccountType;
 
-  @ApiPropertyOptional({ description: 'Account sub-type', enum: AccountSubType })
+  @ApiPropertyOptional({
+    description: 'Account sub-type',
+    enum: AccountSubType,
+  })
   @IsOptional()
   @IsEnum(AccountSubType)
   accountSubType?: AccountSubType;
@@ -31,22 +47,34 @@ export class CreateAccountDto {
   @IsEnum(NormalBalance)
   normalBalance: NormalBalance;
 
-  @ApiPropertyOptional({ description: 'Whether account is active', default: true })
+  @ApiPropertyOptional({
+    description: 'Whether account is active',
+    default: true,
+  })
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
 
-  @ApiPropertyOptional({ description: 'Whether account is a system account', default: false })
+  @ApiPropertyOptional({
+    description: 'Whether account is a system account',
+    default: false,
+  })
   @IsOptional()
   @IsBoolean()
   isSystem?: boolean;
 
-  @ApiPropertyOptional({ description: 'Whether account is a bank account', default: false })
+  @ApiPropertyOptional({
+    description: 'Whether account is a bank account',
+    default: false,
+  })
   @IsOptional()
   @IsBoolean()
   isBankAccount?: boolean;
 
-  @ApiPropertyOptional({ description: 'Whether account is a tax account', default: false })
+  @ApiPropertyOptional({
+    description: 'Whether account is a tax account',
+    default: false,
+  })
   @IsOptional()
   @IsBoolean()
   isTaxAccount?: boolean;
@@ -67,7 +95,9 @@ export class CreateAccountDto {
   @IsString()
   description?: string;
 
-  @ApiPropertyOptional({ description: 'Bank account number (for bank accounts)' })
+  @ApiPropertyOptional({
+    description: 'Bank account number (for bank accounts)',
+  })
   @IsOptional()
   @IsString()
   @Length(1, 50)
@@ -98,7 +128,10 @@ export class UpdateAccountDto {
   @IsEnum(AccountType)
   accountType?: AccountType;
 
-  @ApiPropertyOptional({ description: 'Account sub-type', enum: AccountSubType })
+  @ApiPropertyOptional({
+    description: 'Account sub-type',
+    enum: AccountSubType,
+  })
   @IsOptional()
   @IsEnum(AccountSubType)
   accountSubType?: AccountSubType;
@@ -108,7 +141,10 @@ export class UpdateAccountDto {
   @IsUUID()
   parentAccountId?: string;
 
-  @ApiPropertyOptional({ description: 'Normal balance type', enum: NormalBalance })
+  @ApiPropertyOptional({
+    description: 'Normal balance type',
+    enum: NormalBalance,
+  })
   @IsOptional()
   @IsEnum(NormalBalance)
   normalBalance?: NormalBalance;
@@ -138,7 +174,9 @@ export class UpdateAccountDto {
   @IsString()
   description?: string;
 
-  @ApiPropertyOptional({ description: 'Bank account number (for bank accounts)' })
+  @ApiPropertyOptional({
+    description: 'Bank account number (for bank accounts)',
+  })
   @IsOptional()
   @IsString()
   @Length(1, 50)
@@ -171,12 +209,18 @@ export class AccountQueryDto {
   @Max(100)
   limit?: number;
 
-  @ApiPropertyOptional({ description: 'Filter by account type', enum: AccountType })
+  @ApiPropertyOptional({
+    description: 'Filter by account type',
+    enum: AccountType,
+  })
   @IsOptional()
   @IsEnum(AccountType)
   accountType?: AccountType;
 
-  @ApiPropertyOptional({ description: 'Filter by account sub-type', enum: AccountSubType })
+  @ApiPropertyOptional({
+    description: 'Filter by account sub-type',
+    enum: AccountSubType,
+  })
   @IsOptional()
   @IsEnum(AccountSubType)
   accountSubType?: AccountSubType;
@@ -206,7 +250,9 @@ export class AccountQueryDto {
   @IsBoolean()
   isTaxAccount?: boolean;
 
-  @ApiPropertyOptional({ description: 'Search in account code, name, or description' })
+  @ApiPropertyOptional({
+    description: 'Search in account code, name, or description',
+  })
   @IsOptional()
   @IsString()
   search?: string;
@@ -223,7 +269,10 @@ export class AccountQueryDto {
 }
 
 export class InitializeChartOfAccountsDto {
-  @ApiPropertyOptional({ description: 'Include default Zambian accounts', default: true })
+  @ApiPropertyOptional({
+    description: 'Include default Zambian accounts',
+    default: true,
+  })
   @IsOptional()
   @IsBoolean()
   includeDefaultAccounts?: boolean;
@@ -242,7 +291,10 @@ export class AccountResponseDto {
   @ApiProperty({ description: 'Account type', enum: AccountType })
   accountType: AccountType;
 
-  @ApiPropertyOptional({ description: 'Account sub-type', enum: AccountSubType })
+  @ApiPropertyOptional({
+    description: 'Account sub-type',
+    enum: AccountSubType,
+  })
   accountSubType?: AccountSubType;
 
   @ApiPropertyOptional({ description: 'Parent account ID' })

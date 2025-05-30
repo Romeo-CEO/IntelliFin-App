@@ -1,4 +1,11 @@
-import { IsArray, IsBoolean, IsOptional, IsUUID, ArrayMinSize, ArrayMaxSize } from 'class-validator';
+import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  IsArray,
+  IsBoolean,
+  IsOptional,
+  IsUUID,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CategorizeTransactionDto {

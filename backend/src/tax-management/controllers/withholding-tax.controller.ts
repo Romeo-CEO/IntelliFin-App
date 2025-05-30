@@ -1,23 +1,29 @@
 import {
+  Body,
   Controller,
   Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseIntPipe,
+  ParseUUIDPipe,
   Post,
   Put,
-  Body,
-  Param,
   Query,
-  UseGuards,
   Request,
-  HttpStatus,
-  HttpCode,
-  ParseUUIDPipe,
-  ParseIntPipe,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { 
-  WithholdingTaxService, 
-  CreateWithholdingCertificateDto 
+import {
+  CreateWithholdingCertificateDto,
+  WithholdingTaxService,
 } from '../services/withholding-tax.service';
 import { WithholdingCertificateStatus } from '@prisma/client';
 
@@ -36,7 +42,7 @@ export class WithholdingTaxController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async createCertificate(
     @Request() req: any,
-    @Body() createDto: Omit<CreateWithholdingCertificateDto, 'organizationId'>,
+    @Body() createDto: Omit<CreateWithholdingCertificateDto, 'organizationId'>
   ) {
     try {
       const dto: CreateWithholdingCertificateDto = {
@@ -45,7 +51,8 @@ export class WithholdingTaxController {
         paymentDate: new Date(createDto.paymentDate),
       };
 
-      const certificate = await this.withholdingTaxService.createCertificate(dto);
+      const certificate =
+        await this.withholdingTaxService.createCertificate(dto);
 
       return {
         success: true,
@@ -66,10 +73,17 @@ export class WithholdingTaxController {
   @ApiQuery({ name: 'taxPeriodId', required: false, type: String })
   @ApiQuery({ name: 'supplierTin', required: false, type: String })
   @ApiQuery({ name: 'serviceType', required: false, type: String })
-  @ApiQuery({ name: 'status', required: false, enum: WithholdingCertificateStatus })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    enum: WithholdingCertificateStatus,
+  })
   @ApiQuery({ name: 'year', required: false, type: Number })
   @ApiQuery({ name: 'month', required: false, type: Number })
-  @ApiResponse({ status: 200, description: 'Certificates retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Certificates retrieved successfully',
+  })
   async getCertificates(
     @Request() req: any,
     @Query('taxPeriodId') taxPeriodId?: string,
@@ -77,7 +91,7 @@ export class WithholdingTaxController {
     @Query('serviceType') serviceType?: string,
     @Query('status') status?: WithholdingCertificateStatus,
     @Query('year', new ParseIntPipe({ optional: true })) year?: number,
-    @Query('month', new ParseIntPipe({ optional: true })) month?: number,
+    @Query('month', new ParseIntPipe({ optional: true })) month?: number
   ) {
     try {
       const filters = {
@@ -91,7 +105,7 @@ export class WithholdingTaxController {
 
       const certificates = await this.withholdingTaxService.getCertificates(
         req.user.organizationId,
-        filters,
+        filters
       );
 
       return {
@@ -110,16 +124,19 @@ export class WithholdingTaxController {
 
   @Put('certificates/:id/submit')
   @ApiOperation({ summary: 'Submit certificate to ZRA' })
-  @ApiResponse({ status: 200, description: 'Certificate submitted successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Certificate submitted successfully',
+  })
   @ApiResponse({ status: 404, description: 'Certificate not found' })
   async submitCertificate(
     @Request() req: any,
-    @Param('id', ParseUUIDPipe) certificateId: string,
+    @Param('id', ParseUUIDPipe) certificateId: string
   ) {
     try {
       const certificate = await this.withholdingTaxService.submitToZRA(
         req.user.organizationId,
-        certificateId,
+        certificateId
       );
 
       return {
@@ -141,12 +158,12 @@ export class WithholdingTaxController {
   @ApiResponse({ status: 200, description: 'Bulk submission completed' })
   async bulkSubmitCertificates(
     @Request() req: any,
-    @Body() body: { certificateIds: string[] },
+    @Body() body: { certificateIds: string[] }
   ) {
     try {
       const result = await this.withholdingTaxService.bulkSubmitToZRA(
         req.user.organizationId,
-        body.certificateIds,
+        body.certificateIds
       );
 
       return {
@@ -171,13 +188,13 @@ export class WithholdingTaxController {
   async getWithholdingSummary(
     @Request() req: any,
     @Query('year', new ParseIntPipe({ optional: true })) year?: number,
-    @Query('month', new ParseIntPipe({ optional: true })) month?: number,
+    @Query('month', new ParseIntPipe({ optional: true })) month?: number
   ) {
     try {
       const summary = await this.withholdingTaxService.getWithholdingSummary(
         req.user.organizationId,
         year,
-        month,
+        month
       );
 
       return {
@@ -196,17 +213,20 @@ export class WithholdingTaxController {
 
   @Get('monthly-return/:year/:month')
   @ApiOperation({ summary: 'Generate monthly withholding tax return' })
-  @ApiResponse({ status: 200, description: 'Monthly return generated successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Monthly return generated successfully',
+  })
   async generateMonthlyReturn(
     @Request() req: any,
     @Param('year', ParseIntPipe) year: number,
-    @Param('month', ParseIntPipe) month: number,
+    @Param('month', ParseIntPipe) month: number
   ) {
     try {
       const returnData = await this.withholdingTaxService.generateMonthlyReturn(
         req.user.organizationId,
         year,
-        month,
+        month
       );
 
       return {
@@ -225,30 +245,36 @@ export class WithholdingTaxController {
 
   @Get('dashboard')
   @ApiOperation({ summary: 'Get withholding tax dashboard data' })
-  @ApiResponse({ status: 200, description: 'Dashboard data retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Dashboard data retrieved successfully',
+  })
   async getDashboardData(@Request() req: any) {
     try {
       const currentYear = new Date().getFullYear();
       const currentMonth = new Date().getMonth() + 1;
 
       // Get current month summary
-      const currentMonthSummary = await this.withholdingTaxService.getWithholdingSummary(
-        req.user.organizationId,
-        currentYear,
-        currentMonth,
-      );
+      const currentMonthSummary =
+        await this.withholdingTaxService.getWithholdingSummary(
+          req.user.organizationId,
+          currentYear,
+          currentMonth
+        );
 
       // Get year-to-date summary
-      const yearSummary = await this.withholdingTaxService.getWithholdingSummary(
-        req.user.organizationId,
-        currentYear,
-      );
+      const yearSummary =
+        await this.withholdingTaxService.getWithholdingSummary(
+          req.user.organizationId,
+          currentYear
+        );
 
       // Get recent certificates
-      const recentCertificates = await this.withholdingTaxService.getCertificates(
-        req.user.organizationId,
-        { year: currentYear },
-      );
+      const recentCertificates =
+        await this.withholdingTaxService.getCertificates(
+          req.user.organizationId,
+          { year: currentYear }
+        );
 
       const dashboardData = {
         currentMonth: {
@@ -261,9 +287,10 @@ export class WithholdingTaxController {
         },
         recentCertificates: recentCertificates.slice(0, 10), // Latest 10 certificates
         alerts: {
-          unsubmittedCount: recentCertificates.filter(c => !c.submittedToZra).length,
-          pendingSubmission: recentCertificates.filter(c => 
-            c.status === WithholdingCertificateStatus.ISSUED
+          unsubmittedCount: recentCertificates.filter(c => !c.submittedToZra)
+            .length,
+          pendingSubmission: recentCertificates.filter(
+            c => c.status === WithholdingCertificateStatus.ISSUED
           ).length,
         },
       };
@@ -284,11 +311,18 @@ export class WithholdingTaxController {
 
   @Get('service-types')
   @ApiOperation({ summary: 'Get available service types for withholding tax' })
-  @ApiResponse({ status: 200, description: 'Service types retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Service types retrieved successfully',
+  })
   async getServiceTypes() {
     try {
       const serviceTypes = [
-        { value: 'PROFESSIONAL_SERVICES', label: 'Professional Services', rate: 15 },
+        {
+          value: 'PROFESSIONAL_SERVICES',
+          label: 'Professional Services',
+          rate: 15,
+        },
         { value: 'RENT', label: 'Rent', rate: 10 },
         { value: 'INTEREST', label: 'Interest', rate: 15 },
         { value: 'DIVIDENDS', label: 'Dividends', rate: 15 },
@@ -317,26 +351,31 @@ export class WithholdingTaxController {
   @Get('analytics')
   @ApiOperation({ summary: 'Get withholding tax analytics' })
   @ApiQuery({ name: 'year', required: false, type: Number })
-  @ApiResponse({ status: 200, description: 'Analytics data retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Analytics data retrieved successfully',
+  })
   async getAnalytics(
     @Request() req: any,
-    @Query('year', new ParseIntPipe({ optional: true })) year?: number,
+    @Query('year', new ParseIntPipe({ optional: true })) year?: number
   ) {
     try {
       const targetYear = year || new Date().getFullYear();
-      
+
       // Get monthly breakdown
       const monthlyData = [];
       for (let month = 1; month <= 12; month++) {
         const summary = await this.withholdingTaxService.getWithholdingSummary(
           req.user.organizationId,
           targetYear,
-          month,
+          month
         );
-        
+
         monthlyData.push({
           month,
-          monthName: new Date(2024, month - 1, 1).toLocaleString('default', { month: 'long' }),
+          monthName: new Date(2024, month - 1, 1).toLocaleString('default', {
+            month: 'long',
+          }),
           certificatesCount: summary.totalCertificates,
           grossAmount: summary.totalGrossAmount,
           taxWithheld: summary.totalTaxWithheld,
@@ -345,10 +384,11 @@ export class WithholdingTaxController {
       }
 
       // Get year summary
-      const yearSummary = await this.withholdingTaxService.getWithholdingSummary(
-        req.user.organizationId,
-        targetYear,
-      );
+      const yearSummary =
+        await this.withholdingTaxService.getWithholdingSummary(
+          req.user.organizationId,
+          targetYear
+        );
 
       const analytics = {
         year: targetYear,
@@ -356,7 +396,7 @@ export class WithholdingTaxController {
         yearSummary,
         trends: {
           averageMonthlyTax: yearSummary.totalTaxWithheld / 12,
-          peakMonth: monthlyData.reduce((max, current) => 
+          peakMonth: monthlyData.reduce((max, current) =>
             current.taxWithheld > max.taxWithheld ? current : max
           ),
           submissionTrend: monthlyData.map(m => ({

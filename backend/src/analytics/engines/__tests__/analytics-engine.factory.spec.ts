@@ -3,9 +3,9 @@ import { AnalyticsEngineFactory } from '../analytics-engine.factory';
 import { StatisticalForecastingEngine } from '../statistical/statistical-forecasting.engine';
 import { StatisticalAnomalyEngine } from '../statistical/statistical-anomaly.engine';
 import {
-  IForecastingEngine,
+  AnalyticsCapability,
   IAnomalyDetectionEngine,
-  AnalyticsCapability
+  IForecastingEngine,
 } from '../../interfaces/analytics-engine.interface';
 
 describe('AnalyticsEngineFactory', () => {
@@ -81,11 +81,14 @@ describe('AnalyticsEngineFactory', () => {
 
   describe('getAnomalyDetectionEngine', () => {
     it('should return statistical engine for small datasets', () => {
-      const engine = factory.getAnomalyDetectionEngine({
-        size: 50,
-        dimensions: 1,
-        hasSeasonality: false
-      }, false);
+      const engine = factory.getAnomalyDetectionEngine(
+        {
+          size: 50,
+          dimensions: 1,
+          hasSeasonality: false,
+        },
+        false
+      );
 
       expect(engine).toBeInstanceOf(StatisticalAnomalyEngine);
       expect(engine.engineType).toBe('STATISTICAL');
@@ -93,33 +96,42 @@ describe('AnalyticsEngineFactory', () => {
     });
 
     it('should return statistical engine for multi-dimensional data', () => {
-      const engine = factory.getAnomalyDetectionEngine({
-        size: 200,
-        dimensions: 5,
-        hasSeasonality: true
-      }, false);
+      const engine = factory.getAnomalyDetectionEngine(
+        {
+          size: 200,
+          dimensions: 5,
+          hasSeasonality: true,
+        },
+        false
+      );
 
       expect(engine).toBeInstanceOf(StatisticalAnomalyEngine);
       expect(engine.engineType).toBe('STATISTICAL');
     });
 
     it('should fallback to statistical engine when ML preferred but data insufficient', () => {
-      const engine = factory.getAnomalyDetectionEngine({
-        size: 100,
-        dimensions: 2,
-        hasSeasonality: false
-      }, true);
+      const engine = factory.getAnomalyDetectionEngine(
+        {
+          size: 100,
+          dimensions: 2,
+          hasSeasonality: false,
+        },
+        true
+      );
 
       expect(engine).toBeInstanceOf(StatisticalAnomalyEngine);
       expect(engine.engineType).toBe('STATISTICAL');
     });
 
     it('should handle seasonal data appropriately', () => {
-      const engine = factory.getAnomalyDetectionEngine({
-        size: 300,
-        dimensions: 1,
-        hasSeasonality: true
-      }, false);
+      const engine = factory.getAnomalyDetectionEngine(
+        {
+          size: 300,
+          dimensions: 1,
+          hasSeasonality: true,
+        },
+        false
+      );
 
       expect(engine).toBeInstanceOf(StatisticalAnomalyEngine);
       expect(engine.capabilities).toContain('PATTERN_RECOGNITION');
@@ -181,7 +193,7 @@ describe('AnalyticsEngineFactory', () => {
         size: 30,
         complexity: 0.5,
         accuracy_requirements: 0.8,
-        performance_requirements: 0.9
+        performance_requirements: 0.9,
       });
 
       expect(recommendations.recommended).toBe('STATISTICAL');
@@ -194,7 +206,7 @@ describe('AnalyticsEngineFactory', () => {
         size: 1000,
         complexity: 0.8,
         accuracy_requirements: 0.95,
-        performance_requirements: 0.8
+        performance_requirements: 0.8,
       });
 
       expect(recommendations.recommended).toBe('ML');
@@ -207,7 +219,7 @@ describe('AnalyticsEngineFactory', () => {
         size: 200,
         complexity: 0.5,
         accuracy_requirements: 0.8,
-        performance_requirements: 0.9
+        performance_requirements: 0.9,
       });
 
       expect(recommendations.recommended).toBe('STATISTICAL');
@@ -216,9 +228,24 @@ describe('AnalyticsEngineFactory', () => {
 
     it('should provide meaningful reasoning for all recommendations', () => {
       const testCases = [
-        { size: 10, complexity: 0.2, accuracy_requirements: 0.7, performance_requirements: 0.9 },
-        { size: 100, complexity: 0.6, accuracy_requirements: 0.85, performance_requirements: 0.8 },
-        { size: 1000, complexity: 0.9, accuracy_requirements: 0.95, performance_requirements: 0.7 }
+        {
+          size: 10,
+          complexity: 0.2,
+          accuracy_requirements: 0.7,
+          performance_requirements: 0.9,
+        },
+        {
+          size: 100,
+          complexity: 0.6,
+          accuracy_requirements: 0.85,
+          performance_requirements: 0.8,
+        },
+        {
+          size: 1000,
+          complexity: 0.9,
+          accuracy_requirements: 0.95,
+          performance_requirements: 0.7,
+        },
       ];
 
       testCases.forEach(testCase => {
@@ -270,20 +297,20 @@ describe('AnalyticsEngineFactory', () => {
           description: 'Small simple dataset',
           dataSize: 20,
           complexity: 'SIMPLE' as const,
-          expectedEngine: 'STATISTICAL'
+          expectedEngine: 'STATISTICAL',
         },
         {
           description: 'Medium complex dataset',
           dataSize: 150,
           complexity: 'MODERATE' as const,
-          expectedEngine: 'STATISTICAL'
+          expectedEngine: 'STATISTICAL',
         },
         {
           description: 'Large complex dataset',
           dataSize: 1000,
           complexity: 'COMPLEX' as const,
-          expectedEngine: 'STATISTICAL' // Falls back to statistical in current implementation
-        }
+          expectedEngine: 'STATISTICAL', // Falls back to statistical in current implementation
+        },
       ];
 
       testCases.forEach(testCase => {
@@ -340,11 +367,14 @@ describe('AnalyticsEngineFactory', () => {
 
     it('should handle ML engine requests gracefully', () => {
       // Test anomaly detection with ML preference
-      const anomalyEngine = factory.getAnomalyDetectionEngine({
-        size: 1000,
-        dimensions: 10,
-        hasSeasonality: true
-      }, true);
+      const anomalyEngine = factory.getAnomalyDetectionEngine(
+        {
+          size: 1000,
+          dimensions: 10,
+          hasSeasonality: true,
+        },
+        true
+      );
 
       // Should fallback to statistical
       expect(anomalyEngine).toBeInstanceOf(StatisticalAnomalyEngine);
@@ -363,7 +393,11 @@ describe('AnalyticsEngineFactory', () => {
     });
 
     it('should handle extreme data sizes', () => {
-      const largeEngine = factory.getForecastingEngine(1000000, 'COMPLEX', false);
+      const largeEngine = factory.getForecastingEngine(
+        1000000,
+        'COMPLEX',
+        false
+      );
       expect(largeEngine).toBeInstanceOf(StatisticalForecastingEngine);
     });
 

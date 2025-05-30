@@ -1,18 +1,18 @@
-import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
-import { AxiosResponse, AxiosError } from 'axios';
+import { AxiosError, AxiosResponse } from 'axios';
 import * as crypto from 'crypto';
 
 import {
-  AirtelApiResponseDto,
-  AirtelTransactionsResponseDto,
   AirtelAccountProfileDto,
+  AirtelApiResponseDto,
   AirtelBalanceDto,
   AirtelTokenResponseDto,
-  GetTransactionsDto,
   AirtelTransactionType,
+  AirtelTransactionsResponseDto,
+  GetTransactionsDto,
 } from './dto/airtel-money-api.dto';
 
 export interface AirtelApiConfig {
@@ -42,7 +42,7 @@ export class AirtelMoneyApiClient {
 
   constructor(
     private readonly configService: ConfigService,
-    private readonly httpService: HttpService,
+    private readonly httpService: HttpService
   ) {
     this.config = {
       clientId: this.configService.get<string>('airtel.clientId'),
@@ -70,7 +70,12 @@ export class AirtelMoneyApiClient {
    * Validate required configuration
    */
   private validateConfig(): void {
-    const requiredFields = ['clientId', 'clientSecret', 'baseUrl', 'redirectUri'];
+    const requiredFields = [
+      'clientId',
+      'clientSecret',
+      'baseUrl',
+      'redirectUri',
+    ];
     const missingFields = requiredFields.filter(field => !this.config[field]);
 
     if (missingFields.length > 0) {
@@ -93,7 +98,7 @@ export class AirtelMoneyApiClient {
     });
 
     const authUrl = `${this.config.baseUrl}/auth/oauth/authorize?${params.toString()}`;
-    
+
     this.logger.debug(`Generated OAuth URL for state: ${state}`);
     return authUrl;
   }
@@ -113,13 +118,17 @@ export class AirtelMoneyApiClient {
 
     try {
       this.logger.debug('Exchanging authorization code for token');
-      
-      const response = await this.makeRequest<AirtelTokenResponseDto>('POST', url, {
-        data: data.toString(),
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-      });
+
+      const response = await this.makeRequest<AirtelTokenResponseDto>(
+        'POST',
+        url,
+        {
+          data: data.toString(),
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        }
+      );
 
       this.logger.debug('Successfully exchanged code for token');
       return response;
@@ -127,7 +136,7 @@ export class AirtelMoneyApiClient {
       this.logger.error('Failed to exchange code for token', error);
       throw new HttpException(
         'Failed to exchange authorization code for token',
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.BAD_REQUEST
       );
     }
   }
@@ -146,13 +155,17 @@ export class AirtelMoneyApiClient {
 
     try {
       this.logger.debug('Refreshing access token');
-      
-      const response = await this.makeRequest<AirtelTokenResponseDto>('POST', url, {
-        data: data.toString(),
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-      });
+
+      const response = await this.makeRequest<AirtelTokenResponseDto>(
+        'POST',
+        url,
+        {
+          data: data.toString(),
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        }
+      );
 
       this.logger.debug('Successfully refreshed token');
       return response;
@@ -160,7 +173,7 @@ export class AirtelMoneyApiClient {
       this.logger.error('Failed to refresh token', error);
       throw new HttpException(
         'Failed to refresh access token',
-        HttpStatus.UNAUTHORIZED,
+        HttpStatus.UNAUTHORIZED
       );
     }
   }
@@ -168,17 +181,17 @@ export class AirtelMoneyApiClient {
   /**
    * Get account profile information
    */
-  async getAccountProfile(accessToken: string): Promise<AirtelAccountProfileDto> {
+  async getAccountProfile(
+    accessToken: string
+  ): Promise<AirtelAccountProfileDto> {
     const url = `${this.config.baseUrl}/standard/v1/users/profile`;
 
     try {
       this.logger.debug('Fetching account profile');
-      
-      const response = await this.makeAuthenticatedRequest<AirtelApiResponseDto<AirtelAccountProfileDto>>(
-        'GET',
-        url,
-        accessToken,
-      );
+
+      const response = await this.makeAuthenticatedRequest<
+        AirtelApiResponseDto<AirtelAccountProfileDto>
+      >('GET', url, accessToken);
 
       if (response.status.code !== '200') {
         throw new Error(`API error: ${response.status.message}`);
@@ -190,7 +203,7 @@ export class AirtelMoneyApiClient {
       this.logger.error('Failed to fetch account profile', error);
       throw new HttpException(
         'Failed to fetch account profile',
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.BAD_REQUEST
       );
     }
   }
@@ -203,12 +216,10 @@ export class AirtelMoneyApiClient {
 
     try {
       this.logger.debug('Fetching account balance');
-      
-      const response = await this.makeAuthenticatedRequest<AirtelApiResponseDto<AirtelBalanceDto>>(
-        'GET',
-        url,
-        accessToken,
-      );
+
+      const response = await this.makeAuthenticatedRequest<
+        AirtelApiResponseDto<AirtelBalanceDto>
+      >('GET', url, accessToken);
 
       if (response.status.code !== '200') {
         throw new Error(`API error: ${response.status.message}`);
@@ -220,7 +231,7 @@ export class AirtelMoneyApiClient {
       this.logger.error('Failed to fetch account balance', error);
       throw new HttpException(
         'Failed to fetch account balance',
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.BAD_REQUEST
       );
     }
   }
@@ -230,7 +241,7 @@ export class AirtelMoneyApiClient {
    */
   async getTransactions(
     accessToken: string,
-    params: GetTransactionsDto,
+    params: GetTransactionsDto
   ): Promise<AirtelTransactionsResponseDto> {
     const url = `${this.config.baseUrl}/standard/v1/users/transactions`;
     const queryParams = new URLSearchParams();
@@ -240,30 +251,35 @@ export class AirtelMoneyApiClient {
     if (params.offset) queryParams.append('offset', params.offset.toString());
     if (params.startDate) queryParams.append('start_date', params.startDate);
     if (params.endDate) queryParams.append('end_date', params.endDate);
-    if (params.transactionType) queryParams.append('transaction_type', params.transactionType);
+    if (params.transactionType)
+      queryParams.append('transaction_type', params.transactionType);
 
-    const fullUrl = queryParams.toString() ? `${url}?${queryParams.toString()}` : url;
+    const fullUrl = queryParams.toString()
+      ? `${url}?${queryParams.toString()}`
+      : url;
 
     try {
-      this.logger.debug(`Fetching transactions with params: ${JSON.stringify(params)}`);
-      
-      const response = await this.makeAuthenticatedRequest<AirtelApiResponseDto<AirtelTransactionsResponseDto>>(
-        'GET',
-        fullUrl,
-        accessToken,
+      this.logger.debug(
+        `Fetching transactions with params: ${JSON.stringify(params)}`
       );
+
+      const response = await this.makeAuthenticatedRequest<
+        AirtelApiResponseDto<AirtelTransactionsResponseDto>
+      >('GET', fullUrl, accessToken);
 
       if (response.status.code !== '200') {
         throw new Error(`API error: ${response.status.message}`);
       }
 
-      this.logger.debug(`Successfully fetched ${response.data.transactions.length} transactions`);
+      this.logger.debug(
+        `Successfully fetched ${response.data.transactions.length} transactions`
+      );
       return response.data;
     } catch (error) {
       this.logger.error('Failed to fetch transactions', error);
       throw new HttpException(
         'Failed to fetch transactions',
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.BAD_REQUEST
       );
     }
   }
@@ -275,10 +291,10 @@ export class AirtelMoneyApiClient {
     method: string,
     url: string,
     accessToken: string,
-    options: any = {},
+    options: any = {}
   ): Promise<T> {
     const headers = {
-      'Authorization': `Bearer ${accessToken}`,
+      Authorization: `Bearer ${accessToken}`,
       'X-Country': 'ZM',
       'X-Currency': 'ZMW',
       'Content-Type': 'application/json',
@@ -294,7 +310,7 @@ export class AirtelMoneyApiClient {
   private async makeRequest<T>(
     method: string,
     url: string,
-    options: any = {},
+    options: any = {}
   ): Promise<T> {
     let lastError: Error;
 
@@ -306,18 +322,18 @@ export class AirtelMoneyApiClient {
             url,
             timeout: this.config.timeout,
             ...options,
-          }),
+          })
         );
 
         return response.data;
       } catch (error) {
         lastError = error;
-        
+
         if (this.shouldRetry(error, attempt)) {
           const delay = this.calculateRetryDelay(attempt);
           this.logger.warn(
             `Request failed (attempt ${attempt}/${this.retryConfig.attempts}), retrying in ${delay}ms`,
-            error.message,
+            error.message
           );
           await this.sleep(delay);
           continue;
@@ -357,7 +373,9 @@ export class AirtelMoneyApiClient {
    * Calculate retry delay with exponential backoff
    */
   private calculateRetryDelay(attempt: number): number {
-    const delay = this.retryConfig.delay * Math.pow(this.retryConfig.backoffMultiplier, attempt - 1);
+    const delay =
+      this.retryConfig.delay *
+      Math.pow(this.retryConfig.backoffMultiplier, attempt - 1);
     return Math.min(delay, this.retryConfig.maxDelay);
   }
 
@@ -374,23 +392,32 @@ export class AirtelMoneyApiClient {
   private handleApiError(error: any): never {
     if (error.response) {
       const { status, data } = error.response;
-      
+
       this.logger.error(`API error ${status}:`, data);
 
       // Handle specific error cases
       switch (status) {
         case 401:
-          throw new HttpException('Unauthorized - Invalid or expired token', HttpStatus.UNAUTHORIZED);
+          throw new HttpException(
+            'Unauthorized - Invalid or expired token',
+            HttpStatus.UNAUTHORIZED
+          );
         case 403:
-          throw new HttpException('Forbidden - Insufficient permissions', HttpStatus.FORBIDDEN);
+          throw new HttpException(
+            'Forbidden - Insufficient permissions',
+            HttpStatus.FORBIDDEN
+          );
         case 404:
           throw new HttpException('Resource not found', HttpStatus.NOT_FOUND);
         case 429:
-          throw new HttpException('Rate limit exceeded', HttpStatus.TOO_MANY_REQUESTS);
+          throw new HttpException(
+            'Rate limit exceeded',
+            HttpStatus.TOO_MANY_REQUESTS
+          );
         default:
           throw new HttpException(
             data?.error?.error_description || 'External API error',
-            status,
+            status
           );
       }
     }
@@ -399,7 +426,7 @@ export class AirtelMoneyApiClient {
     this.logger.error('Network error:', error.message);
     throw new HttpException(
       'Failed to communicate with Airtel Money API',
-      HttpStatus.SERVICE_UNAVAILABLE,
+      HttpStatus.SERVICE_UNAVAILABLE
     );
   }
 }

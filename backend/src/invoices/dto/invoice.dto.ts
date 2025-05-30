@@ -1,18 +1,17 @@
 import {
-  IsString,
-  IsUUID,
+  IsArray,
+  IsBoolean,
+  IsDateString,
+  IsEnum,
   IsNumber,
   IsOptional,
-  IsEnum,
-  IsDateString,
-  IsArray,
-  ValidateNested,
-  Min,
+  IsString,
+  IsUUID,
   Max,
-  IsBoolean,
-  MinLength,
   MaxLength,
-  IsDecimal,
+  Min,
+  MinLength,
+  ValidateNested,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
@@ -45,7 +44,7 @@ export class CreateInvoiceItemDto {
 
   @ApiProperty({
     description: 'Unit price in ZMW',
-    example: 1000.00,
+    example: 1000.0,
     minimum: 0,
     maximum: 9999999999.99,
   })
@@ -85,7 +84,7 @@ export class CreateInvoiceItemDto {
 
   @ApiPropertyOptional({
     description: 'Fixed discount amount in ZMW',
-    example: 50.00,
+    example: 50.0,
     minimum: 0,
     default: 0,
   })
@@ -143,7 +142,7 @@ export class CreateInvoiceDto {
 
   @ApiPropertyOptional({
     description: 'Invoice-level discount amount in ZMW',
-    example: 100.00,
+    example: 100.0,
     minimum: 0,
     default: 0,
   })
@@ -204,7 +203,9 @@ export class CreateInvoiceDto {
   })
   @IsOptional()
   @IsString()
-  @MaxLength(1000, { message: 'Payment instructions cannot exceed 1000 characters' })
+  @MaxLength(1000, {
+    message: 'Payment instructions cannot exceed 1000 characters',
+  })
   @Transform(({ value }) => value?.trim())
   paymentInstructions?: string;
 
@@ -222,7 +223,7 @@ export class CreateInvoiceDto {
 export class UpdateInvoiceDto extends PartialType(CreateInvoiceDto) {
   @ApiPropertyOptional({
     description: 'Paid amount in ZMW',
-    example: 500.00,
+    example: 500.0,
     minimum: 0,
   })
   @IsOptional()
@@ -302,7 +303,7 @@ export class InvoiceQueryDto {
 
   @ApiPropertyOptional({
     description: 'Minimum amount filter',
-    example: 100.00,
+    example: 100.0,
     minimum: 0,
   })
   @IsOptional()
@@ -313,7 +314,7 @@ export class InvoiceQueryDto {
 
   @ApiPropertyOptional({
     description: 'Maximum amount filter',
-    example: 10000.00,
+    example: 10000.0,
     minimum: 0,
   })
   @IsOptional()
@@ -369,7 +370,14 @@ export class InvoiceQueryDto {
   @ApiPropertyOptional({
     description: 'Sort field',
     example: 'issueDate',
-    enum: ['invoiceNumber', 'issueDate', 'dueDate', 'totalAmount', 'status', 'customerName'],
+    enum: [
+      'invoiceNumber',
+      'issueDate',
+      'dueDate',
+      'totalAmount',
+      'status',
+      'customerName',
+    ],
   })
   @IsOptional()
   @IsString()
@@ -438,7 +446,10 @@ export class InvoiceResponseDto {
   @ApiPropertyOptional({ description: 'Payment instructions' })
   paymentInstructions?: string;
 
-  @ApiPropertyOptional({ description: 'ZRA submission status', enum: ZraSubmissionStatus })
+  @ApiPropertyOptional({
+    description: 'ZRA submission status',
+    enum: ZraSubmissionStatus,
+  })
   zraSubmissionStatus?: ZraSubmissionStatus;
 
   @ApiPropertyOptional({ description: 'ZRA submission ID' })

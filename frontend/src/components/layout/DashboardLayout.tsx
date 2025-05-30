@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+
 import { MainNavigation } from '../navigation/MainNavigation';
 
 interface DashboardLayoutProps {

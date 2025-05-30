@@ -1,20 +1,24 @@
 import {
+  BadRequestException,
+  ConflictException,
   Injectable,
   Logger,
   NotFoundException,
-  BadRequestException,
-  ConflictException,
 } from '@nestjs/common';
 import { InvoiceStatus, ZraSubmissionStatus } from '@prisma/client';
 import {
-  InvoiceRepository,
   CreateInvoiceData,
-  UpdateInvoiceData,
-  InvoiceFilters,
-  InvoiceWithRelations,
   CreateInvoiceItemData,
+  InvoiceFilters,
+  InvoiceRepository,
+  InvoiceWithRelations,
+  UpdateInvoiceData,
 } from './invoice.repository';
-import { CreateInvoiceDto, UpdateInvoiceDto, InvoiceQueryDto } from './dto/invoice.dto';
+import {
+  CreateInvoiceDto,
+  InvoiceQueryDto,
+  UpdateInvoiceDto,
+} from './dto/invoice.dto';
 import { VatCalculator } from './utils/vat-calculator';
 import { InvoiceNumberGenerator } from './utils/invoice-number-generator';
 import { ZraInvoiceService } from './services/zra-invoice.service';
@@ -26,7 +30,7 @@ export class InvoiceService {
   constructor(
     private readonly invoiceRepository: InvoiceRepository,
     private readonly invoiceNumberGenerator: InvoiceNumberGenerator,
-    private readonly zraInvoiceService: ZraInvoiceService,
+    private readonly zraInvoiceService: ZraInvoiceService
   ) {}
 
   /**
@@ -35,16 +39,17 @@ export class InvoiceService {
   async createInvoice(
     organizationId: string,
     userId: string,
-    createInvoiceDto: CreateInvoiceDto,
+    createInvoiceDto: CreateInvoiceDto
   ): Promise<InvoiceWithRelations> {
     try {
       // Generate invoice number
-      const { invoiceNumber } = await this.invoiceNumberGenerator.generateInvoiceNumber(organizationId);
+      const { invoiceNumber } =
+        await this.invoiceNumberGenerator.generateInvoiceNumber(organizationId);
 
       // Calculate invoice totals
       const calculations = VatCalculator.calculateInvoiceTotals(
         createInvoiceDto.items,
-        createInvoiceDto.discountAmount || 0,
+        createInvoiceDto.discountAmount || 0
       );
 
       // Validate calculations
@@ -52,11 +57,13 @@ export class InvoiceService {
         calculations.items,
         calculations.subtotalAfterDiscount,
         calculations.totalVatAmount,
-        calculations.grandTotal,
+        calculations.grandTotal
       );
 
       if (!validation.isValid) {
-        throw new BadRequestException(`Invoice calculation errors: ${validation.errors.join(', ')}`);
+        throw new BadRequestException(
+          `Invoice calculation errors: ${validation.errors.join(', ')}`
+        );
       }
 
       // Prepare invoice data
@@ -97,7 +104,9 @@ export class InvoiceService {
 
       const invoice = await this.invoiceRepository.create(invoiceData);
 
-      this.logger.log(`Created invoice: ${invoice.invoiceNumber} (${invoice.id}) for organization ${organizationId}`);
+      this.logger.log(
+        `Created invoice: ${invoice.invoiceNumber} (${invoice.id}) for organization ${organizationId}`
+      );
       return invoice;
     } catch (error) {
       this.logger.error(`Failed to create invoice: ${error.message}`, error);
@@ -108,7 +117,10 @@ export class InvoiceService {
   /**
    * Get invoice by ID
    */
-  async getInvoiceById(id: string, organizationId: string): Promise<InvoiceWithRelations> {
+  async getInvoiceById(
+    id: string,
+    organizationId: string
+  ): Promise<InvoiceWithRelations> {
     const invoice = await this.invoiceRepository.findById(id, organizationId);
 
     if (!invoice) {
@@ -136,9 +148,15 @@ export class InvoiceService {
     const invoiceFilters: InvoiceFilters = {
       organizationId,
       ...filters,
-      ...(filters.issueDateFrom && { issueDateFrom: new Date(filters.issueDateFrom) }),
-      ...(filters.issueDateTo && { issueDateTo: new Date(filters.issueDateTo) }),
-      ...(filters.dueDateFrom && { dueDateFrom: new Date(filters.dueDateFrom) }),
+      ...(filters.issueDateFrom && {
+        issueDateFrom: new Date(filters.issueDateFrom),
+      }),
+      ...(filters.issueDateTo && {
+        issueDateTo: new Date(filters.issueDateTo),
+      }),
+      ...(filters.dueDateFrom && {
+        dueDateFrom: new Date(filters.dueDateFrom),
+      }),
       ...(filters.dueDateTo && { dueDateTo: new Date(filters.dueDateTo) }),
     };
 
@@ -164,7 +182,7 @@ export class InvoiceService {
   async updateInvoice(
     id: string,
     organizationId: string,
-    updateInvoiceDto: UpdateInvoiceDto,
+    updateInvoiceDto: UpdateInvoiceDto
   ): Promise<InvoiceWithRelations> {
     try {
       // Check if invoice exists
@@ -172,7 +190,10 @@ export class InvoiceService {
 
       // Validate status transitions
       if (updateInvoiceDto.status) {
-        this.validateStatusTransition(existingInvoice.status, updateInvoiceDto.status);
+        this.validateStatusTransition(
+          existingInvoice.status,
+          updateInvoiceDto.status
+        );
       }
 
       // If updating items, recalculate totals
@@ -181,7 +202,7 @@ export class InvoiceService {
       if (updateInvoiceDto.items) {
         const calculations = VatCalculator.calculateInvoiceTotals(
           updateInvoiceDto.items,
-          updateInvoiceDto.discountAmount || 0,
+          updateInvoiceDto.discountAmount || 0
         );
 
         updateData = {
@@ -203,13 +224,23 @@ export class InvoiceService {
       }
 
       // Validate due date
-      if (updateData.dueDate && updateData.issueDate && updateData.dueDate <= updateData.issueDate) {
+      if (
+        updateData.dueDate &&
+        updateData.issueDate &&
+        updateData.dueDate <= updateData.issueDate
+      ) {
         throw new BadRequestException('Due date must be after issue date');
       }
 
-      const invoice = await this.invoiceRepository.update(id, organizationId, updateData);
+      const invoice = await this.invoiceRepository.update(
+        id,
+        organizationId,
+        updateData
+      );
 
-      this.logger.log(`Updated invoice: ${invoice.invoiceNumber} (${invoice.id})`);
+      this.logger.log(
+        `Updated invoice: ${invoice.invoiceNumber} (${invoice.id})`
+      );
       return invoice;
     } catch (error) {
       this.logger.error(`Failed to update invoice: ${error.message}`, error);
@@ -231,12 +262,16 @@ export class InvoiceService {
       }
 
       if (invoice.zraSubmissionStatus === ZraSubmissionStatus.ACCEPTED) {
-        throw new BadRequestException('Cannot delete an invoice that has been accepted by ZRA');
+        throw new BadRequestException(
+          'Cannot delete an invoice that has been accepted by ZRA'
+        );
       }
 
       await this.invoiceRepository.softDelete(id, organizationId);
 
-      this.logger.log(`Deleted invoice: ${invoice.invoiceNumber} (${invoice.id})`);
+      this.logger.log(
+        `Deleted invoice: ${invoice.invoiceNumber} (${invoice.id})`
+      );
     } catch (error) {
       this.logger.error(`Failed to delete invoice: ${error.message}`, error);
       throw error;
@@ -253,7 +288,10 @@ export class InvoiceService {
   /**
    * Send invoice to customer
    */
-  async sendInvoice(id: string, organizationId: string): Promise<InvoiceWithRelations> {
+  async sendInvoice(
+    id: string,
+    organizationId: string
+  ): Promise<InvoiceWithRelations> {
     try {
       const invoice = await this.getInvoiceById(id, organizationId);
 
@@ -262,9 +300,13 @@ export class InvoiceService {
       }
 
       // Update status to SENT
-      const updatedInvoice = await this.invoiceRepository.update(id, organizationId, {
-        status: InvoiceStatus.SENT,
-      });
+      const updatedInvoice = await this.invoiceRepository.update(
+        id,
+        organizationId,
+        {
+          status: InvoiceStatus.SENT,
+        }
+      );
 
       // TODO: Send email notification to customer
 
@@ -279,34 +321,54 @@ export class InvoiceService {
   /**
    * Submit invoice to ZRA
    */
-  async submitToZra(id: string, organizationId: string, organizationTin: string): Promise<InvoiceWithRelations> {
+  async submitToZra(
+    id: string,
+    organizationId: string,
+    organizationTin: string
+  ): Promise<InvoiceWithRelations> {
     try {
       const invoice = await this.getInvoiceById(id, organizationId);
 
       if (invoice.status === InvoiceStatus.DRAFT) {
-        throw new BadRequestException('Cannot submit draft invoice to ZRA. Send the invoice first.');
+        throw new BadRequestException(
+          'Cannot submit draft invoice to ZRA. Send the invoice first.'
+        );
       }
 
       if (invoice.zraSubmissionStatus === ZraSubmissionStatus.ACCEPTED) {
-        throw new BadRequestException('Invoice has already been accepted by ZRA');
+        throw new BadRequestException(
+          'Invoice has already been accepted by ZRA'
+        );
       }
 
       // Submit to ZRA
-      const submission = await this.zraInvoiceService.submitInvoice(invoice, organizationTin);
+      const submission = await this.zraInvoiceService.submitInvoice(
+        invoice,
+        organizationTin
+      );
 
       // Update invoice with ZRA submission details
-      const updatedInvoice = await this.invoiceRepository.update(id, organizationId, {
-        zraSubmissionStatus: submission.status,
-        zraSubmissionId: submission.submissionId,
-        zraSubmissionDate: submission.submissionDate,
-        zraReceiptNumber: submission.receiptNumber,
-        zraQrCode: submission.qrCode,
-      });
+      const updatedInvoice = await this.invoiceRepository.update(
+        id,
+        organizationId,
+        {
+          zraSubmissionStatus: submission.status,
+          zraSubmissionId: submission.submissionId,
+          zraSubmissionDate: submission.submissionDate,
+          zraReceiptNumber: submission.receiptNumber,
+          zraQrCode: submission.qrCode,
+        }
+      );
 
-      this.logger.log(`Submitted invoice to ZRA: ${invoice.invoiceNumber} (${invoice.id}), status: ${submission.status}`);
+      this.logger.log(
+        `Submitted invoice to ZRA: ${invoice.invoiceNumber} (${invoice.id}), status: ${submission.status}`
+      );
       return updatedInvoice;
     } catch (error) {
-      this.logger.error(`Failed to submit invoice to ZRA: ${error.message}`, error);
+      this.logger.error(
+        `Failed to submit invoice to ZRA: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -318,7 +380,7 @@ export class InvoiceService {
     id: string,
     organizationId: string,
     paidAmount: number,
-    paymentDate?: Date,
+    paymentDate?: Date
   ): Promise<InvoiceWithRelations> {
     try {
       const invoice = await this.getInvoiceById(id, organizationId);
@@ -340,15 +402,24 @@ export class InvoiceService {
         newStatus = InvoiceStatus.PARTIALLY_PAID;
       }
 
-      const updatedInvoice = await this.invoiceRepository.update(id, organizationId, {
-        paidAmount: totalPaid,
-        status: newStatus,
-      });
+      const updatedInvoice = await this.invoiceRepository.update(
+        id,
+        organizationId,
+        {
+          paidAmount: totalPaid,
+          status: newStatus,
+        }
+      );
 
-      this.logger.log(`Marked invoice as paid: ${invoice.invoiceNumber} (${invoice.id}), amount: ${paidAmount}`);
+      this.logger.log(
+        `Marked invoice as paid: ${invoice.invoiceNumber} (${invoice.id}), amount: ${paidAmount}`
+      );
       return updatedInvoice;
     } catch (error) {
-      this.logger.error(`Failed to mark invoice as paid: ${error.message}`, error);
+      this.logger.error(
+        `Failed to mark invoice as paid: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -356,7 +427,9 @@ export class InvoiceService {
   /**
    * Get overdue invoices
    */
-  async getOverdueInvoices(organizationId: string): Promise<InvoiceWithRelations[]> {
+  async getOverdueInvoices(
+    organizationId: string
+  ): Promise<InvoiceWithRelations[]> {
     return await this.invoiceRepository.findOverdueInvoices(organizationId);
   }
 
@@ -377,10 +450,15 @@ export class InvoiceService {
         }
       }
 
-      this.logger.log(`Updated ${updatedCount} overdue invoices for organization ${organizationId}`);
+      this.logger.log(
+        `Updated ${updatedCount} overdue invoices for organization ${organizationId}`
+      );
       return updatedCount;
     } catch (error) {
-      this.logger.error(`Failed to update overdue invoices: ${error.message}`, error);
+      this.logger.error(
+        `Failed to update overdue invoices: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -388,20 +466,39 @@ export class InvoiceService {
   /**
    * Validate invoice status transition
    */
-  private validateStatusTransition(currentStatus: InvoiceStatus, newStatus: InvoiceStatus): void {
+  private validateStatusTransition(
+    currentStatus: InvoiceStatus,
+    newStatus: InvoiceStatus
+  ): void {
     const validTransitions: Record<InvoiceStatus, InvoiceStatus[]> = {
       [InvoiceStatus.DRAFT]: [InvoiceStatus.SENT, InvoiceStatus.CANCELLED],
-      [InvoiceStatus.SENT]: [InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.PAID, InvoiceStatus.OVERDUE, InvoiceStatus.CANCELLED],
-      [InvoiceStatus.PARTIALLY_PAID]: [InvoiceStatus.PAID, InvoiceStatus.OVERDUE, InvoiceStatus.BAD_DEBT],
+      [InvoiceStatus.SENT]: [
+        InvoiceStatus.PARTIALLY_PAID,
+        InvoiceStatus.PAID,
+        InvoiceStatus.OVERDUE,
+        InvoiceStatus.CANCELLED,
+      ],
+      [InvoiceStatus.PARTIALLY_PAID]: [
+        InvoiceStatus.PAID,
+        InvoiceStatus.OVERDUE,
+        InvoiceStatus.BAD_DEBT,
+      ],
       [InvoiceStatus.PAID]: [], // Paid invoices cannot be changed
-      [InvoiceStatus.OVERDUE]: [InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.PAID, InvoiceStatus.BAD_DEBT],
+      [InvoiceStatus.OVERDUE]: [
+        InvoiceStatus.PARTIALLY_PAID,
+        InvoiceStatus.PAID,
+        InvoiceStatus.BAD_DEBT,
+      ],
       [InvoiceStatus.CANCELLED]: [], // Cancelled invoices cannot be changed
-      [InvoiceStatus.BAD_DEBT]: [InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.PAID], // Can recover from bad debt
+      [InvoiceStatus.BAD_DEBT]: [
+        InvoiceStatus.PARTIALLY_PAID,
+        InvoiceStatus.PAID,
+      ], // Can recover from bad debt
     };
 
     if (!validTransitions[currentStatus].includes(newStatus)) {
       throw new BadRequestException(
-        `Invalid status transition from ${currentStatus} to ${newStatus}`,
+        `Invalid status transition from ${currentStatus} to ${newStatus}`
       );
     }
   }

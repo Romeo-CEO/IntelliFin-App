@@ -7,20 +7,9 @@ import { CategoriesModule } from '../categories/categories.module';
 import { ChartOfAccountsService } from '../accounting/chart-of-accounts.service';
 
 @Module({
-  imports: [
-    DatabaseModule,
-    CategoriesModule,
-  ],
+  imports: [DatabaseModule, CategoriesModule],
   controllers: [ExpenseController],
-  providers: [
-    ExpenseService,
-    ExpenseRepository,
-    ChartOfAccountsService,
-  ],
-  exports: [
-    ExpenseService,
-    ExpenseRepository,
-    ChartOfAccountsService,
-  ],
+  providers: [ExpenseService, ExpenseRepository, ChartOfAccountsService],
+  exports: [ExpenseService, ExpenseRepository, ChartOfAccountsService],
 })
 export class ExpenseModule {}

@@ -1,5 +1,4 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
 
 export interface FinancialMetrics {
@@ -29,19 +28,42 @@ export interface PeriodComparison {
 }
 
 export interface RevenueBreakdown {
-  byCustomer: Array<{ customerId: string; customerName: string; amount: number; percentage: number }>;
+  byCustomer: Array<{
+    customerId: string;
+    customerName: string;
+    amount: number;
+    percentage: number;
+  }>;
   byMonth: Array<{ month: string; amount: number }>;
-  byPaymentMethod: Array<{ method: string; amount: number; percentage: number }>;
+  byPaymentMethod: Array<{
+    method: string;
+    amount: number;
+    percentage: number;
+  }>;
 }
 
 export interface ExpenseBreakdown {
-  byCategory: Array<{ categoryId: string; categoryName: string; amount: number; percentage: number }>;
+  byCategory: Array<{
+    categoryId: string;
+    categoryName: string;
+    amount: number;
+    percentage: number;
+  }>;
   byMonth: Array<{ month: string; amount: number }>;
-  byPaymentMethod: Array<{ method: string; amount: number; percentage: number }>;
+  byPaymentMethod: Array<{
+    method: string;
+    amount: number;
+    percentage: number;
+  }>;
 }
 
 export interface CashFlowData {
-  operatingCashFlow: Array<{ month: string; inflow: number; outflow: number; net: number }>;
+  operatingCashFlow: Array<{
+    month: string;
+    inflow: number;
+    outflow: number;
+    net: number;
+  }>;
   monthlyBalance: Array<{ month: string; balance: number }>;
   projectedCashFlow: Array<{ month: string; projected: number }>;
 }
@@ -95,7 +117,7 @@ export class ReportRepository {
   async getFinancialMetrics(
     organizationId: string,
     startDate: Date,
-    endDate: Date,
+    endDate: Date
   ): Promise<FinancialMetrics> {
     try {
       const [
@@ -152,8 +174,10 @@ export class ReportRepository {
 
       const revenue = revenueData._sum.paidAmount?.toNumber() || 0;
       const expenses = expenseData._sum.amount?.toNumber() || 0;
-      const totalReceivable = accountsReceivableData._sum.totalAmount?.toNumber() || 0;
-      const paidReceivable = accountsReceivableData._sum.paidAmount?.toNumber() || 0;
+      const totalReceivable =
+        accountsReceivableData._sum.totalAmount?.toNumber() || 0;
+      const paidReceivable =
+        accountsReceivableData._sum.paidAmount?.toNumber() || 0;
       const accountsReceivable = totalReceivable - paidReceivable;
       const accountsPayable = accountsPayableData._sum.amount?.toNumber() || 0;
       const vatLiability = vatLiabilityData._sum.vatAmount?.toNumber() || 0;
@@ -171,7 +195,10 @@ export class ReportRepository {
         vatLiability,
       };
     } catch (error) {
-      this.logger.error(`Failed to get financial metrics: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get financial metrics: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -184,7 +211,7 @@ export class ReportRepository {
     currentStart: Date,
     currentEnd: Date,
     previousStart: Date,
-    previousEnd: Date,
+    previousEnd: Date
   ): Promise<PeriodComparison> {
     try {
       const [current, previous] = await Promise.all([
@@ -192,9 +219,15 @@ export class ReportRepository {
         this.getFinancialMetrics(organizationId, previousStart, previousEnd),
       ]);
 
-      const calculateChange = (currentValue: number, previousValue: number) => ({
+      const calculateChange = (
+        currentValue: number,
+        previousValue: number
+      ) => ({
         amount: currentValue - previousValue,
-        percentage: previousValue === 0 ? 0 : ((currentValue - previousValue) / previousValue) * 100,
+        percentage:
+          previousValue === 0
+            ? 0
+            : ((currentValue - previousValue) / previousValue) * 100,
       });
 
       return {
@@ -204,13 +237,25 @@ export class ReportRepository {
           revenue: calculateChange(current.revenue, previous.revenue),
           expenses: calculateChange(current.expenses, previous.expenses),
           profit: calculateChange(current.profit, previous.profit),
-          cashBalance: calculateChange(current.cashBalance, previous.cashBalance),
-          accountsReceivable: calculateChange(current.accountsReceivable, previous.accountsReceivable),
-          accountsPayable: calculateChange(current.accountsPayable, previous.accountsPayable),
+          cashBalance: calculateChange(
+            current.cashBalance,
+            previous.cashBalance
+          ),
+          accountsReceivable: calculateChange(
+            current.accountsReceivable,
+            previous.accountsReceivable
+          ),
+          accountsPayable: calculateChange(
+            current.accountsPayable,
+            previous.accountsPayable
+          ),
         },
       };
     } catch (error) {
-      this.logger.error(`Failed to get period comparison: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get period comparison: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -221,24 +266,25 @@ export class ReportRepository {
   async getRevenueBreakdown(
     organizationId: string,
     startDate: Date,
-    endDate: Date,
+    endDate: Date
   ): Promise<RevenueBreakdown> {
     try {
-      const [byCustomerData, byMonthData, byPaymentMethodData] = await Promise.all([
-        // Revenue by customer
-        this.prisma.invoice.groupBy({
-          by: ['customerId'],
-          where: {
-            organizationId,
-            issueDate: { gte: startDate, lte: endDate },
-            status: { in: ['PAID', 'PARTIALLY_PAID'] },
-          },
-          _sum: { paidAmount: true },
-          orderBy: { _sum: { paidAmount: 'desc' } },
-          take: 10,
-        }),
-        // Revenue by month
-        this.prisma.$queryRaw<Array<{ month: string; amount: number }>>`
+      const [byCustomerData, byMonthData, byPaymentMethodData] =
+        await Promise.all([
+          // Revenue by customer
+          this.prisma.invoice.groupBy({
+            by: ['customerId'],
+            where: {
+              organizationId,
+              issueDate: { gte: startDate, lte: endDate },
+              status: { in: ['PAID', 'PARTIALLY_PAID'] },
+            },
+            _sum: { paidAmount: true },
+            orderBy: { _sum: { paidAmount: 'desc' } },
+            take: 10,
+          }),
+          // Revenue by month
+          this.prisma.$queryRaw<Array<{ month: string; amount: number }>>`
           SELECT 
             TO_CHAR(issue_date, 'YYYY-MM') as month,
             SUM(paid_amount)::FLOAT as amount
@@ -250,16 +296,16 @@ export class ReportRepository {
           GROUP BY TO_CHAR(issue_date, 'YYYY-MM')
           ORDER BY month
         `,
-        // Revenue by payment method (from payments)
-        this.prisma.payment.groupBy({
-          by: ['paymentMethod'],
-          where: {
-            organizationId,
-            paymentDate: { gte: startDate, lte: endDate },
-          },
-          _sum: { amount: true },
-        }),
-      ]);
+          // Revenue by payment method (from payments)
+          this.prisma.payment.groupBy({
+            by: ['paymentMethod'],
+            where: {
+              organizationId,
+              paymentDate: { gte: startDate, lte: endDate },
+            },
+            _sum: { amount: true },
+          }),
+        ]);
 
       // Get customer names
       const customerIds = byCustomerData.map(item => item.customerId);
@@ -268,7 +314,10 @@ export class ReportRepository {
         select: { id: true, name: true },
       });
 
-      const totalRevenue = byCustomerData.reduce((sum, item) => sum + (item._sum.paidAmount?.toNumber() || 0), 0);
+      const totalRevenue = byCustomerData.reduce(
+        (sum, item) => sum + (item._sum.paidAmount?.toNumber() || 0),
+        0
+      );
 
       const byCustomer = byCustomerData.map(item => {
         const customer = customers.find(c => c.id === item.customerId);
@@ -281,14 +330,18 @@ export class ReportRepository {
         };
       });
 
-      const totalPaymentAmount = byPaymentMethodData.reduce((sum, item) => sum + (item._sum.amount?.toNumber() || 0), 0);
+      const totalPaymentAmount = byPaymentMethodData.reduce(
+        (sum, item) => sum + (item._sum.amount?.toNumber() || 0),
+        0
+      );
 
       const byPaymentMethod = byPaymentMethodData.map(item => {
         const amount = item._sum.amount?.toNumber() || 0;
         return {
           method: item.paymentMethod,
           amount,
-          percentage: totalPaymentAmount === 0 ? 0 : (amount / totalPaymentAmount) * 100,
+          percentage:
+            totalPaymentAmount === 0 ? 0 : (amount / totalPaymentAmount) * 100,
         };
       });
 
@@ -298,7 +351,10 @@ export class ReportRepository {
         byPaymentMethod,
       };
     } catch (error) {
-      this.logger.error(`Failed to get revenue breakdown: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get revenue breakdown: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -309,7 +365,7 @@ export class ReportRepository {
   async getExpenseBreakdown(
     organizationId: string,
     startDate: Date,
-    endDate: Date,
+    endDate: Date
   ): Promise<ExpenseBreakdown> {
     try {
       const [byCategoryData, byMonthData] = await Promise.all([
@@ -340,13 +396,18 @@ export class ReportRepository {
       ]);
 
       // Get category names
-      const categoryIds = byCategoryData.map(item => item.categoryId).filter(Boolean);
+      const categoryIds = byCategoryData
+        .map(item => item.categoryId)
+        .filter(Boolean);
       const categories = await this.prisma.category.findMany({
         where: { id: { in: categoryIds } },
         select: { id: true, name: true },
       });
 
-      const totalExpenses = byCategoryData.reduce((sum, item) => sum + (item._sum.amount?.toNumber() || 0), 0);
+      const totalExpenses = byCategoryData.reduce(
+        (sum, item) => sum + (item._sum.amount?.toNumber() || 0),
+        0
+      );
 
       const byCategory = byCategoryData.map(item => {
         const category = categories.find(c => c.id === item.categoryId);
@@ -365,7 +426,10 @@ export class ReportRepository {
         byPaymentMethod: [], // TODO: Implement expense payment method tracking
       };
     } catch (error) {
-      this.logger.error(`Failed to get expense breakdown: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get expense breakdown: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -373,7 +437,9 @@ export class ReportRepository {
   /**
    * Get accounts receivable aging report
    */
-  async getAccountsReceivableAging(organizationId: string): Promise<AccountsReceivableAging> {
+  async getAccountsReceivableAging(
+    organizationId: string
+  ): Promise<AccountsReceivableAging> {
     try {
       const unpaidInvoices = await this.prisma.invoice.findMany({
         where: {
@@ -392,9 +458,17 @@ export class ReportRepository {
       let ninetyDays = 0;
 
       const details = unpaidInvoices.map(invoice => {
-        const outstandingAmount = invoice.totalAmount.toNumber() - (invoice.paidAmount?.toNumber() || 0);
-        const daysOverdue = Math.max(0, Math.floor((today.getTime() - invoice.dueDate.getTime()) / (1000 * 60 * 60 * 24)));
-        
+        const outstandingAmount =
+          invoice.totalAmount.toNumber() -
+          (invoice.paidAmount?.toNumber() || 0);
+        const daysOverdue = Math.max(
+          0,
+          Math.floor(
+            (today.getTime() - invoice.dueDate.getTime()) /
+              (1000 * 60 * 60 * 24)
+          )
+        );
+
         let category: 'current' | '30days' | '60days' | '90days';
         if (daysOverdue <= 30) {
           current += outstandingAmount;
@@ -430,7 +504,10 @@ export class ReportRepository {
         details,
       };
     } catch (error) {
-      this.logger.error(`Failed to get accounts receivable aging: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get accounts receivable aging: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -441,15 +518,17 @@ export class ReportRepository {
   async getVatReport(
     organizationId: string,
     startDate: Date,
-    endDate: Date,
+    endDate: Date
   ): Promise<VatReport> {
     try {
       // Sales VAT (from invoices)
-      const salesData = await this.prisma.$queryRaw<Array<{
-        vat_rate: number;
-        total_sales: number;
-        total_vat: number;
-      }>>`
+      const salesData = await this.prisma.$queryRaw<
+        Array<{
+          vat_rate: number;
+          total_sales: number;
+          total_vat: number;
+        }>
+      >`
         SELECT 
           COALESCE(ii.vat_rate, 0) as vat_rate,
           SUM(ii.line_total)::FLOAT as total_sales,
@@ -464,10 +543,12 @@ export class ReportRepository {
       `;
 
       // Purchases VAT (from expenses - simplified, assumes VAT is tracked)
-      const purchasesData = await this.prisma.$queryRaw<Array<{
-        total_purchases: number;
-        total_vat: number;
-      }>>`
+      const purchasesData = await this.prisma.$queryRaw<
+        Array<{
+          total_purchases: number;
+          total_vat: number;
+        }>
+      >`
         SELECT 
           SUM(amount)::FLOAT as total_purchases,
           SUM(amount * 0.16 / 1.16)::FLOAT as total_vat
@@ -531,15 +612,17 @@ export class ReportRepository {
   async getCashFlowData(
     organizationId: string,
     startDate: Date,
-    endDate: Date,
+    endDate: Date
   ): Promise<CashFlowData> {
     try {
       // Monthly cash flow from payments and expenses
-      const monthlyData = await this.prisma.$queryRaw<Array<{
-        month: string;
-        inflow: number;
-        outflow: number;
-      }>>`
+      const monthlyData = await this.prisma.$queryRaw<
+        Array<{
+          month: string;
+          inflow: number;
+          outflow: number;
+        }>
+      >`
         SELECT 
           TO_CHAR(date_trunc('month', payment_date), 'YYYY-MM') as month,
           SUM(CASE WHEN amount > 0 THEN amount ELSE 0 END)::FLOAT as inflow,
@@ -569,19 +652,24 @@ export class ReportRepository {
       // Aggregate monthly data
       const monthlyMap = new Map<string, { inflow: number; outflow: number }>();
       monthlyData.forEach(item => {
-        const existing = monthlyMap.get(item.month) || { inflow: 0, outflow: 0 };
+        const existing = monthlyMap.get(item.month) || {
+          inflow: 0,
+          outflow: 0,
+        };
         monthlyMap.set(item.month, {
           inflow: existing.inflow + item.inflow,
           outflow: existing.outflow + item.outflow,
         });
       });
 
-      const operatingCashFlow = Array.from(monthlyMap.entries()).map(([month, data]) => ({
-        month,
-        inflow: data.inflow,
-        outflow: data.outflow,
-        net: data.inflow - data.outflow,
-      }));
+      const operatingCashFlow = Array.from(monthlyMap.entries()).map(
+        ([month, data]) => ({
+          month,
+          inflow: data.inflow,
+          outflow: data.outflow,
+          net: data.inflow - data.outflow,
+        })
+      );
 
       // Calculate running balance (simplified)
       let runningBalance = 0;
@@ -595,7 +683,9 @@ export class ReportRepository {
 
       // Simple projection (average of last 3 months)
       const recentMonths = operatingCashFlow.slice(-3);
-      const avgNet = recentMonths.reduce((sum, item) => sum + item.net, 0) / recentMonths.length;
+      const avgNet =
+        recentMonths.reduce((sum, item) => sum + item.net, 0) /
+        recentMonths.length;
       const projectedCashFlow = Array.from({ length: 6 }, (_, i) => {
         const futureMonth = new Date();
         futureMonth.setMonth(futureMonth.getMonth() + i + 1);
@@ -612,7 +702,10 @@ export class ReportRepository {
         projectedCashFlow,
       };
     } catch (error) {
-      this.logger.error(`Failed to get cash flow data: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get cash flow data: ${error.message}`,
+        error
+      );
       throw error;
     }
   }

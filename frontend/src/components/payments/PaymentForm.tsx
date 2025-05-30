@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
 import { X, Save, AlertCircle, CheckCircle, DollarSign, Calendar, CreditCard } from 'lucide-react';
-import { Payment, CreatePaymentData, PaymentMethod, paymentService } from '../../services/payment.service';
+import React, { useState, useEffect } from 'react';
+
 import { Customer, customerService } from '../../services/customer.service';
 import { Invoice, invoiceService } from '../../services/invoice.service';
+import { Payment, CreatePaymentData, PaymentMethod, paymentService } from '../../services/payment.service';
 
 interface PaymentFormProps {
   payment?: Payment;

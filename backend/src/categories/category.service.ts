@@ -1,5 +1,15 @@
-import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
-import { CategoryRepository, CreateCategoryData, UpdateCategoryData, CategoryFilters } from './category.repository';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  CategoryFilters,
+  CategoryRepository,
+  CreateCategoryData,
+  UpdateCategoryData,
+} from './category.repository';
 import { CategorizationRuleRepository } from './categorization-rule.repository';
 import { TransactionCategorizationService } from './transaction-categorization.service';
 import { Category, CategoryType } from '@prisma/client';
@@ -31,7 +41,7 @@ export class CategoryService {
   constructor(
     private readonly categoryRepository: CategoryRepository,
     private readonly ruleRepository: CategorizationRuleRepository,
-    private readonly categorizationService: TransactionCategorizationService,
+    private readonly categorizationService: TransactionCategorizationService
   ) {}
 
   /**
@@ -52,19 +62,24 @@ export class CategoryService {
 
       // Validate parent category if provided
       if (data.parentId) {
-        const parent = await this.categoryRepository.findById(data.parentId, data.organizationId);
+        const parent = await this.categoryRepository.findById(
+          data.parentId,
+          data.organizationId
+        );
         if (!parent) {
           throw new BadRequestException('Parent category not found');
         }
-        
+
         // Ensure parent and child have same type
         if (parent.type !== data.type) {
-          throw new BadRequestException('Parent and child categories must have the same type');
+          throw new BadRequestException(
+            'Parent and child categories must have the same type'
+          );
         }
       }
 
       const category = await this.categoryRepository.create(data);
-      
+
       this.logger.log(`Created category: ${category.name} (${category.id})`);
       return category;
     } catch (error) {
@@ -78,7 +93,7 @@ export class CategoryService {
    */
   async getCategoryById(id: string, organizationId: string): Promise<Category> {
     const category = await this.categoryRepository.findById(id, organizationId);
-    
+
     if (!category) {
       throw new NotFoundException(`Category with ID ${id} not found`);
     }
@@ -117,7 +132,10 @@ export class CategoryService {
   ): Promise<Category> {
     try {
       // Check if category exists
-      const existingCategory = await this.categoryRepository.findById(id, organizationId);
+      const existingCategory = await this.categoryRepository.findById(
+        id,
+        organizationId
+      );
       if (!existingCategory) {
         throw new NotFoundException(`Category with ID ${id} not found`);
       }
@@ -132,14 +150,22 @@ export class CategoryService {
         );
 
         if (exists) {
-          throw new BadRequestException(`Category '${data.name}' already exists`);
+          throw new BadRequestException(
+            `Category '${data.name}' already exists`
+          );
         }
       }
 
       // Validate parent category if being changed
-      if (data.parentId !== undefined && data.parentId !== existingCategory.parentId) {
+      if (
+        data.parentId !== undefined &&
+        data.parentId !== existingCategory.parentId
+      ) {
         if (data.parentId) {
-          const parent = await this.categoryRepository.findById(data.parentId, organizationId);
+          const parent = await this.categoryRepository.findById(
+            data.parentId,
+            organizationId
+          );
           if (!parent) {
             throw new BadRequestException('Parent category not found');
           }
@@ -150,21 +176,32 @@ export class CategoryService {
           }
 
           // Check if the new parent would create a circular reference
-          const path = await this.categoryRepository.getCategoryPath(data.parentId, organizationId);
+          const path = await this.categoryRepository.getCategoryPath(
+            data.parentId,
+            organizationId
+          );
           if (path.some(cat => cat.id === id)) {
-            throw new BadRequestException('Cannot create circular reference in category hierarchy');
+            throw new BadRequestException(
+              'Cannot create circular reference in category hierarchy'
+            );
           }
 
           // Ensure parent and child have same type
           const categoryType = data.type ?? existingCategory.type;
           if (parent.type !== categoryType) {
-            throw new BadRequestException('Parent and child categories must have the same type');
+            throw new BadRequestException(
+              'Parent and child categories must have the same type'
+            );
           }
         }
       }
 
-      const updatedCategory = await this.categoryRepository.update(id, organizationId, data);
-      
+      const updatedCategory = await this.categoryRepository.update(
+        id,
+        organizationId,
+        data
+      );
+
       this.logger.log(`Updated category: ${updatedCategory.name} (${id})`);
       return updatedCategory;
     } catch (error) {
@@ -179,7 +216,10 @@ export class CategoryService {
   async deleteCategory(id: string, organizationId: string): Promise<void> {
     try {
       // Check if category exists
-      const category = await this.categoryRepository.findById(id, organizationId);
+      const category = await this.categoryRepository.findById(
+        id,
+        organizationId
+      );
       if (!category) {
         throw new NotFoundException(`Category with ID ${id} not found`);
       }
@@ -192,19 +232,24 @@ export class CategoryService {
       });
 
       if (children.length > 0) {
-        throw new BadRequestException('Cannot delete category with child categories');
+        throw new BadRequestException(
+          'Cannot delete category with child categories'
+        );
       }
 
       // Check if category is used in transactions
-      const stats = await this.categoryRepository.getCategoriesWithStats(organizationId);
+      const stats =
+        await this.categoryRepository.getCategoriesWithStats(organizationId);
       const categoryStats = stats.find(s => s.id === id);
-      
+
       if (categoryStats && categoryStats.transactionCount > 0) {
-        throw new BadRequestException('Cannot delete category that is used in transactions');
+        throw new BadRequestException(
+          'Cannot delete category that is used in transactions'
+        );
       }
 
       await this.categoryRepository.delete(id, organizationId);
-      
+
       this.logger.log(`Deleted category: ${category.name} (${id})`);
     } catch (error) {
       this.logger.error(`Failed to delete category: ${error.message}`, error);
@@ -215,7 +260,9 @@ export class CategoryService {
   /**
    * Initialize default categories for organization
    */
-  async initializeDefaultCategories(organizationId: string): Promise<Category[]> {
+  async initializeDefaultCategories(
+    organizationId: string
+  ): Promise<Category[]> {
     try {
       const existingCategories = await this.categoryRepository.findMany({
         organizationId,
@@ -223,16 +270,24 @@ export class CategoryService {
       });
 
       if (existingCategories.length > 0) {
-        this.logger.debug(`Organization ${organizationId} already has categories`);
+        this.logger.debug(
+          `Organization ${organizationId} already has categories`
+        );
         return existingCategories;
       }
 
-      const defaultCategories = await this.categoryRepository.createDefaultCategories(organizationId);
-      
-      this.logger.log(`Created ${defaultCategories.length} default categories for organization ${organizationId}`);
+      const defaultCategories =
+        await this.categoryRepository.createDefaultCategories(organizationId);
+
+      this.logger.log(
+        `Created ${defaultCategories.length} default categories for organization ${organizationId}`
+      );
       return defaultCategories;
     } catch (error) {
-      this.logger.error(`Failed to initialize default categories: ${error.message}`, error);
+      this.logger.error(
+        `Failed to initialize default categories: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -246,14 +301,18 @@ export class CategoryService {
     endDate?: Date
   ): Promise<CategoryAnalytics> {
     try {
-      const categoriesWithStats = await this.categoryRepository.getCategoriesWithStats(organizationId);
-      
+      const categoriesWithStats =
+        await this.categoryRepository.getCategoriesWithStats(organizationId);
+
       // Calculate totals
       const totalCategories = categoriesWithStats.length;
-      const categoriesByType = categoriesWithStats.reduce((acc, cat) => {
-        acc[cat.type] = (acc[cat.type] || 0) + 1;
-        return acc;
-      }, {} as Record<CategoryType, number>);
+      const categoriesByType = categoriesWithStats.reduce(
+        (acc, cat) => {
+          acc[cat.type] = (acc[cat.type] || 0) + 1;
+          return acc;
+        },
+        {} as Record<CategoryType, number>
+      );
 
       const categorizedTransactions = categoriesWithStats.reduce(
         (sum, cat) => sum + cat.transactionCount,
@@ -283,7 +342,8 @@ export class CategoryService {
           type: cat.type,
           transactionCount: cat.transactionCount,
           totalAmount: cat.totalAmount,
-          percentage: totalAmount > 0 ? (cat.totalAmount / totalAmount) * 100 : 0,
+          percentage:
+            totalAmount > 0 ? (cat.totalAmount / totalAmount) * 100 : 0,
         }));
 
       // Get usage over time (last 30 days)
@@ -302,7 +362,10 @@ export class CategoryService {
         categoryUsageOverTime,
       };
     } catch (error) {
-      this.logger.error(`Failed to get category analytics: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get category analytics: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -315,10 +378,11 @@ export class CategoryService {
     limit: number = 50
   ): Promise<any[]> {
     try {
-      const result = await this.categorizationService.bulkCategorizeUncategorized({
-        organizationId,
-        autoApply: false,
-      });
+      const result =
+        await this.categorizationService.bulkCategorizeUncategorized({
+          organizationId,
+          autoApply: false,
+        });
 
       return result.results
         .filter(r => r.bestSuggestion)
@@ -329,7 +393,10 @@ export class CategoryService {
           allSuggestions: r.suggestions,
         }));
     } catch (error) {
-      this.logger.error(`Failed to suggest categories: ${error.message}`, error);
+      this.logger.error(
+        `Failed to suggest categories: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -342,11 +409,12 @@ export class CategoryService {
     transactionIds?: string[]
   ): Promise<{ processed: number; categorized: number }> {
     try {
-      const result = await this.categorizationService.bulkCategorizeUncategorized({
-        organizationId,
-        transactionIds,
-        autoApply: true,
-      });
+      const result =
+        await this.categorizationService.bulkCategorizeUncategorized({
+          organizationId,
+          transactionIds,
+          autoApply: true,
+        });
 
       this.logger.log(
         `Auto-categorized ${result.categorized} out of ${result.processed} transactions`
@@ -357,7 +425,10 @@ export class CategoryService {
         categorized: result.categorized,
       };
     } catch (error) {
-      this.logger.error(`Failed to auto-categorize transactions: ${error.message}`, error);
+      this.logger.error(
+        `Failed to auto-categorize transactions: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -391,11 +462,18 @@ export class CategoryService {
     organizationId: string,
     startDate?: Date,
     endDate?: Date
-  ): Promise<Array<{ date: string; categorized: number; uncategorized: number }>> {
+  ): Promise<
+    Array<{ date: string; categorized: number; uncategorized: number }>
+  > {
     const end = endDate || new Date();
-    const start = startDate || new Date(end.getTime() - 30 * 24 * 60 * 60 * 1000); // 30 days ago
+    const start =
+      startDate || new Date(end.getTime() - 30 * 24 * 60 * 60 * 1000); // 30 days ago
 
-    const usage: Array<{ date: string; categorized: number; uncategorized: number }> = [];
+    const usage: Array<{
+      date: string;
+      categorized: number;
+      uncategorized: number;
+    }> = [];
 
     // Generate daily usage for the date range
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {

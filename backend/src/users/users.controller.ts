@@ -1,19 +1,24 @@
 import {
-  Controller,
-  Get,
-  Put,
-  Delete,
   Body,
+  Controller,
+  Delete,
+  Get,
   Param,
+  ParseIntPipe,
+  ParseUUIDPipe,
+  Put,
   Query,
   UseGuards,
-  ParseUUIDPipe,
-  ParseIntPipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 
-import { UsersService, UpdateUserData } from './users.service';
+import { UpdateUserData, UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -29,7 +34,10 @@ export class UsersController {
 
   @Get('profile')
   @ApiOperation({ summary: 'Get current user profile' })
-  @ApiResponse({ status: 200, description: 'User profile retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'User profile retrieved successfully',
+  })
   async getProfile(@CurrentUser() user: AuthenticatedUser) {
     return this.usersService.getProfile(user.id);
   }
@@ -39,7 +47,7 @@ export class UsersController {
   @ApiResponse({ status: 200, description: 'Profile updated successfully' })
   async updateProfile(
     @CurrentUser() user: AuthenticatedUser,
-    @Body() updateData: UpdateUserData,
+    @Body() updateData: UpdateUserData
   ) {
     return this.usersService.update(user.id, updateData);
   }
@@ -52,7 +60,7 @@ export class UsersController {
     @CurrentUser() user: AuthenticatedUser,
     @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
     @Query('limit', new ParseIntPipe({ optional: true })) limit: number = 10,
-    @Query('search') search?: string,
+    @Query('search') search?: string
   ) {
     return this.usersService.findByTenant(user.tenantId, page, limit, search);
   }
@@ -60,7 +68,10 @@ export class UsersController {
   @Get('stats')
   @Roles(UserRole.ADMIN, UserRole.TENANT_ADMIN)
   @ApiOperation({ summary: 'Get tenant user statistics' })
-  @ApiResponse({ status: 200, description: 'Statistics retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Statistics retrieved successfully',
+  })
   async getTenantStats(@CurrentUser() user: AuthenticatedUser) {
     return this.usersService.getTenantStats(user.tenantId);
   }
@@ -81,7 +92,7 @@ export class UsersController {
   @ApiResponse({ status: 404, description: 'User not found' })
   async updateUser(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() updateData: UpdateUserData,
+    @Body() updateData: UpdateUserData
   ) {
     return this.usersService.update(id, updateData);
   }

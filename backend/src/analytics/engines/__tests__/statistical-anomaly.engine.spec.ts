@@ -2,10 +2,10 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { StatisticalAnomalyEngine } from '../statistical/statistical-anomaly.engine';
 import {
   AnalyticsData,
-  AnomalySensitivity,
   AnomalyResult,
+  AnomalySensitivity,
+  AnomalySeverity,
   TimeSeriesData,
-  AnomalySeverity
 } from '../../interfaces/analytics-engine.interface';
 
 describe('StatisticalAnomalyEngine', () => {
@@ -40,23 +40,57 @@ describe('StatisticalAnomalyEngine', () => {
         metadata: {
           organizationId: 'test-org',
           dataType: 'REVENUE',
-          dateRange: { startDate: new Date('2024-01-01'), endDate: new Date('2024-12-31') },
-          quality: { completeness: 1.0, accuracy: 0.9, consistency: 0.8, timeliness: 1.0 }
-        }
+          dateRange: {
+            startDate: new Date('2024-01-01'),
+            endDate: new Date('2024-12-31'),
+          },
+          quality: {
+            completeness: 1.0,
+            accuracy: 0.9,
+            consistency: 0.8,
+            timeliness: 1.0,
+          },
+        },
       },
       metadata: {
         organizationId: 'test-org',
         dataType: 'REVENUE',
-        dateRange: { startDate: new Date('2024-01-01'), endDate: new Date('2024-12-31') },
-        quality: { completeness: 1.0, accuracy: 0.9, consistency: 0.8, timeliness: 1.0 }
-      }
+        dateRange: {
+          startDate: new Date('2024-01-01'),
+          endDate: new Date('2024-12-31'),
+        },
+        quality: {
+          completeness: 1.0,
+          accuracy: 0.9,
+          consistency: 0.8,
+          timeliness: 1.0,
+        },
+      },
     });
 
     it('should detect obvious anomalies with medium sensitivity', async () => {
       // Normal data with clear outliers
       const data = createMockAnalyticsData([
-        100, 105, 98, 102, 99, 500, 101, 103, 97, 104, // 500 is clear outlier
-        102, 98, 105, 99, 1, 103, 101, 98, 102, 104   // 1 is clear outlier
+        100,
+        105,
+        98,
+        102,
+        99,
+        500,
+        101,
+        103,
+        97,
+        104, // 500 is clear outlier
+        102,
+        98,
+        105,
+        99,
+        1,
+        103,
+        101,
+        98,
+        102,
+        104, // 1 is clear outlier
       ]);
 
       const result = await engine.detectAnomalies(data, 'MEDIUM');
@@ -75,15 +109,35 @@ describe('StatisticalAnomalyEngine', () => {
         expect(anomaly.timestamp).toBeInstanceOf(Date);
         expect(typeof anomaly.value).toBe('number');
         expect(typeof anomaly.expectedValue).toBe('number');
-        expect(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']).toContain(anomaly.severity);
+        expect(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']).toContain(
+          anomaly.severity
+        );
         expect(typeof anomaly.explanation).toBe('string');
       });
     });
 
     it('should adjust detection based on sensitivity levels', async () => {
       const data = createMockAnalyticsData([
-        100, 105, 98, 102, 99, 130, 101, 103, 97, 104, // 130 is moderate outlier
-        102, 98, 105, 99, 115, 103, 101, 98, 102, 104  // 115 is moderate outlier
+        100,
+        105,
+        98,
+        102,
+        99,
+        130,
+        101,
+        103,
+        97,
+        104, // 130 is moderate outlier
+        102,
+        98,
+        105,
+        99,
+        115,
+        103,
+        101,
+        98,
+        102,
+        104, // 115 is moderate outlier
       ]);
 
       const lowResult = await engine.detectAnomalies(data, 'LOW');
@@ -91,16 +145,22 @@ describe('StatisticalAnomalyEngine', () => {
       const highResult = await engine.detectAnomalies(data, 'HIGH');
 
       // High sensitivity should detect more anomalies than low sensitivity
-      expect(highResult.anomalies.length).toBeGreaterThanOrEqual(mediumResult.anomalies.length);
-      expect(mediumResult.anomalies.length).toBeGreaterThanOrEqual(lowResult.anomalies.length);
+      expect(highResult.anomalies.length).toBeGreaterThanOrEqual(
+        mediumResult.anomalies.length
+      );
+      expect(mediumResult.anomalies.length).toBeGreaterThanOrEqual(
+        lowResult.anomalies.length
+      );
     });
 
     it('should detect seasonal anomalies', async () => {
       // Create data with seasonal pattern and anomaly
       const seasonalData = [];
-      for (let i = 0; i < 36; i++) { // 3 years of monthly data
-        const baseValue = 100 + Math.sin(i * Math.PI / 6) * 20; // Seasonal pattern
-        if (i === 15) { // Anomaly in month 15
+      for (let i = 0; i < 36; i++) {
+        // 3 years of monthly data
+        const baseValue = 100 + Math.sin((i * Math.PI) / 6) * 20; // Seasonal pattern
+        if (i === 15) {
+          // Anomaly in month 15
           seasonalData.push(baseValue + 100);
         } else {
           seasonalData.push(baseValue + (Math.random() - 0.5) * 10);
@@ -114,24 +174,29 @@ describe('StatisticalAnomalyEngine', () => {
 
       // Should detect patterns in seasonal data
       if (result.patterns.length > 0) {
-        expect(result.patterns.some(pattern =>
-          pattern.type === 'SEASONAL' || pattern.type === 'PERIODIC'
-        )).toBe(true);
+        expect(
+          result.patterns.some(
+            pattern =>
+              pattern.type === 'SEASONAL' || pattern.type === 'PERIODIC'
+          )
+        ).toBe(true);
       }
     });
 
     it('should provide meaningful recommendations', async () => {
       const data = createMockAnalyticsData([
-        100, 105, 98, 102, 99, 500, 101, 103, 97, 104,
-        102, 98, 105, 99, 600, 103, 101, 98, 102, 104
+        100, 105, 98, 102, 99, 500, 101, 103, 97, 104, 102, 98, 105, 99, 600,
+        103, 101, 98, 102, 104,
       ]);
 
       const result = await engine.detectAnomalies(data, 'MEDIUM');
 
       expect(result.recommendations.length).toBeGreaterThan(0);
-      expect(result.recommendations.some(rec =>
-        rec.includes('Zambian') || rec.includes('mobile money')
-      )).toBe(true);
+      expect(
+        result.recommendations.some(
+          rec => rec.includes('Zambian') || rec.includes('mobile money')
+        )
+      ).toBe(true);
     });
 
     it('should handle insufficient data gracefully', async () => {
@@ -142,16 +207,32 @@ describe('StatisticalAnomalyEngine', () => {
           metadata: {
             organizationId: 'test-org',
             dataType: 'REVENUE',
-            dateRange: { startDate: new Date('2024-01-01'), endDate: new Date('2024-01-02') },
-            quality: { completeness: 1.0, accuracy: 0.9, consistency: 0.8, timeliness: 1.0 }
-          }
+            dateRange: {
+              startDate: new Date('2024-01-01'),
+              endDate: new Date('2024-01-02'),
+            },
+            quality: {
+              completeness: 1.0,
+              accuracy: 0.9,
+              consistency: 0.8,
+              timeliness: 1.0,
+            },
+          },
         },
         metadata: {
           organizationId: 'test-org',
           dataType: 'REVENUE',
-          dateRange: { startDate: new Date('2024-01-01'), endDate: new Date('2024-01-02') },
-          quality: { completeness: 1.0, accuracy: 0.9, consistency: 0.8, timeliness: 1.0 }
-        }
+          dateRange: {
+            startDate: new Date('2024-01-01'),
+            endDate: new Date('2024-01-02'),
+          },
+          quality: {
+            completeness: 1.0,
+            accuracy: 0.9,
+            consistency: 0.8,
+            timeliness: 1.0,
+          },
+        },
       };
 
       await expect(
@@ -164,9 +245,17 @@ describe('StatisticalAnomalyEngine', () => {
         metadata: {
           organizationId: 'test-org',
           dataType: 'REVENUE',
-          dateRange: { startDate: new Date('2024-01-01'), endDate: new Date('2024-12-31') },
-          quality: { completeness: 1.0, accuracy: 0.9, consistency: 0.8, timeliness: 1.0 }
-        }
+          dateRange: {
+            startDate: new Date('2024-01-01'),
+            endDate: new Date('2024-12-31'),
+          },
+          quality: {
+            completeness: 1.0,
+            accuracy: 0.9,
+            consistency: 0.8,
+            timeliness: 1.0,
+          },
+        },
       };
 
       await expect(
@@ -189,9 +278,9 @@ describe('StatisticalAnomalyEngine', () => {
 
       // Should detect clustering patterns
       if (result.patterns.length > 0) {
-        expect(result.patterns.some(pattern =>
-          pattern.type === 'CLUSTERING'
-        )).toBe(true);
+        expect(
+          result.patterns.some(pattern => pattern.type === 'CLUSTERING')
+        ).toBe(true);
       }
     });
   });
@@ -208,16 +297,32 @@ describe('StatisticalAnomalyEngine', () => {
         metadata: {
           organizationId: 'test-org',
           dataType: 'REVENUE',
-          dateRange: { startDate: new Date('2024-01-01'), endDate: new Date('2024-01-09') },
-          quality: { completeness: 1.0, accuracy: 0.9, consistency: 0.8, timeliness: 1.0 }
-        }
+          dateRange: {
+            startDate: new Date('2024-01-01'),
+            endDate: new Date('2024-01-09'),
+          },
+          quality: {
+            completeness: 1.0,
+            accuracy: 0.9,
+            consistency: 0.8,
+            timeliness: 1.0,
+          },
+        },
       },
       metadata: {
         organizationId: 'test-org',
         dataType: 'REVENUE',
-        dateRange: { startDate: new Date('2024-01-01'), endDate: new Date('2024-01-09') },
-        quality: { completeness: 1.0, accuracy: 0.9, consistency: 0.8, timeliness: 1.0 }
-      }
+        dateRange: {
+          startDate: new Date('2024-01-01'),
+          endDate: new Date('2024-01-09'),
+        },
+        quality: {
+          completeness: 1.0,
+          accuracy: 0.9,
+          consistency: 0.8,
+          timeliness: 1.0,
+        },
+      },
     };
 
     it('should train model without errors', async () => {
@@ -250,16 +355,32 @@ describe('StatisticalAnomalyEngine', () => {
           metadata: {
             organizationId: 'test-org',
             dataType: 'REVENUE',
-            dateRange: { startDate: new Date('2020-01-01'), endDate: new Date('2022-09-27') },
-            quality: { completeness: 1.0, accuracy: 0.9, consistency: 0.8, timeliness: 1.0 }
-          }
+            dateRange: {
+              startDate: new Date('2020-01-01'),
+              endDate: new Date('2022-09-27'),
+            },
+            quality: {
+              completeness: 1.0,
+              accuracy: 0.9,
+              consistency: 0.8,
+              timeliness: 1.0,
+            },
+          },
         },
         metadata: {
           organizationId: 'test-org',
           dataType: 'REVENUE',
-          dateRange: { startDate: new Date('2020-01-01'), endDate: new Date('2022-09-27') },
-          quality: { completeness: 1.0, accuracy: 0.9, consistency: 0.8, timeliness: 1.0 }
-        }
+          dateRange: {
+            startDate: new Date('2020-01-01'),
+            endDate: new Date('2022-09-27'),
+          },
+          quality: {
+            completeness: 1.0,
+            accuracy: 0.9,
+            consistency: 0.8,
+            timeliness: 1.0,
+          },
+        },
       };
 
       const startTime = Date.now();
@@ -284,16 +405,32 @@ describe('StatisticalAnomalyEngine', () => {
           metadata: {
             organizationId: 'test-org',
             dataType: 'REVENUE',
-            dateRange: { startDate: new Date('2024-01-01'), endDate: new Date('2024-01-10') },
-            quality: { completeness: 1.0, accuracy: 0.9, consistency: 0.8, timeliness: 1.0 }
-          }
+            dateRange: {
+              startDate: new Date('2024-01-01'),
+              endDate: new Date('2024-01-10'),
+            },
+            quality: {
+              completeness: 1.0,
+              accuracy: 0.9,
+              consistency: 0.8,
+              timeliness: 1.0,
+            },
+          },
         },
         metadata: {
           organizationId: 'test-org',
           dataType: 'REVENUE',
-          dateRange: { startDate: new Date('2024-01-01'), endDate: new Date('2024-01-10') },
-          quality: { completeness: 1.0, accuracy: 0.9, consistency: 0.8, timeliness: 1.0 }
-        }
+          dateRange: {
+            startDate: new Date('2024-01-01'),
+            endDate: new Date('2024-01-10'),
+          },
+          quality: {
+            completeness: 1.0,
+            accuracy: 0.9,
+            consistency: 0.8,
+            timeliness: 1.0,
+          },
+        },
       };
 
       const startTime = Date.now();
@@ -323,11 +460,26 @@ describe('StatisticalAnomalyEngine', () => {
     it('should combine results from multiple detection methods', async () => {
       // Create data with different types of anomalies
       const mixedAnomalies = [
-        100, 105, 98, 102, 99, // Normal baseline
+        100,
+        105,
+        98,
+        102,
+        99, // Normal baseline
         500, // Z-score outlier
-        101, 103, 97, 104, 102, 98, 105, 99,
+        101,
+        103,
+        97,
+        104,
+        102,
+        98,
+        105,
+        99,
         1, // IQR outlier
-        103, 101, 98, 102, 104
+        103,
+        101,
+        98,
+        102,
+        104,
       ];
 
       const data: AnalyticsData = {
@@ -341,16 +493,32 @@ describe('StatisticalAnomalyEngine', () => {
           metadata: {
             organizationId: 'test-org',
             dataType: 'REVENUE',
-            dateRange: { startDate: new Date('2024-01-01'), endDate: new Date('2024-01-20') },
-            quality: { completeness: 1.0, accuracy: 0.9, consistency: 0.8, timeliness: 1.0 }
-          }
+            dateRange: {
+              startDate: new Date('2024-01-01'),
+              endDate: new Date('2024-01-20'),
+            },
+            quality: {
+              completeness: 1.0,
+              accuracy: 0.9,
+              consistency: 0.8,
+              timeliness: 1.0,
+            },
+          },
         },
         metadata: {
           organizationId: 'test-org',
           dataType: 'REVENUE',
-          dateRange: { startDate: new Date('2024-01-01'), endDate: new Date('2024-01-20') },
-          quality: { completeness: 1.0, accuracy: 0.9, consistency: 0.8, timeliness: 1.0 }
-        }
+          dateRange: {
+            startDate: new Date('2024-01-01'),
+            endDate: new Date('2024-01-20'),
+          },
+          quality: {
+            completeness: 1.0,
+            accuracy: 0.9,
+            consistency: 0.8,
+            timeliness: 1.0,
+          },
+        },
       };
 
       const result = await engine.detectAnomalies(data, 'MEDIUM');
@@ -359,9 +527,10 @@ describe('StatisticalAnomalyEngine', () => {
       expect(result.anomalies.length).toBeGreaterThanOrEqual(1);
 
       // Should have explanations mentioning multiple methods
-      const hasMultiMethodDetection = result.anomalies.some(anomaly =>
-        anomaly.explanation.includes(',') ||
-        anomaly.explanation.includes('method')
+      const hasMultiMethodDetection = result.anomalies.some(
+        anomaly =>
+          anomaly.explanation.includes(',') ||
+          anomaly.explanation.includes('method')
       );
 
       if (result.anomalies.length > 1) {
@@ -381,16 +550,32 @@ describe('StatisticalAnomalyEngine', () => {
           metadata: {
             organizationId: 'test-org',
             dataType: 'REVENUE',
-            dateRange: { startDate: new Date('2024-01-01'), endDate: new Date('2024-01-08') },
-            quality: { completeness: 1.0, accuracy: 0.9, consistency: 0.8, timeliness: 1.0 }
-          }
+            dateRange: {
+              startDate: new Date('2024-01-01'),
+              endDate: new Date('2024-01-08'),
+            },
+            quality: {
+              completeness: 1.0,
+              accuracy: 0.9,
+              consistency: 0.8,
+              timeliness: 1.0,
+            },
+          },
         },
         metadata: {
           organizationId: 'test-org',
           dataType: 'REVENUE',
-          dateRange: { startDate: new Date('2024-01-01'), endDate: new Date('2024-01-08') },
-          quality: { completeness: 1.0, accuracy: 0.9, consistency: 0.8, timeliness: 1.0 }
-        }
+          dateRange: {
+            startDate: new Date('2024-01-01'),
+            endDate: new Date('2024-01-08'),
+          },
+          quality: {
+            completeness: 1.0,
+            accuracy: 0.9,
+            consistency: 0.8,
+            timeliness: 1.0,
+          },
+        },
       };
 
       const result = await engine.detectAnomalies(data, 'MEDIUM');
@@ -398,7 +583,9 @@ describe('StatisticalAnomalyEngine', () => {
       if (result.anomalies.length > 0) {
         // Extreme outlier should be detected with high severity
         const severities = result.anomalies.map(a => a.severity);
-        expect(severities.some(s => s === 'HIGH' || s === 'CRITICAL')).toBe(true);
+        expect(severities.some(s => s === 'HIGH' || s === 'CRITICAL')).toBe(
+          true
+        );
       }
     });
   });

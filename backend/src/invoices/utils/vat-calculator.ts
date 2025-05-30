@@ -1,9 +1,9 @@
 /**
  * VAT Calculator for Zambian Tax Compliance
- * 
+ *
  * This utility handles VAT calculations according to Zambian tax regulations.
  * Standard VAT rate in Zambia is 16% as of 2024.
- * 
+ *
  * References:
  * - Zambia Revenue Authority (ZRA) VAT regulations
  * - Value Added Tax Act (Chapter 331 of the Laws of Zambia)
@@ -77,7 +77,7 @@ export class VatCalculator {
   static calculateVat(
     amount: number,
     vatRate: number = ZambianVatRates.STANDARD,
-    isVatInclusive: boolean = false,
+    isVatInclusive: boolean = false
   ): VatCalculationResult {
     if (vatRate < 0) {
       // VAT-exempt
@@ -134,7 +134,7 @@ export class VatCalculator {
     unitPrice: number,
     vatRate: number = ZambianVatRates.STANDARD,
     discountRate: number = 0,
-    discountAmount: number = 0,
+    discountAmount: number = 0
   ): InvoiceItemCalculation {
     // Calculate line subtotal
     const lineSubtotal = quantity * unitPrice;
@@ -174,7 +174,7 @@ export class VatCalculator {
       discountRate?: number;
       discountAmount?: number;
     }>,
-    invoiceDiscountAmount: number = 0,
+    invoiceDiscountAmount: number = 0
   ): InvoiceTotalsCalculation {
     // Calculate each item
     const calculatedItems = items.map(item =>
@@ -183,13 +183,19 @@ export class VatCalculator {
         item.unitPrice,
         item.vatRate || ZambianVatRates.STANDARD,
         item.discountRate || 0,
-        item.discountAmount || 0,
-      ),
+        item.discountAmount || 0
+      )
     );
 
     // Sum up subtotals and VAT amounts
-    const subtotal = calculatedItems.reduce((sum, item) => sum + item.lineTotal, 0);
-    const totalItemDiscounts = calculatedItems.reduce((sum, item) => sum + item.discountAmount, 0);
+    const subtotal = calculatedItems.reduce(
+      (sum, item) => sum + item.lineTotal,
+      0
+    );
+    const totalItemDiscounts = calculatedItems.reduce(
+      (sum, item) => sum + item.discountAmount,
+      0
+    );
 
     // Apply invoice-level discount
     const subtotalAfterDiscount = subtotal - invoiceDiscountAmount;
@@ -201,8 +207,13 @@ export class VatCalculator {
       // Recalculate VAT if there's an invoice-level discount
       if (invoiceDiscountAmount > 0) {
         const itemProportion = item.lineTotal / subtotal;
-        const itemDiscountedAmount = item.lineTotal - (invoiceDiscountAmount * itemProportion);
-        const itemVatCalc = this.calculateVat(itemDiscountedAmount, item.vatRate, false);
+        const itemDiscountedAmount =
+          item.lineTotal - invoiceDiscountAmount * itemProportion;
+        const itemVatCalc = this.calculateVat(
+          itemDiscountedAmount,
+          item.vatRate,
+          false
+        );
         return sum + itemVatCalc.vatAmount;
       }
       return sum + item.vatAmount;
@@ -298,18 +309,22 @@ export class VatCalculator {
   /**
    * Calculate VAT breakdown for reporting
    */
-  static calculateVatBreakdown(
-    items: InvoiceItemCalculation[],
-  ): Array<{
+  static calculateVatBreakdown(items: InvoiceItemCalculation[]): Array<{
     vatRate: number;
     taxableAmount: number;
     vatAmount: number;
     description: string;
   }> {
-    const breakdown = new Map<number, { taxableAmount: number; vatAmount: number }>();
+    const breakdown = new Map<
+      number,
+      { taxableAmount: number; vatAmount: number }
+    >();
 
     items.forEach(item => {
-      const existing = breakdown.get(item.vatRate) || { taxableAmount: 0, vatAmount: 0 };
+      const existing = breakdown.get(item.vatRate) || {
+        taxableAmount: 0,
+        vatAmount: 0,
+      };
       existing.taxableAmount += item.lineTotal;
       existing.vatAmount += item.vatAmount;
       breakdown.set(item.vatRate, existing);
@@ -331,7 +346,7 @@ export class VatCalculator {
     invoiceSubtotal: number,
     invoiceVatAmount: number,
     invoiceTotal: number,
-    tolerance: number = 0.01,
+    tolerance: number = 0.01
   ): {
     isValid: boolean;
     errors: string[];
@@ -341,28 +356,34 @@ export class VatCalculator {
   } {
     const errors: string[] = [];
 
-    const calculatedSubtotal = items.reduce((sum, item) => sum + item.lineTotal, 0);
-    const calculatedVatAmount = items.reduce((sum, item) => sum + item.vatAmount, 0);
+    const calculatedSubtotal = items.reduce(
+      (sum, item) => sum + item.lineTotal,
+      0
+    );
+    const calculatedVatAmount = items.reduce(
+      (sum, item) => sum + item.vatAmount,
+      0
+    );
     const calculatedTotal = calculatedSubtotal + calculatedVatAmount;
 
     // Check subtotal
     if (Math.abs(calculatedSubtotal - invoiceSubtotal) > tolerance) {
       errors.push(
-        `Subtotal mismatch: calculated ${calculatedSubtotal}, provided ${invoiceSubtotal}`,
+        `Subtotal mismatch: calculated ${calculatedSubtotal}, provided ${invoiceSubtotal}`
       );
     }
 
     // Check VAT amount
     if (Math.abs(calculatedVatAmount - invoiceVatAmount) > tolerance) {
       errors.push(
-        `VAT amount mismatch: calculated ${calculatedVatAmount}, provided ${invoiceVatAmount}`,
+        `VAT amount mismatch: calculated ${calculatedVatAmount}, provided ${invoiceVatAmount}`
       );
     }
 
     // Check total
     if (Math.abs(calculatedTotal - invoiceTotal) > tolerance) {
       errors.push(
-        `Total amount mismatch: calculated ${calculatedTotal}, provided ${invoiceTotal}`,
+        `Total amount mismatch: calculated ${calculatedTotal}, provided ${invoiceTotal}`
       );
     }
 

@@ -29,7 +29,7 @@ export const JOB_TYPES = {
   imports: [
     ConfigModule,
     DatabaseModule,
-    
+
     // Transaction Sync Queue
     BullModule.registerQueueAsync({
       name: QUEUE_NAMES.TRANSACTION_SYNC,
@@ -128,14 +128,7 @@ export const JOB_TYPES = {
       inject: [ConfigService],
     }),
   ],
-  providers: [
-    QueueService,
-    TransactionSyncProcessor,
-    RetryStrategy,
-  ],
-  exports: [
-    QueueService,
-    BullModule,
-  ],
+  providers: [QueueService, TransactionSyncProcessor, RetryStrategy],
+  exports: [QueueService, BullModule],
 })
 export class QueueModule {}

@@ -6,8 +6,8 @@ import { AnalyticsAggregationService } from '../analytics-aggregation.service';
 import { StatisticalForecastingEngine } from '../../engines/statistical/statistical-forecasting.engine';
 import {
   ForecastResult,
+  ForecastingOptions,
   TimeSeriesData,
-  ForecastingOptions
 } from '../../interfaces/analytics-engine.interface';
 
 describe('EnhancedRevenueForecastingService', () => {
@@ -25,7 +25,7 @@ describe('EnhancedRevenueForecastingService', () => {
         status: 'PAID',
         issueDate: '2024-01-15',
         totalAmount: 1000,
-        paidAmount: 1000
+        paidAmount: 1000,
       },
       {
         id: 'inv-2',
@@ -33,7 +33,7 @@ describe('EnhancedRevenueForecastingService', () => {
         status: 'PAID',
         issueDate: '2024-02-15',
         totalAmount: 1200,
-        paidAmount: 1200
+        paidAmount: 1200,
       },
       {
         id: 'inv-3',
@@ -41,11 +41,11 @@ describe('EnhancedRevenueForecastingService', () => {
         status: 'PARTIALLY_PAID',
         issueDate: '2024-03-15',
         totalAmount: 1500,
-        paidAmount: 1000
-      }
+        paidAmount: 1000,
+      },
     ],
     payments: [],
-    expenses: []
+    expenses: [],
   };
 
   const mockForecastResult: ForecastResult = {
@@ -53,26 +53,26 @@ describe('EnhancedRevenueForecastingService', () => {
       {
         timestamp: new Date('2024-04-01'),
         value: 1100,
-        confidence: 0.85
+        confidence: 0.85,
       },
       {
         timestamp: new Date('2024-05-01'),
         value: 1150,
-        confidence: 0.82
-      }
+        confidence: 0.82,
+      },
     ],
     confidence: [
       { lower: 950, upper: 1250, probability: 0.95 },
-      { lower: 1000, upper: 1300, probability: 0.95 }
+      { lower: 1000, upper: 1300, probability: 0.95 },
     ],
     accuracy: {
       mape: 12.5,
       rmse: 85.2,
       r2: 0.87,
-      confidence: 0.85
+      confidence: 0.85,
     },
     insights: ['Strong upward trend detected'],
-    recommendations: ['Consider scaling operations']
+    recommendations: ['Consider scaling operations'],
   };
 
   beforeEach(async () => {
@@ -87,9 +87,9 @@ describe('EnhancedRevenueForecastingService', () => {
         metrics: {
           crossValidationScore: 0.85,
           holdoutScore: 0.82,
-          stabilityScore: 0.88
+          stabilityScore: 0.88,
         },
-        recommendations: []
+        recommendations: [],
       }),
       getModelMetrics: jest.fn().mockResolvedValue({
         accuracy: 0.85,
@@ -97,8 +97,8 @@ describe('EnhancedRevenueForecastingService', () => {
         recall: 0.88,
         f1Score: 0.85,
         mape: 12.5,
-        rmse: 85.2
-      })
+        rmse: 85.2,
+      }),
     } as any;
 
     const module: TestingModule = await Test.createTestingModule({
@@ -107,45 +107,54 @@ describe('EnhancedRevenueForecastingService', () => {
         {
           provide: AnalyticsEngineFactory,
           useValue: {
-            getForecastingEngine: jest.fn().mockReturnValue(mockForecastingEngine),
+            getForecastingEngine: jest
+              .fn()
+              .mockReturnValue(mockForecastingEngine),
             getEngineRecommendations: jest.fn().mockReturnValue({
               recommended: 'STATISTICAL',
               alternatives: ['ML'],
-              reasoning: 'Good balance of speed and accuracy'
+              reasoning: 'Good balance of speed and accuracy',
             }),
             healthCheck: jest.fn().mockResolvedValue({
               status: 'healthy',
               engines: { statistical: true, ml: false, overall: true },
-              capabilities: ['FORECASTING', 'ANOMALY_DETECTION']
-            })
-          }
+              capabilities: ['FORECASTING', 'ANOMALY_DETECTION'],
+            }),
+          },
         },
         {
           provide: BaseAnalyticsService,
           useValue: {
             // Mock base analytics methods if needed
-          }
+          },
         },
         {
           provide: AnalyticsAggregationService,
           useValue: {
-            aggregateFinancialData: jest.fn().mockResolvedValue(mockFinancialData)
-          }
-        }
+            aggregateFinancialData: jest
+              .fn()
+              .mockResolvedValue(mockFinancialData),
+          },
+        },
       ],
     }).compile();
 
-    service = module.get<EnhancedRevenueForecastingService>(EnhancedRevenueForecastingService);
+    service = module.get<EnhancedRevenueForecastingService>(
+      EnhancedRevenueForecastingService
+    );
     engineFactory = module.get<AnalyticsEngineFactory>(AnalyticsEngineFactory);
-    baseAnalyticsService = module.get<BaseAnalyticsService>(BaseAnalyticsService);
-    aggregationService = module.get<AnalyticsAggregationService>(AnalyticsAggregationService);
+    baseAnalyticsService =
+      module.get<BaseAnalyticsService>(BaseAnalyticsService);
+    aggregationService = module.get<AnalyticsAggregationService>(
+      AnalyticsAggregationService
+    );
   });
 
   describe('generateEnhancedForecast', () => {
     const dateRange = {
       startDate: new Date('2024-01-01'),
       endDate: new Date('2024-03-31'),
-      organizationId: 'org-1'
+      organizationId: 'org-1',
     };
 
     it('should generate enhanced forecast successfully', async () => {
@@ -173,14 +182,14 @@ describe('EnhancedRevenueForecastingService', () => {
       expect(mockForecastingEngine.generateForecast).toHaveBeenCalledWith(
         expect.objectContaining({
           values: expect.any(Array),
-          timestamps: expect.any(Array)
+          timestamps: expect.any(Array),
         }),
         expect.objectContaining({
           method: 'seasonal',
           periods: 6,
           confidence: 0.95,
           includeSeasonality: true,
-          zambianContext: true
+          zambianContext: true,
         })
       );
     });
@@ -191,17 +200,26 @@ describe('EnhancedRevenueForecastingService', () => {
         periods: 6,
         confidence: 0.95,
         includeSeasonality: false,
-        zambianContext: true
+        zambianContext: true,
       };
 
-      const result = await service.generateEnhancedForecast('org-1', dateRange, options);
+      const result = await service.generateEnhancedForecast(
+        'org-1',
+        dateRange,
+        options
+      );
 
-      expect(result.insights.some(insight =>
-        insight.includes('agricultural') || insight.includes('mobile money')
-      )).toBe(true);
-      expect(result.recommendations.some(rec =>
-        rec.includes('ZRA') || rec.includes('seasonal')
-      )).toBe(true);
+      expect(
+        result.insights.some(
+          insight =>
+            insight.includes('agricultural') || insight.includes('mobile money')
+        )
+      ).toBe(true);
+      expect(
+        result.recommendations.some(
+          rec => rec.includes('ZRA') || rec.includes('seasonal')
+        )
+      ).toBe(true);
     });
 
     it('should not apply Zambian context when disabled', async () => {
@@ -210,32 +228,40 @@ describe('EnhancedRevenueForecastingService', () => {
         periods: 6,
         confidence: 0.95,
         includeSeasonality: false,
-        zambianContext: false
+        zambianContext: false,
       };
 
-      const result = await service.generateEnhancedForecast('org-1', dateRange, options);
+      const result = await service.generateEnhancedForecast(
+        'org-1',
+        dateRange,
+        options
+      );
 
       // Should return original insights without Zambian context
       expect(result.insights).toEqual(mockForecastResult.insights);
-      expect(result.recommendations).toEqual(mockForecastResult.recommendations);
+      expect(result.recommendations).toEqual(
+        mockForecastResult.recommendations
+      );
     });
 
     it('should handle insufficient data gracefully', async () => {
       // Mock aggregation service to return insufficient data
-      jest.spyOn(aggregationService, 'aggregateFinancialData').mockResolvedValueOnce({
-        invoices: [
-          {
-            id: 'inv-1',
-            organizationId: 'org-1',
-            status: 'PAID',
-            issueDate: '2024-01-15',
-            totalAmount: 1000,
-            paidAmount: 1000
-          }
-        ],
-        payments: [],
-        expenses: []
-      });
+      jest
+        .spyOn(aggregationService, 'aggregateFinancialData')
+        .mockResolvedValueOnce({
+          invoices: [
+            {
+              id: 'inv-1',
+              organizationId: 'org-1',
+              status: 'PAID',
+              issueDate: '2024-01-15',
+              totalAmount: 1000,
+              paidAmount: 1000,
+            },
+          ],
+          payments: [],
+          expenses: [],
+        });
 
       await expect(
         service.generateEnhancedForecast('org-1', dateRange)
@@ -249,9 +275,9 @@ describe('EnhancedRevenueForecastingService', () => {
         metrics: {
           crossValidationScore: 0.4,
           holdoutScore: 0.3,
-          stabilityScore: 0.5
+          stabilityScore: 0.5,
         },
-        recommendations: ['Increase data quality']
+        recommendations: ['Increase data quality'],
       });
 
       const result = await service.generateEnhancedForecast('org-1', dateRange);
@@ -270,7 +296,9 @@ describe('EnhancedRevenueForecastingService', () => {
 
       expect(timeSeriesData.values).toBeDefined();
       expect(timeSeriesData.timestamps).toBeDefined();
-      expect(timeSeriesData.values.length).toBe(timeSeriesData.timestamps.length);
+      expect(timeSeriesData.values.length).toBe(
+        timeSeriesData.timestamps.length
+      );
       expect(timeSeriesData.metadata).toBeDefined();
       expect(timeSeriesData.metadata.organizationId).toBe('org-1');
       expect(timeSeriesData.metadata.dataType).toBe('REVENUE');
@@ -281,11 +309,14 @@ describe('EnhancedRevenueForecastingService', () => {
     const dateRange = {
       startDate: new Date('2024-01-01'),
       endDate: new Date('2024-03-31'),
-      organizationId: 'org-1'
+      organizationId: 'org-1',
     };
 
     it('should provide engine recommendations based on data characteristics', async () => {
-      const recommendations = await service.getEngineRecommendations('org-1', dateRange);
+      const recommendations = await service.getEngineRecommendations(
+        'org-1',
+        dateRange
+      );
 
       expect(recommendations).toBeDefined();
       expect(typeof recommendations.recommended).toBe('string');
@@ -302,9 +333,9 @@ describe('EnhancedRevenueForecastingService', () => {
 
     it('should handle errors gracefully', async () => {
       // Mock aggregation service to throw error
-      jest.spyOn(aggregationService, 'aggregateFinancialData').mockRejectedValueOnce(
-        new Error('Database connection failed')
-      );
+      jest
+        .spyOn(aggregationService, 'aggregateFinancialData')
+        .mockRejectedValueOnce(new Error('Database connection failed'));
 
       await expect(
         service.getEngineRecommendations('org-1', dateRange)
@@ -327,9 +358,9 @@ describe('EnhancedRevenueForecastingService', () => {
 
     it('should handle health check failures gracefully', async () => {
       // Mock engine factory to throw error
-      jest.spyOn(engineFactory, 'healthCheck').mockRejectedValueOnce(
-        new Error('Engine factory error')
-      );
+      jest
+        .spyOn(engineFactory, 'healthCheck')
+        .mockRejectedValueOnce(new Error('Engine factory error'));
 
       const health = await service.healthCheck();
 
@@ -346,7 +377,7 @@ describe('EnhancedRevenueForecastingService', () => {
       const dateRange = {
         startDate: new Date('2024-01-01'),
         endDate: new Date('2024-03-31'),
-        organizationId: 'org-1'
+        organizationId: 'org-1',
       };
 
       const startTime = Date.now();
@@ -363,7 +394,7 @@ describe('EnhancedRevenueForecastingService', () => {
       const dateRange = {
         startDate: new Date('2024-01-01'),
         endDate: new Date('2024-03-31'),
-        organizationId: 'org-1'
+        organizationId: 'org-1',
       };
 
       const startTime = Date.now();
@@ -394,7 +425,7 @@ describe('EnhancedRevenueForecastingService', () => {
       const dateRange = {
         startDate: new Date('2024-01-01'),
         endDate: new Date('2024-03-31'),
-        organizationId: 'org-1'
+        organizationId: 'org-1',
       };
 
       await service.generateEnhancedForecast('org-1', dateRange);
@@ -409,25 +440,27 @@ describe('EnhancedRevenueForecastingService', () => {
 
     it('should handle data quality validation', async () => {
       // Mock data with quality issues
-      jest.spyOn(aggregationService, 'aggregateFinancialData').mockResolvedValueOnce({
-        invoices: [
-          {
-            id: 'inv-1',
-            organizationId: 'org-1',
-            status: 'PAID',
-            issueDate: '2024-01-15',
-            totalAmount: NaN, // Invalid data
-            paidAmount: 1000
-          }
-        ],
-        payments: [],
-        expenses: []
-      });
+      jest
+        .spyOn(aggregationService, 'aggregateFinancialData')
+        .mockResolvedValueOnce({
+          invoices: [
+            {
+              id: 'inv-1',
+              organizationId: 'org-1',
+              status: 'PAID',
+              issueDate: '2024-01-15',
+              totalAmount: NaN, // Invalid data
+              paidAmount: 1000,
+            },
+          ],
+          payments: [],
+          expenses: [],
+        });
 
       const dateRange = {
         startDate: new Date('2024-01-01'),
         endDate: new Date('2024-03-31'),
-        organizationId: 'org-1'
+        organizationId: 'org-1',
       };
 
       await expect(
@@ -441,7 +474,7 @@ describe('EnhancedRevenueForecastingService', () => {
       const dateRange = {
         startDate: new Date('2024-01-01'),
         endDate: new Date('2024-03-31'),
-        organizationId: 'org-1'
+        organizationId: 'org-1',
       };
 
       // Should work with minimal parameters (backward compatibility)
@@ -458,7 +491,7 @@ describe('EnhancedRevenueForecastingService', () => {
       const dateRange = {
         startDate: new Date('2024-01-01'),
         endDate: new Date('2024-03-31'),
-        organizationId: 'org-1'
+        organizationId: 'org-1',
       };
 
       await service.generateEnhancedForecast('org-1', dateRange);

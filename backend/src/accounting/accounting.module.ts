@@ -30,7 +30,7 @@ import { GeneralLedgerController } from './controllers/general-ledger.controller
     AccountService,
     JournalEntryService,
     GeneralLedgerService,
-    
+
     // Repositories
     AccountRepository,
     JournalEntryRepository,
@@ -42,7 +42,7 @@ import { GeneralLedgerController } from './controllers/general-ledger.controller
     AccountService,
     JournalEntryService,
     GeneralLedgerService,
-    
+
     // Export repositories for direct access if needed
     AccountRepository,
     JournalEntryRepository,

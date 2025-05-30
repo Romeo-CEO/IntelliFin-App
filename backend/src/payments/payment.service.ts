@@ -1,19 +1,23 @@
 import {
+  BadRequestException,
+  ConflictException,
   Injectable,
   Logger,
   NotFoundException,
-  BadRequestException,
-  ConflictException,
 } from '@nestjs/common';
 import { PaymentMethod } from '@prisma/client';
 import {
-  PaymentRepository,
   CreatePaymentData,
-  UpdatePaymentData,
   PaymentFilters,
+  PaymentRepository,
   PaymentWithRelations,
+  UpdatePaymentData,
 } from './payment.repository';
-import { CreatePaymentDto, UpdatePaymentDto, PaymentQueryDto } from './dto/payment.dto';
+import {
+  CreatePaymentDto,
+  PaymentQueryDto,
+  UpdatePaymentDto,
+} from './dto/payment.dto';
 import { PaymentReconciliationService } from './services/payment-reconciliation.service';
 import { MobileMoneyPaymentService } from './services/mobile-money-payment.service';
 import { InvoiceService } from '../invoices/invoice.service';
@@ -28,7 +32,7 @@ export class PaymentService {
     private readonly reconciliationService: PaymentReconciliationService,
     private readonly mobileMoneyService: MobileMoneyPaymentService,
     private readonly invoiceService: InvoiceService,
-    private readonly prisma: PrismaService,
+    private readonly prisma: PrismaService
   ) {}
 
   /**
@@ -37,7 +41,7 @@ export class PaymentService {
   async createPayment(
     organizationId: string,
     userId: string,
-    createPaymentDto: CreatePaymentDto,
+    createPaymentDto: CreatePaymentDto
   ): Promise<PaymentWithRelations> {
     try {
       // Validate customer exists
@@ -61,7 +65,9 @@ export class PaymentService {
         }
 
         // Check if payment amount doesn't exceed outstanding amount
-        const outstandingAmount = invoice.totalAmount.toNumber() - (invoice.paidAmount?.toNumber() || 0);
+        const outstandingAmount =
+          invoice.totalAmount.toNumber() -
+          (invoice.paidAmount?.toNumber() || 0);
         if (createPaymentDto.amount > outstandingAmount) {
           throw new BadRequestException(
             `Payment amount (${createPaymentDto.amount}) exceeds outstanding amount (${outstandingAmount})`
@@ -85,7 +91,9 @@ export class PaymentService {
         });
 
         if (existingPayment) {
-          throw new ConflictException('Transaction is already linked to another payment');
+          throw new ConflictException(
+            'Transaction is already linked to another payment'
+          );
         }
       }
 
@@ -105,13 +113,17 @@ export class PaymentService {
       };
 
       // Create payment in transaction
-      const payment = await this.prisma.$transaction(async (tx) => {
+      const payment = await this.prisma.$transaction(async tx => {
         // Create the payment
         const newPayment = await this.paymentRepository.create(paymentData);
 
         // Update invoice if provided
         if (createPaymentDto.invoiceId) {
-          await this.updateInvoicePaymentStatus(createPaymentDto.invoiceId, organizationId, tx);
+          await this.updateInvoicePaymentStatus(
+            createPaymentDto.invoiceId,
+            organizationId,
+            tx
+          );
         }
 
         // Mark transaction as reconciled if provided
@@ -125,7 +137,9 @@ export class PaymentService {
         return newPayment;
       });
 
-      this.logger.log(`Created payment: ${payment.id} for customer ${customer.name}`);
+      this.logger.log(
+        `Created payment: ${payment.id} for customer ${customer.name}`
+      );
       return payment;
     } catch (error) {
       this.logger.error(`Failed to create payment: ${error.message}`, error);
@@ -136,7 +150,10 @@ export class PaymentService {
   /**
    * Get payment by ID
    */
-  async getPaymentById(id: string, organizationId: string): Promise<PaymentWithRelations> {
+  async getPaymentById(
+    id: string,
+    organizationId: string
+  ): Promise<PaymentWithRelations> {
     const payment = await this.paymentRepository.findById(id, organizationId);
 
     if (!payment) {
@@ -164,8 +181,12 @@ export class PaymentService {
     const paymentFilters: PaymentFilters = {
       organizationId,
       ...filters,
-      ...(filters.paymentDateFrom && { paymentDateFrom: new Date(filters.paymentDateFrom) }),
-      ...(filters.paymentDateTo && { paymentDateTo: new Date(filters.paymentDateTo) }),
+      ...(filters.paymentDateFrom && {
+        paymentDateFrom: new Date(filters.paymentDateFrom),
+      }),
+      ...(filters.paymentDateTo && {
+        paymentDateTo: new Date(filters.paymentDateTo),
+      }),
     };
 
     const [payments, total] = await Promise.all([
@@ -190,14 +211,17 @@ export class PaymentService {
   async updatePayment(
     id: string,
     organizationId: string,
-    updatePaymentDto: UpdatePaymentDto,
+    updatePaymentDto: UpdatePaymentDto
   ): Promise<PaymentWithRelations> {
     try {
       // Check if payment exists
       const existingPayment = await this.getPaymentById(id, organizationId);
 
       // Validate invoice if being updated
-      if (updatePaymentDto.invoiceId && updatePaymentDto.invoiceId !== existingPayment.invoiceId) {
+      if (
+        updatePaymentDto.invoiceId &&
+        updatePaymentDto.invoiceId !== existingPayment.invoiceId
+      ) {
         const invoice = await this.prisma.invoice.findFirst({
           where: { id: updatePaymentDto.invoiceId, organizationId },
         });
@@ -208,7 +232,10 @@ export class PaymentService {
       }
 
       // Validate transaction if being updated
-      if (updatePaymentDto.transactionId && updatePaymentDto.transactionId !== existingPayment.transactionId) {
+      if (
+        updatePaymentDto.transactionId &&
+        updatePaymentDto.transactionId !== existingPayment.transactionId
+      ) {
         const transaction = await this.prisma.transaction.findFirst({
           where: { id: updatePaymentDto.transactionId, organizationId },
         });
@@ -218,42 +245,66 @@ export class PaymentService {
         }
 
         // Check if transaction is already linked to another payment
-        const existingPaymentWithTransaction = await this.prisma.payment.findFirst({
-          where: { 
-            transactionId: updatePaymentDto.transactionId,
-            id: { not: id },
-          },
-        });
+        const existingPaymentWithTransaction =
+          await this.prisma.payment.findFirst({
+            where: {
+              transactionId: updatePaymentDto.transactionId,
+              id: { not: id },
+            },
+          });
 
         if (existingPaymentWithTransaction) {
-          throw new ConflictException('Transaction is already linked to another payment');
+          throw new ConflictException(
+            'Transaction is already linked to another payment'
+          );
         }
       }
 
       // Prepare update data
       const updateData: UpdatePaymentData = {
         ...updatePaymentDto,
-        ...(updatePaymentDto.paymentDate && { paymentDate: new Date(updatePaymentDto.paymentDate) }),
+        ...(updatePaymentDto.paymentDate && {
+          paymentDate: new Date(updatePaymentDto.paymentDate),
+        }),
       };
 
       // Update payment in transaction
-      const payment = await this.prisma.$transaction(async (tx) => {
+      const payment = await this.prisma.$transaction(async tx => {
         // Update the payment
-        const updatedPayment = await this.paymentRepository.update(id, organizationId, updateData);
+        const updatedPayment = await this.paymentRepository.update(
+          id,
+          organizationId,
+          updateData
+        );
 
         // Update invoice payment status if invoice changed
         if (updatePaymentDto.invoiceId !== existingPayment.invoiceId) {
           // Update old invoice if it existed
           if (existingPayment.invoiceId) {
-            await this.updateInvoicePaymentStatus(existingPayment.invoiceId, organizationId, tx);
+            await this.updateInvoicePaymentStatus(
+              existingPayment.invoiceId,
+              organizationId,
+              tx
+            );
           }
           // Update new invoice if provided
           if (updatePaymentDto.invoiceId) {
-            await this.updateInvoicePaymentStatus(updatePaymentDto.invoiceId, organizationId, tx);
+            await this.updateInvoicePaymentStatus(
+              updatePaymentDto.invoiceId,
+              organizationId,
+              tx
+            );
           }
-        } else if (existingPayment.invoiceId && updatePaymentDto.amount !== existingPayment.amount.toNumber()) {
+        } else if (
+          existingPayment.invoiceId &&
+          updatePaymentDto.amount !== existingPayment.amount.toNumber()
+        ) {
           // Update invoice if amount changed
-          await this.updateInvoicePaymentStatus(existingPayment.invoiceId, organizationId, tx);
+          await this.updateInvoicePaymentStatus(
+            existingPayment.invoiceId,
+            organizationId,
+            tx
+          );
         }
 
         // Update transaction reconciliation status
@@ -294,13 +345,17 @@ export class PaymentService {
       const payment = await this.getPaymentById(id, organizationId);
 
       // Delete payment in transaction
-      await this.prisma.$transaction(async (tx) => {
+      await this.prisma.$transaction(async tx => {
         // Delete the payment
         await this.paymentRepository.delete(id, organizationId);
 
         // Update invoice payment status if payment was linked to invoice
         if (payment.invoiceId) {
-          await this.updateInvoicePaymentStatus(payment.invoiceId, organizationId, tx);
+          await this.updateInvoicePaymentStatus(
+            payment.invoiceId,
+            organizationId,
+            tx
+          );
         }
 
         // Unmark transaction as reconciled if it was linked
@@ -329,8 +384,14 @@ export class PaymentService {
   /**
    * Get payments by invoice ID
    */
-  async getPaymentsByInvoiceId(invoiceId: string, organizationId: string): Promise<PaymentWithRelations[]> {
-    return await this.paymentRepository.findByInvoiceId(invoiceId, organizationId);
+  async getPaymentsByInvoiceId(
+    invoiceId: string,
+    organizationId: string
+  ): Promise<PaymentWithRelations[]> {
+    return await this.paymentRepository.findByInvoiceId(
+      invoiceId,
+      organizationId
+    );
   }
 
   /**
@@ -344,34 +405,59 @@ export class PaymentService {
    * Apply automatic reconciliation matches
    */
   async applyAutomaticMatches(organizationId: string, matches: any[]) {
-    return await this.reconciliationService.applyAutomaticMatches(organizationId, matches);
+    return await this.reconciliationService.applyAutomaticMatches(
+      organizationId,
+      matches
+    );
   }
 
   /**
    * Manually reconcile payment with transaction
    */
-  async manualReconcile(organizationId: string, paymentId: string, transactionId: string) {
-    return await this.reconciliationService.manualReconcile(organizationId, paymentId, transactionId);
+  async manualReconcile(
+    organizationId: string,
+    paymentId: string,
+    transactionId: string
+  ) {
+    return await this.reconciliationService.manualReconcile(
+      organizationId,
+      paymentId,
+      transactionId
+    );
   }
 
   /**
    * Bulk reconcile payments
    */
-  async bulkReconcile(organizationId: string, mappings: Array<{ paymentId: string; transactionId: string }>) {
-    return await this.reconciliationService.bulkReconcile(organizationId, mappings);
+  async bulkReconcile(
+    organizationId: string,
+    mappings: Array<{ paymentId: string; transactionId: string }>
+  ) {
+    return await this.reconciliationService.bulkReconcile(
+      organizationId,
+      mappings
+    );
   }
 
   /**
    * Get unreconciled payments
    */
-  async getUnreconciledPayments(organizationId: string): Promise<PaymentWithRelations[]> {
-    return await this.paymentRepository.findUnreconciledPayments(organizationId);
+  async getUnreconciledPayments(
+    organizationId: string
+  ): Promise<PaymentWithRelations[]> {
+    return await this.paymentRepository.findUnreconciledPayments(
+      organizationId
+    );
   }
 
   /**
    * Update invoice payment status based on payments
    */
-  private async updateInvoicePaymentStatus(invoiceId: string, organizationId: string, tx?: any) {
+  private async updateInvoicePaymentStatus(
+    invoiceId: string,
+    organizationId: string,
+    tx?: any
+  ) {
     const prisma = tx || this.prisma;
 
     // Get all payments for this invoice
@@ -380,7 +466,10 @@ export class PaymentService {
     });
 
     // Calculate total paid amount
-    const totalPaid = payments.reduce((sum, payment) => sum + payment.amount.toNumber(), 0);
+    const totalPaid = payments.reduce(
+      (sum, payment) => sum + payment.amount.toNumber(),
+      0
+    );
 
     // Get invoice to determine new status
     const invoice = await prisma.invoice.findFirst({

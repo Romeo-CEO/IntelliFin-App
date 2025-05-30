@@ -4,7 +4,7 @@ import { Queue } from 'bull';
 import { ProductRepository } from '../products/product.repository';
 import { StockAlertRepository } from '../alerts/stock-alert.repository';
 import { InventoryCacheService } from './inventory-cache.service';
-import { StockAlertType, StockAlertLevel } from '@prisma/client';
+import { StockAlertLevel, StockAlertType } from '@prisma/client';
 
 export interface StockLevelCheck {
   productId: string;
@@ -38,16 +38,22 @@ export class StockLevelService {
     private readonly productRepository: ProductRepository,
     private readonly stockAlertRepository: StockAlertRepository,
     private readonly cacheService: InventoryCacheService,
-    @InjectQueue('stock-alerts') private readonly stockAlertQueue: Queue,
+    @InjectQueue('stock-alerts') private readonly stockAlertQueue: Queue
   ) {}
 
   /**
    * Check stock levels for a specific product
    */
-  async checkStockLevels(organizationId: string, productId: string): Promise<void> {
+  async checkStockLevels(
+    organizationId: string,
+    productId: string
+  ): Promise<void> {
     try {
-      const product = await this.productRepository.findById(productId, organizationId);
-      
+      const product = await this.productRepository.findById(
+        productId,
+        organizationId
+      );
+
       if (!product || !product.trackStock) {
         return;
       }
@@ -57,12 +63,14 @@ export class StockLevelService {
         organizationId: product.organizationId,
         currentStock: Number(product.currentStock),
         minimumStock: Number(product.minimumStock),
-        maximumStock: product.maximumStock ? Number(product.maximumStock) : undefined,
+        maximumStock: product.maximumStock
+          ? Number(product.maximumStock)
+          : undefined,
         reorderPoint: Number(product.reorderPoint),
       };
 
       const alerts = await this.generateStockAlerts(stockCheck, product);
-      
+
       // Process alerts
       for (const alert of alerts) {
         await this.processStockAlert(alert);
@@ -70,7 +78,10 @@ export class StockLevelService {
 
       this.logger.debug(`Checked stock levels for product ${productId}`);
     } catch (error) {
-      this.logger.error(`Failed to check stock levels for product ${productId}: ${error.message}`, error);
+      this.logger.error(
+        `Failed to check stock levels for product ${productId}: ${error.message}`,
+        error
+      );
     }
   }
 
@@ -85,18 +96,22 @@ export class StockLevelService {
           isActive: true,
           trackStock: true,
         },
-        { name: 'asc' },
+        { name: 'asc' }
       );
 
-      this.logger.log(`Checking stock levels for ${products.length} products in organization ${organizationId}`);
+      this.logger.log(
+        `Checking stock levels for ${products.length} products in organization ${organizationId}`
+      );
 
       // Process in batches to avoid overwhelming the system
       const batchSize = 50;
       for (let i = 0; i < products.length; i += batchSize) {
         const batch = products.slice(i, i + batchSize);
-        
+
         await Promise.all(
-          batch.map(product => this.checkStockLevels(organizationId, product.id))
+          batch.map(product =>
+            this.checkStockLevels(organizationId, product.id)
+          )
         );
 
         // Small delay between batches for low-bandwidth environments
@@ -105,18 +120,27 @@ export class StockLevelService {
         }
       }
 
-      this.logger.log(`Completed stock level check for organization ${organizationId}`);
+      this.logger.log(
+        `Completed stock level check for organization ${organizationId}`
+      );
     } catch (error) {
-      this.logger.error(`Failed to check all stock levels: ${error.message}`, error);
+      this.logger.error(
+        `Failed to check all stock levels: ${error.message}`,
+        error
+      );
     }
   }
 
   /**
    * Generate stock alerts based on current stock levels
    */
-  private async generateStockAlerts(stockCheck: StockLevelCheck, product: any): Promise<StockAlert[]> {
+  private async generateStockAlerts(
+    stockCheck: StockLevelCheck,
+    product: any
+  ): Promise<StockAlert[]> {
     const alerts: StockAlert[] = [];
-    const { currentStock, minimumStock, maximumStock, reorderPoint } = stockCheck;
+    const { currentStock, minimumStock, maximumStock, reorderPoint } =
+      stockCheck;
 
     // Out of stock alert
     if (currentStock === 0) {
@@ -143,7 +167,11 @@ export class StockLevelService {
       });
     }
     // Reorder point alert
-    else if (reorderPoint > 0 && currentStock <= reorderPoint && currentStock > minimumStock) {
+    else if (
+      reorderPoint > 0 &&
+      currentStock <= reorderPoint &&
+      currentStock > minimumStock
+    ) {
       alerts.push({
         productId: stockCheck.productId,
         organizationId: stockCheck.organizationId,
@@ -180,17 +208,21 @@ export class StockLevelService {
       const existingAlert = await this.stockAlertRepository.findActiveAlert(
         alert.organizationId,
         alert.productId,
-        alert.alertType,
+        alert.alertType
       );
 
       if (existingAlert) {
         // Update existing alert
-        await this.stockAlertRepository.update(existingAlert.id, alert.organizationId, {
-          currentStock: alert.currentStock,
-          thresholdValue: alert.thresholdValue,
-          message: alert.message,
-          alertLevel: alert.alertLevel,
-        });
+        await this.stockAlertRepository.update(
+          existingAlert.id,
+          alert.organizationId,
+          {
+            currentStock: alert.currentStock,
+            thresholdValue: alert.thresholdValue,
+            message: alert.message,
+            alertLevel: alert.alertLevel,
+          }
+        );
       } else {
         // Create new alert
         await this.stockAlertRepository.create({
@@ -205,32 +237,44 @@ export class StockLevelService {
       }
 
       // Queue notification job
-      await this.stockAlertQueue.add('send-stock-alert-notification', {
-        alert,
-      }, {
-        delay: 1000, // 1 second delay to batch similar alerts
-        attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 2000,
+      await this.stockAlertQueue.add(
+        'send-stock-alert-notification',
+        {
+          alert,
         },
-      });
+        {
+          delay: 1000, // 1 second delay to batch similar alerts
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 2000,
+          },
+        }
+      );
 
       // Invalidate cache
       await this.cacheService.invalidateStockAlertCache(alert.organizationId);
 
-      this.logger.debug(`Processed stock alert for product ${alert.productId}: ${alert.alertType}`);
+      this.logger.debug(
+        `Processed stock alert for product ${alert.productId}: ${alert.alertType}`
+      );
     } catch (error) {
-      this.logger.error(`Failed to process stock alert: ${error.message}`, error);
+      this.logger.error(
+        `Failed to process stock alert: ${error.message}`,
+        error
+      );
     }
   }
 
   /**
    * Get alert level based on stock ratio
    */
-  private getAlertLevel(currentStock: number, minimumStock: number): StockAlertLevel {
+  private getAlertLevel(
+    currentStock: number,
+    minimumStock: number
+  ): StockAlertLevel {
     const ratio = currentStock / minimumStock;
-    
+
     if (ratio <= 0.25) {
       return StockAlertLevel.CRITICAL;
     } else if (ratio <= 0.5) {
@@ -247,8 +291,11 @@ export class StockLevelService {
    */
   async getReorderSuggestions(organizationId: string): Promise<any[]> {
     try {
-      const cacheKey = this.cacheService.getCacheKey('reorder_suggestions', organizationId);
-      
+      const cacheKey = this.cacheService.getCacheKey(
+        'reorder_suggestions',
+        organizationId
+      );
+
       return await this.cacheService.getOrSet(
         cacheKey,
         async () => {
@@ -259,7 +306,7 @@ export class StockLevelService {
               trackStock: true,
               lowStock: true,
             },
-            { currentStock: 'asc' },
+            { currentStock: 'asc' }
           );
 
           return products
@@ -273,15 +320,20 @@ export class StockLevelService {
               reorderPoint: Number(product.reorderPoint),
               reorderQuantity: Number(product.reorderQuantity),
               suggestedQuantity: this.calculateSuggestedQuantity(product),
-              estimatedCost: Number(product.costPrice) * this.calculateSuggestedQuantity(product),
+              estimatedCost:
+                Number(product.costPrice) *
+                this.calculateSuggestedQuantity(product),
               priority: this.calculateReorderPriority(product),
             }))
             .sort((a, b) => b.priority - a.priority);
         },
-        'LOW_STOCK',
+        'LOW_STOCK'
       );
     } catch (error) {
-      this.logger.error(`Failed to get reorder suggestions: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get reorder suggestions: ${error.message}`,
+        error
+      );
       return [];
     }
   }
@@ -293,7 +345,9 @@ export class StockLevelService {
     const currentStock = Number(product.currentStock);
     const minimumStock = Number(product.minimumStock);
     const reorderQuantity = Number(product.reorderQuantity);
-    const maximumStock = product.maximumStock ? Number(product.maximumStock) : null;
+    const maximumStock = product.maximumStock
+      ? Number(product.maximumStock)
+      : null;
 
     // If reorder quantity is specified, use it
     if (reorderQuantity > 0) {
@@ -307,7 +361,7 @@ export class StockLevelService {
     let suggestedQuantity = deficit + bufferQuantity;
 
     // Don't exceed maximum stock if specified
-    if (maximumStock && (currentStock + suggestedQuantity) > maximumStock) {
+    if (maximumStock && currentStock + suggestedQuantity > maximumStock) {
       suggestedQuantity = Math.max(0, maximumStock - currentStock);
     }
 
@@ -320,7 +374,7 @@ export class StockLevelService {
   private calculateReorderPriority(product: any): number {
     const currentStock = Number(product.currentStock);
     const minimumStock = Number(product.minimumStock);
-    
+
     if (currentStock === 0) {
       return 100; // Highest priority for out of stock
     }
@@ -330,7 +384,7 @@ export class StockLevelService {
     }
 
     const stockRatio = currentStock / minimumStock;
-    
+
     // Higher priority for lower stock ratios
     if (stockRatio <= 0.25) {
       return 90;
@@ -350,8 +404,11 @@ export class StockLevelService {
    */
   async getStockLevelSummary(organizationId: string): Promise<any> {
     try {
-      const cacheKey = this.cacheService.getCacheKey('stock_summary', organizationId);
-      
+      const cacheKey = this.cacheService.getCacheKey(
+        'stock_summary',
+        organizationId
+      );
+
       return await this.cacheService.getOrSet(
         cacheKey,
         async () => {
@@ -386,7 +443,8 @@ export class StockLevelService {
             }),
           ]);
 
-          const healthyStockCount = totalProducts - lowStockCount - outOfStockCount - overstockCount;
+          const healthyStockCount =
+            totalProducts - lowStockCount - outOfStockCount - overstockCount;
 
           return {
             totalProducts,
@@ -395,13 +453,19 @@ export class StockLevelService {
             outOfStockCount,
             overstockCount,
             activeAlerts,
-            healthPercentage: totalProducts > 0 ? Math.round((healthyStockCount / totalProducts) * 100) : 100,
+            healthPercentage:
+              totalProducts > 0
+                ? Math.round((healthyStockCount / totalProducts) * 100)
+                : 100,
           };
         },
-        'STOCK_ALERTS',
+        'STOCK_ALERTS'
       );
     } catch (error) {
-      this.logger.error(`Failed to get stock level summary: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get stock level summary: ${error.message}`,
+        error
+      );
       return {
         totalProducts: 0,
         healthyStockCount: 0,
@@ -417,22 +481,34 @@ export class StockLevelService {
   /**
    * Schedule stock level checks
    */
-  async scheduleStockLevelCheck(organizationId: string, delayMinutes = 0): Promise<void> {
+  async scheduleStockLevelCheck(
+    organizationId: string,
+    delayMinutes = 0
+  ): Promise<void> {
     try {
-      await this.stockAlertQueue.add('check-all-stock-levels', {
-        organizationId,
-      }, {
-        delay: delayMinutes * 60 * 1000, // Convert minutes to milliseconds
-        attempts: 2,
-        backoff: {
-          type: 'exponential',
-          delay: 5000,
+      await this.stockAlertQueue.add(
+        'check-all-stock-levels',
+        {
+          organizationId,
         },
-      });
+        {
+          delay: delayMinutes * 60 * 1000, // Convert minutes to milliseconds
+          attempts: 2,
+          backoff: {
+            type: 'exponential',
+            delay: 5000,
+          },
+        }
+      );
 
-      this.logger.log(`Scheduled stock level check for organization ${organizationId} in ${delayMinutes} minutes`);
+      this.logger.log(
+        `Scheduled stock level check for organization ${organizationId} in ${delayMinutes} minutes`
+      );
     } catch (error) {
-      this.logger.error(`Failed to schedule stock level check: ${error.message}`, error);
+      this.logger.error(
+        `Failed to schedule stock level check: ${error.message}`,
+        error
+      );
     }
   }
 }

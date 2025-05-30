@@ -1,4 +1,10 @@
-import { IsString, IsEmail, IsOptional, Length, Matches } from 'class-validator';
+import {
+  IsEmail,
+  IsOptional,
+  IsString,
+  Length,
+  Matches,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateTenantDto {
@@ -10,28 +16,42 @@ export class CreateTenantDto {
   @ApiProperty({ description: 'Unique tenant slug', example: 'acme-corp' })
   @IsString()
   @Length(2, 100)
-  @Matches(/^[a-z0-9-]+$/, { message: 'Slug must contain only lowercase letters, numbers, and hyphens' })
+  @Matches(/^[a-z0-9-]+$/, {
+    message: 'Slug must contain only lowercase letters, numbers, and hyphens',
+  })
   slug: string;
 
-  @ApiPropertyOptional({ description: 'Business type', example: 'Limited Company' })
+  @ApiPropertyOptional({
+    description: 'Business type',
+    example: 'Limited Company',
+  })
   @IsOptional()
   @IsString()
   @Length(1, 50)
   businessType?: string;
 
-  @ApiPropertyOptional({ description: 'ZRA Tax Identification Number', example: '1234567890' })
+  @ApiPropertyOptional({
+    description: 'ZRA Tax Identification Number',
+    example: '1234567890',
+  })
   @IsOptional()
   @IsString()
   @Length(10, 20)
   @Matches(/^[0-9]+$/, { message: 'ZRA TIN must contain only numbers' })
   zraTin?: string;
 
-  @ApiPropertyOptional({ description: 'Business email address', example: 'info@acme.com' })
+  @ApiPropertyOptional({
+    description: 'Business email address',
+    example: 'info@acme.com',
+  })
   @IsOptional()
   @IsEmail()
   email?: string;
 
-  @ApiPropertyOptional({ description: 'Business phone number', example: '+260971234567' })
+  @ApiPropertyOptional({
+    description: 'Business phone number',
+    example: '+260971234567',
+  })
   @IsOptional()
   @IsString()
   @Length(10, 20)

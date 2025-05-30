@@ -121,10 +121,16 @@ describe('DashboardDataService', () => {
 
       cacheService.get.mockResolvedValue(cachedData);
 
-      const result = await service.getDashboardOverview(mockOrganizationId, 'month', true);
+      const result = await service.getDashboardOverview(
+        mockOrganizationId,
+        'month',
+        true
+      );
 
       expect(result).toEqual(cachedData);
-      expect(cacheService.get).toHaveBeenCalledWith('dashboard_overview_org-123_month_true');
+      expect(cacheService.get).toHaveBeenCalledWith(
+        'dashboard_overview_org-123_month_true'
+      );
     });
 
     it('should generate new data when cache is empty', async () => {
@@ -142,15 +148,28 @@ describe('DashboardDataService', () => {
       };
 
       cacheService.get.mockResolvedValue(null);
-      baseAnalyticsService.getFinancialMetrics.mockResolvedValue(mockFinancialMetrics);
-      baseAnalyticsService.getOrganizationAnalytics.mockResolvedValue(mockKpiMetrics);
-      analyticsService.getCashFlowAnalysis.mockResolvedValue({ inflow: 100000, outflow: 60000 });
-      analyticsService.getRevenueBreakdown.mockResolvedValue({ categories: [] });
+      baseAnalyticsService.getFinancialMetrics.mockResolvedValue(
+        mockFinancialMetrics
+      );
+      baseAnalyticsService.getOrganizationAnalytics.mockResolvedValue(
+        mockKpiMetrics
+      );
+      analyticsService.getCashFlowAnalysis.mockResolvedValue({
+        inflow: 100000,
+        outflow: 60000,
+      });
+      analyticsService.getRevenueBreakdown.mockResolvedValue({
+        categories: [],
+      });
       taxService.getComplianceStatus.mockResolvedValue({ overallScore: 85 });
       taxService.getZraIntegrationStatus.mockResolvedValue({ connected: true });
       taxService.getVatSummary.mockResolvedValue({ amount: 5000 });
 
-      const result = await service.getDashboardOverview(mockOrganizationId, 'month', false);
+      const result = await service.getDashboardOverview(
+        mockOrganizationId,
+        'month',
+        false
+      );
 
       expect(result).toHaveProperty('financial');
       expect(result).toHaveProperty('kpis');
@@ -162,9 +181,13 @@ describe('DashboardDataService', () => {
 
     it('should handle errors gracefully', async () => {
       cacheService.get.mockResolvedValue(null);
-      baseAnalyticsService.getFinancialMetrics.mockRejectedValue(new Error('Analytics service error'));
+      baseAnalyticsService.getFinancialMetrics.mockRejectedValue(
+        new Error('Analytics service error')
+      );
 
-      await expect(service.getDashboardOverview(mockOrganizationId)).rejects.toThrow('Analytics service error');
+      await expect(
+        service.getDashboardOverview(mockOrganizationId)
+      ).rejects.toThrow('Analytics service error');
     });
   });
 
@@ -185,7 +208,9 @@ describe('DashboardDataService', () => {
       };
 
       cacheService.get.mockResolvedValue(null);
-      baseAnalyticsService.getOrganizationAnalytics.mockResolvedValue(mockAnalyticsData);
+      baseAnalyticsService.getOrganizationAnalytics.mockResolvedValue(
+        mockAnalyticsData
+      );
 
       const result = await service.getKpiMetrics(mockOrganizationId);
 
@@ -205,9 +230,14 @@ describe('DashboardDataService', () => {
       };
 
       cacheService.get.mockResolvedValue(null);
-      baseAnalyticsService.getOrganizationAnalytics.mockResolvedValue(mockAnalyticsData);
+      baseAnalyticsService.getOrganizationAnalytics.mockResolvedValue(
+        mockAnalyticsData
+      );
 
-      const result = await service.getKpiMetrics(mockOrganizationId, ['totalRevenue', 'customerCount']);
+      const result = await service.getKpiMetrics(mockOrganizationId, [
+        'totalRevenue',
+        'customerCount',
+      ]);
 
       expect(result).toHaveProperty('totalRevenue', 100000);
       expect(result).toHaveProperty('customerCount', 50);
@@ -234,12 +264,20 @@ describe('DashboardDataService', () => {
       };
 
       cacheService.get.mockResolvedValue(null);
-      forecastingService.generateRevenueForecast.mockResolvedValue(mockRevenueForecast);
-      forecastingService.generateExpenseForecast.mockResolvedValue(mockExpenseForecast);
+      forecastingService.generateRevenueForecast.mockResolvedValue(
+        mockRevenueForecast
+      );
+      forecastingService.generateExpenseForecast.mockResolvedValue(
+        mockExpenseForecast
+      );
       anomalyEngine.detectAnomalies.mockResolvedValue([]);
       analyticsService.getTrendAnalysis.mockResolvedValue({ trends: [] });
 
-      const result = await service.getAnalyticsSummary(mockOrganizationId, true, true);
+      const result = await service.getAnalyticsSummary(
+        mockOrganizationId,
+        true,
+        true
+      );
 
       expect(result).toHaveProperty('forecasts');
       expect(result.forecasts).toHaveProperty('revenue', mockRevenueForecast);
@@ -253,7 +291,11 @@ describe('DashboardDataService', () => {
       anomalyEngine.detectAnomalies.mockResolvedValue([]);
       analyticsService.getTrendAnalysis.mockResolvedValue({ trends: [] });
 
-      const result = await service.getAnalyticsSummary(mockOrganizationId, false, true);
+      const result = await service.getAnalyticsSummary(
+        mockOrganizationId,
+        false,
+        true
+      );
 
       expect(result).not.toHaveProperty('forecasts');
       expect(result).toHaveProperty('anomalies');
@@ -286,7 +328,8 @@ describe('DashboardDataService', () => {
       taxService.getZraIntegrationStatus.mockResolvedValue(mockZraStatus);
       taxService.getVatSummary.mockResolvedValue(mockVatSummary);
 
-      const result = await service.getZambianComplianceSummary(mockOrganizationId);
+      const result =
+        await service.getZambianComplianceSummary(mockOrganizationId);
 
       expect(result).toHaveProperty('overallScore');
       expect(result).toHaveProperty('taxCompliance', mockTaxCompliance);
@@ -311,12 +354,20 @@ describe('DashboardDataService', () => {
       };
 
       cacheService.get.mockResolvedValue(null);
-      paymentService.getMobileMoneySummary.mockResolvedValue(mockMobileMoneySummary);
+      paymentService.getMobileMoneySummary.mockResolvedValue(
+        mockMobileMoneySummary
+      );
 
-      const result = await service.getMobileMoneySummary(mockOrganizationId, 'all');
+      const result = await service.getMobileMoneySummary(
+        mockOrganizationId,
+        'all'
+      );
 
       expect(result).toEqual(mockMobileMoneySummary);
-      expect(paymentService.getMobileMoneySummary).toHaveBeenCalledWith(mockOrganizationId, 'all');
+      expect(paymentService.getMobileMoneySummary).toHaveBeenCalledWith(
+        mockOrganizationId,
+        'all'
+      );
     });
 
     it('should return mobile money data for specific provider', async () => {
@@ -329,10 +380,16 @@ describe('DashboardDataService', () => {
       cacheService.get.mockResolvedValue(null);
       paymentService.getMobileMoneySummary.mockResolvedValue(mockAirtelSummary);
 
-      const result = await service.getMobileMoneySummary(mockOrganizationId, 'airtel');
+      const result = await service.getMobileMoneySummary(
+        mockOrganizationId,
+        'airtel'
+      );
 
       expect(result).toEqual(mockAirtelSummary);
-      expect(paymentService.getMobileMoneySummary).toHaveBeenCalledWith(mockOrganizationId, 'airtel');
+      expect(paymentService.getMobileMoneySummary).toHaveBeenCalledWith(
+        mockOrganizationId,
+        'airtel'
+      );
     });
   });
 
@@ -352,9 +409,13 @@ describe('DashboardDataService', () => {
 
     it('should handle analytics service errors', async () => {
       cacheService.get.mockResolvedValue(null);
-      baseAnalyticsService.getOrganizationAnalytics.mockRejectedValue(new Error('Analytics unavailable'));
+      baseAnalyticsService.getOrganizationAnalytics.mockRejectedValue(
+        new Error('Analytics unavailable')
+      );
 
-      await expect(service.getKpiMetrics(mockOrganizationId)).rejects.toThrow('Analytics unavailable');
+      await expect(service.getKpiMetrics(mockOrganizationId)).rejects.toThrow(
+        'Analytics unavailable'
+      );
     });
   });
 });

@@ -1,7 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { TaxType } from '@prisma/client';
-import { VatCalculator, ZambianVatRates } from '../../invoices/utils/vat-calculator';
+import {
+  VatCalculator,
+  ZambianVatRates,
+} from '../../invoices/utils/vat-calculator';
 
 export interface TaxCalculationRequest {
   organizationId: string;
@@ -65,7 +68,7 @@ export class TaxCalculationService {
     WITHHOLDING_TAX: {
       STANDARD: 0.15,
       PROFESSIONAL_SERVICES: 0.15,
-      RENT: 0.10,
+      RENT: 0.1,
       INTEREST: 0.15,
       DIVIDENDS: 0.15,
       ROYALTIES: 0.15,
@@ -75,7 +78,7 @@ export class TaxCalculationService {
       BRACKETS: [
         { min: 0, max: 4800, rate: 0.0 },
         { min: 4800, max: 9600, rate: 0.25 },
-        { min: 9600, max: 19200, rate: 0.30 },
+        { min: 9600, max: 19200, rate: 0.3 },
         { min: 19200, max: Infinity, rate: 0.375 },
       ],
     },
@@ -83,7 +86,7 @@ export class TaxCalculationService {
       BRACKETS: [
         { min: 0, max: 4800, rate: 0.0 },
         { min: 4800, max: 9600, rate: 0.25 },
-        { min: 9600, max: 19200, rate: 0.30 },
+        { min: 9600, max: 19200, rate: 0.3 },
         { min: 19200, max: Infinity, rate: 0.375 },
       ],
     },
@@ -98,18 +101,30 @@ export class TaxCalculationService {
   /**
    * Calculate tax for any tax type
    */
-  async calculateTax(request: TaxCalculationRequest): Promise<TaxCalculationResult> {
+  async calculateTax(
+    request: TaxCalculationRequest
+  ): Promise<TaxCalculationResult> {
     try {
-      this.logger.log(`Calculating ${request.taxType} tax for organization: ${request.organizationId}`);
+      this.logger.log(
+        `Calculating ${request.taxType} tax for organization: ${request.organizationId}`
+      );
 
       const effectiveDate = request.effectiveDate || new Date();
-      const taxRate = await this.getTaxRate(request.organizationId, request.taxType, effectiveDate);
+      const taxRate = await this.getTaxRate(
+        request.organizationId,
+        request.taxType,
+        effectiveDate
+      );
 
       let calculation: TaxCalculationResult;
 
       switch (request.taxType) {
         case TaxType.VAT:
-          calculation = this.calculateVAT(request.amount, taxRate, request.isInclusive || false);
+          calculation = this.calculateVAT(
+            request.amount,
+            taxRate,
+            request.isInclusive || false
+          );
           break;
         case TaxType.WITHHOLDING_TAX:
           calculation = this.calculateWithholdingTax(request.amount, taxRate);
@@ -124,16 +139,25 @@ export class TaxCalculationService {
           calculation = this.calculateTurnoverTax(request.amount, taxRate);
           break;
         default:
-          calculation = this.calculateGenericTax(request.amount, taxRate, request.isInclusive || false);
+          calculation = this.calculateGenericTax(
+            request.amount,
+            taxRate,
+            request.isInclusive || false
+          );
       }
 
       calculation.taxType = request.taxType;
       calculation.effectiveDate = effectiveDate;
 
-      this.logger.log(`Tax calculation completed: ${calculation.taxAmount} ${request.taxType}`);
+      this.logger.log(
+        `Tax calculation completed: ${calculation.taxAmount} ${request.taxType}`
+      );
       return calculation;
     } catch (error) {
-      this.logger.error(`Failed to calculate tax: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to calculate tax: ${error.message}`,
+        error.stack
+      );
       throw error;
     }
   }
@@ -141,8 +165,16 @@ export class TaxCalculationService {
   /**
    * Calculate VAT using existing VAT calculator
    */
-  private calculateVAT(amount: number, rate: number, isInclusive: boolean): TaxCalculationResult {
-    const vatResult = VatCalculator.calculateVat(amount, rate * 100, isInclusive);
+  private calculateVAT(
+    amount: number,
+    rate: number,
+    isInclusive: boolean
+  ): TaxCalculationResult {
+    const vatResult = VatCalculator.calculateVat(
+      amount,
+      rate * 100,
+      isInclusive
+    );
 
     return {
       taxType: TaxType.VAT,
@@ -165,7 +197,10 @@ export class TaxCalculationService {
   /**
    * Calculate withholding tax
    */
-  private calculateWithholdingTax(grossAmount: number, rate: number): TaxCalculationResult {
+  private calculateWithholdingTax(
+    grossAmount: number,
+    rate: number
+  ): TaxCalculationResult {
     const taxAmount = grossAmount * rate;
     const netAmount = grossAmount - taxAmount;
 
@@ -190,7 +225,10 @@ export class TaxCalculationService {
   /**
    * Calculate income tax using Zambian brackets
    */
-  private calculateIncomeTax(taxableIncome: number, rate?: number): TaxCalculationResult {
+  private calculateIncomeTax(
+    taxableIncome: number,
+    rate?: number
+  ): TaxCalculationResult {
     const brackets = this.ZAMBIAN_TAX_RATES.INCOME_TAX.BRACKETS;
     let totalTax = 0;
     let remainingIncome = taxableIncome;
@@ -198,7 +236,10 @@ export class TaxCalculationService {
     for (const bracket of brackets) {
       if (remainingIncome <= 0) break;
 
-      const taxableAtBracket = Math.min(remainingIncome, bracket.max - bracket.min);
+      const taxableAtBracket = Math.min(
+        remainingIncome,
+        bracket.max - bracket.min
+      );
       const taxAtBracket = taxableAtBracket * bracket.rate;
       totalTax += taxAtBracket;
       remainingIncome -= taxableAtBracket;
@@ -214,7 +255,8 @@ export class TaxCalculationService {
       effectiveDate: new Date(),
       calculation: {
         baseAmount: taxableIncome,
-        applicableRate: rate || (taxableIncome > 0 ? totalTax / taxableIncome : 0),
+        applicableRate:
+          rate || (taxableIncome > 0 ? totalTax / taxableIncome : 0),
         exemptions: 0,
         adjustments: 0,
         finalTaxAmount: totalTax,
@@ -232,7 +274,10 @@ export class TaxCalculationService {
   /**
    * Calculate turnover tax for small businesses
    */
-  private calculateTurnoverTax(turnover: number, rate: number): TaxCalculationResult {
+  private calculateTurnoverTax(
+    turnover: number,
+    rate: number
+  ): TaxCalculationResult {
     const taxAmount = turnover * rate;
 
     return {
@@ -256,7 +301,11 @@ export class TaxCalculationService {
   /**
    * Generic tax calculation for other tax types
    */
-  private calculateGenericTax(amount: number, rate: number, isInclusive: boolean): TaxCalculationResult {
+  private calculateGenericTax(
+    amount: number,
+    rate: number,
+    isInclusive: boolean
+  ): TaxCalculationResult {
     let taxAmount: number;
     let netAmount: number;
     let grossAmount: number;
@@ -292,7 +341,11 @@ export class TaxCalculationService {
   /**
    * Get applicable tax rate for organization and date
    */
-  private async getTaxRate(organizationId: string, taxType: TaxType, effectiveDate: Date): Promise<number> {
+  private async getTaxRate(
+    organizationId: string,
+    taxType: TaxType,
+    effectiveDate: Date
+  ): Promise<number> {
     try {
       // First try to get organization-specific rate
       const customRate = await this.prisma.taxRate.findFirst({
@@ -300,10 +353,7 @@ export class TaxCalculationService {
           organizationId,
           taxType,
           effectiveDate: { lte: effectiveDate },
-          OR: [
-            { endDate: null },
-            { endDate: { gte: effectiveDate } },
-          ],
+          OR: [{ endDate: null }, { endDate: { gte: effectiveDate } }],
           isActive: true,
         },
         orderBy: { effectiveDate: 'desc' },
@@ -316,7 +366,9 @@ export class TaxCalculationService {
       // Fall back to default Zambian rates
       return this.getDefaultTaxRate(taxType);
     } catch (error) {
-      this.logger.warn(`Failed to get tax rate from database, using default: ${error.message}`);
+      this.logger.warn(
+        `Failed to get tax rate from database, using default: ${error.message}`
+      );
       return this.getDefaultTaxRate(taxType);
     }
   }

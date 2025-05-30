@@ -1,9 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bull';
-import { Queue, Job, JobOptions } from 'bull';
+import { Job, JobOptions, Queue } from 'bull';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
-import { QUEUE_NAMES, JOB_TYPES } from './queue.module';
+import { JOB_TYPES, QUEUE_NAMES } from './queue.module';
 
 export interface SyncAccountJobData {
   accountId: string;
@@ -47,15 +47,15 @@ export class QueueService {
   constructor(
     @InjectQueue(QUEUE_NAMES.TRANSACTION_SYNC)
     private readonly transactionSyncQueue: Queue,
-    
+
     @InjectQueue(QUEUE_NAMES.BALANCE_UPDATE)
     private readonly balanceUpdateQueue: Queue,
-    
+
     @InjectQueue(QUEUE_NAMES.ERROR_HANDLING)
     private readonly errorHandlingQueue: Queue,
-    
+
     @InjectQueue(QUEUE_NAMES.NOTIFICATION)
-    private readonly notificationQueue: Queue,
+    private readonly notificationQueue: Queue
   ) {}
 
   /**
@@ -63,7 +63,7 @@ export class QueueService {
    */
   async addSyncAccountJob(
     data: SyncAccountJobData,
-    options?: JobOptions,
+    options?: JobOptions
   ): Promise<Job<SyncAccountJobData>> {
     const jobOptions: JobOptions = {
       priority: data.isManual ? 1 : 10, // Manual syncs get higher priority
@@ -76,7 +76,7 @@ export class QueueService {
     return await this.transactionSyncQueue.add(
       JOB_TYPES.SYNC_ACCOUNT_TRANSACTIONS,
       data,
-      jobOptions,
+      jobOptions
     );
   }
 
@@ -85,7 +85,7 @@ export class QueueService {
    */
   async addSyncAllAccountsJob(
     data: SyncAllAccountsJobData,
-    options?: JobOptions,
+    options?: JobOptions
   ): Promise<Job<SyncAllAccountsJobData>> {
     const jobOptions: JobOptions = {
       priority: data.isManual ? 1 : 20,
@@ -93,12 +93,14 @@ export class QueueService {
       ...options,
     };
 
-    this.logger.debug(`Adding sync all accounts job for organization: ${data.organizationId || 'all'}`);
+    this.logger.debug(
+      `Adding sync all accounts job for organization: ${data.organizationId || 'all'}`
+    );
 
     return await this.transactionSyncQueue.add(
       JOB_TYPES.SYNC_ALL_ACCOUNTS,
       data,
-      jobOptions,
+      jobOptions
     );
   }
 
@@ -107,19 +109,21 @@ export class QueueService {
    */
   async addUpdateBalanceJob(
     data: UpdateBalanceJobData,
-    options?: JobOptions,
+    options?: JobOptions
   ): Promise<Job<UpdateBalanceJobData>> {
     const jobOptions: JobOptions = {
       priority: 5,
       ...options,
     };
 
-    this.logger.debug(`Adding balance update job for account: ${data.accountId}`);
+    this.logger.debug(
+      `Adding balance update job for account: ${data.accountId}`
+    );
 
     return await this.balanceUpdateQueue.add(
       JOB_TYPES.UPDATE_ACCOUNT_BALANCE,
       data,
-      jobOptions,
+      jobOptions
     );
   }
 
@@ -128,7 +132,7 @@ export class QueueService {
    */
   async addRetryFailedSyncJob(
     data: RetryFailedSyncJobData,
-    options?: JobOptions,
+    options?: JobOptions
   ): Promise<Job<RetryFailedSyncJobData>> {
     const delay = this.calculateRetryDelay(data.retryCount);
     const jobOptions: JobOptions = {
@@ -137,12 +141,14 @@ export class QueueService {
       ...options,
     };
 
-    this.logger.debug(`Adding retry job for account: ${data.accountId}, attempt: ${data.retryCount}`);
+    this.logger.debug(
+      `Adding retry job for account: ${data.accountId}, attempt: ${data.retryCount}`
+    );
 
     return await this.transactionSyncQueue.add(
       JOB_TYPES.RETRY_FAILED_SYNC,
       data,
-      jobOptions,
+      jobOptions
     );
   }
 
@@ -151,19 +157,21 @@ export class QueueService {
    */
   async addNotificationJob(
     data: NotificationJobData,
-    options?: JobOptions,
+    options?: JobOptions
   ): Promise<Job<NotificationJobData>> {
     const jobOptions: JobOptions = {
       priority: 3,
       ...options,
     };
 
-    this.logger.debug(`Adding notification job: ${data.type} for account: ${data.accountId}`);
+    this.logger.debug(
+      `Adding notification job: ${data.type} for account: ${data.accountId}`
+    );
 
     return await this.notificationQueue.add(
       JOB_TYPES.SEND_SYNC_NOTIFICATION,
       data,
-      jobOptions,
+      jobOptions
     );
   }
 
@@ -196,9 +204,10 @@ export class QueueService {
    */
   async getActiveJobsForAccount(accountId: string): Promise<Job[]> {
     const activeJobs = await this.transactionSyncQueue.getActive();
-    return activeJobs.filter(job => 
-      job.data.accountId === accountId || 
-      (job.data.accounts && job.data.accounts.includes(accountId))
+    return activeJobs.filter(
+      job =>
+        job.data.accountId === accountId ||
+        (job.data.accounts && job.data.accounts.includes(accountId))
     );
   }
 
@@ -217,8 +226,10 @@ export class QueueService {
     ];
 
     await Promise.all(allJobs.map(job => job.remove()));
-    
-    this.logger.debug(`Cancelled ${allJobs.length} jobs for account: ${accountId}`);
+
+    this.logger.debug(
+      `Cancelled ${allJobs.length} jobs for account: ${accountId}`
+    );
   }
 
   /**
@@ -261,13 +272,13 @@ export class QueueService {
       try {
         // Clean completed jobs older than 7 days
         await queue.clean(7 * 24 * 60 * 60 * 1000, 'completed');
-        
+
         // Clean failed jobs older than 30 days
         await queue.clean(30 * 24 * 60 * 60 * 1000, 'failed');
-        
+
         // Clean active jobs older than 1 hour (likely stalled)
         await queue.clean(60 * 60 * 1000, 'active');
-        
+
         this.logger.debug(`Cleaned up old jobs for queue: ${queue.name}`);
       } catch (error) {
         this.logger.error(`Failed to clean up queue ${queue.name}:`, error);
@@ -284,7 +295,7 @@ export class QueueService {
     const baseDelay = 5000; // 5 seconds
     const maxDelay = 300000; // 5 minutes
     const delay = Math.min(baseDelay * Math.pow(2, retryCount), maxDelay);
-    
+
     // Add jitter to prevent thundering herd
     const jitter = Math.random() * 0.1 * delay;
     return Math.floor(delay + jitter);
@@ -309,7 +320,12 @@ export class QueueService {
       completed: completed.length,
       failed: failed.length,
       delayed: delayed.length,
-      total: waiting.length + active.length + completed.length + failed.length + delayed.length,
+      total:
+        waiting.length +
+        active.length +
+        completed.length +
+        failed.length +
+        delayed.length,
     };
   }
 

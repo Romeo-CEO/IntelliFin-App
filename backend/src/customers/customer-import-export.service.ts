@@ -1,4 +1,4 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { CustomerService } from './customer.service';
 import { CustomerRepository } from './customer.repository';
 import { ZraTinValidator } from './validators/customer-zra-tin.validator';
@@ -26,7 +26,7 @@ export class CustomerImportExportService {
 
   constructor(
     private readonly customerService: CustomerService,
-    private readonly customerRepository: CustomerRepository,
+    private readonly customerRepository: CustomerRepository
   ) {}
 
   /**
@@ -35,11 +35,11 @@ export class CustomerImportExportService {
   async importCustomersFromCsv(
     organizationId: string,
     csvData: string,
-    options: { skipDuplicates?: boolean; updateExisting?: boolean } = {},
+    options: { skipDuplicates?: boolean; updateExisting?: boolean } = {}
   ): Promise<ImportResult> {
     try {
       const { skipDuplicates = true, updateExisting = false } = options;
-      
+
       // Parse CSV data
       const rows = this.parseCsvData(csvData);
       if (rows.length === 0) {
@@ -49,21 +49,35 @@ export class CustomerImportExportService {
       // Validate headers
       const requiredHeaders = ['name'];
       const optionalHeaders = [
-        'contactPerson', 'email', 'phone', 'address', 'city', 'country',
-        'zraTin', 'paymentTerms', 'creditLimit', 'notes', 'isActive'
+        'contactPerson',
+        'email',
+        'phone',
+        'address',
+        'city',
+        'country',
+        'zraTin',
+        'paymentTerms',
+        'creditLimit',
+        'notes',
+        'isActive',
       ];
       const allHeaders = [...requiredHeaders, ...optionalHeaders];
-      
+
       const headers = Object.keys(rows[0]);
       const missingRequired = requiredHeaders.filter(h => !headers.includes(h));
-      
+
       if (missingRequired.length > 0) {
-        throw new BadRequestException(`Missing required headers: ${missingRequired.join(', ')}`);
+        throw new BadRequestException(
+          `Missing required headers: ${missingRequired.join(', ')}`
+        );
       }
 
       // Validate and process data
-      const validationResult = await this.customerService.validateCustomerData(organizationId, rows);
-      
+      const validationResult = await this.customerService.validateCustomerData(
+        organizationId,
+        rows
+      );
+
       const successful = [];
       const failed = [...validationResult.invalid];
       const errors = [...validationResult.errors];
@@ -73,13 +87,19 @@ export class CustomerImportExportService {
         try {
           // Check for existing customer by email or ZRA TIN
           let existingCustomer = null;
-          
+
           if (customerData.email) {
-            existingCustomer = await this.customerRepository.findByEmail(customerData.email, organizationId);
+            existingCustomer = await this.customerRepository.findByEmail(
+              customerData.email,
+              organizationId
+            );
           }
-          
+
           if (!existingCustomer && customerData.zraTin) {
-            existingCustomer = await this.customerRepository.findByZraTin(customerData.zraTin, organizationId);
+            existingCustomer = await this.customerRepository.findByZraTin(
+              customerData.zraTin,
+              organizationId
+            );
           }
 
           if (existingCustomer) {
@@ -94,7 +114,7 @@ export class CustomerImportExportService {
               const updatedCustomer = await this.customerRepository.update(
                 existingCustomer.id,
                 organizationId,
-                customerData,
+                customerData
               );
               successful.push({
                 action: 'updated',
@@ -124,7 +144,9 @@ export class CustomerImportExportService {
             data: customerData,
             errors: [error.message],
           });
-          errors.push(`Failed to process customer ${customerData.name}: ${error.message}`);
+          errors.push(
+            `Failed to process customer ${customerData.name}: ${error.message}`
+          );
         }
       }
 
@@ -139,7 +161,9 @@ export class CustomerImportExportService {
         },
       };
 
-      this.logger.log(`Import completed: ${successful.length} imported, ${failed.length} failed`);
+      this.logger.log(
+        `Import completed: ${successful.length} imported, ${failed.length} failed`
+      );
       return result;
     } catch (error) {
       this.logger.error(`Import failed: ${error.message}`, error);
@@ -152,7 +176,7 @@ export class CustomerImportExportService {
    */
   async exportCustomersToCsv(
     organizationId: string,
-    options: ExportOptions = {},
+    options: ExportOptions = {}
   ): Promise<string> {
     try {
       const { includeInactive = false, fields } = options;
@@ -167,14 +191,25 @@ export class CustomerImportExportService {
 
       // Define export fields
       const defaultFields = [
-        'name', 'contactPerson', 'email', 'phone', 'address', 'city', 'country',
-        'zraTin', 'paymentTerms', 'creditLimit', 'notes', 'isActive', 'createdAt'
+        'name',
+        'contactPerson',
+        'email',
+        'phone',
+        'address',
+        'city',
+        'country',
+        'zraTin',
+        'paymentTerms',
+        'creditLimit',
+        'notes',
+        'isActive',
+        'createdAt',
       ];
       const exportFields = fields || defaultFields;
 
       // Generate CSV
       const csvData = this.generateCsvData(customers, exportFields);
-      
+
       this.logger.log(`Exported ${customers.length} customers to CSV`);
       return csvData;
     } catch (error) {
@@ -188,7 +223,7 @@ export class CustomerImportExportService {
    */
   async exportCustomersToJson(
     organizationId: string,
-    options: ExportOptions = {},
+    options: ExportOptions = {}
   ): Promise<any[]> {
     try {
       const { includeInactive = false, fields } = options;
@@ -227,8 +262,18 @@ export class CustomerImportExportService {
    */
   generateImportTemplate(): string {
     const headers = [
-      'name', 'contactPerson', 'email', 'phone', 'address', 'city', 'country',
-      'zraTin', 'paymentTerms', 'creditLimit', 'notes', 'isActive'
+      'name',
+      'contactPerson',
+      'email',
+      'phone',
+      'address',
+      'city',
+      'country',
+      'zraTin',
+      'paymentTerms',
+      'creditLimit',
+      'notes',
+      'isActive',
     ];
 
     const sampleData = [
@@ -244,7 +289,7 @@ export class CustomerImportExportService {
         paymentTerms: '30',
         creditLimit: '50000',
         notes: 'Preferred payment method: Mobile Money',
-        isActive: 'true'
+        isActive: 'true',
       },
       {
         name: 'Small Business Ltd',
@@ -258,8 +303,8 @@ export class CustomerImportExportService {
         paymentTerms: '14',
         creditLimit: '',
         notes: '',
-        isActive: 'true'
-      }
+        isActive: 'true',
+      },
     ];
 
     return this.generateCsvData(sampleData, headers);
@@ -283,10 +328,11 @@ export class CustomerImportExportService {
         const row = {};
         headers.forEach((header, index) => {
           const value = values[index]?.trim();
-          
+
           // Convert specific fields to appropriate types
           if (header === 'paymentTerms' || header === 'creditLimit') {
-            row[header] = value && !isNaN(value) ? parseFloat(value) : undefined;
+            row[header] =
+              value && !isNaN(value) ? parseFloat(value) : undefined;
           } else if (header === 'isActive') {
             row[header] = value ? value.toLowerCase() === 'true' : true;
           } else {
@@ -310,7 +356,7 @@ export class CustomerImportExportService {
 
     for (let i = 0; i < line.length; i++) {
       const char = line[i];
-      
+
       if (char === '"') {
         inQuotes = !inQuotes;
       } else if (char === ',' && !inQuotes) {
@@ -320,7 +366,7 @@ export class CustomerImportExportService {
         current += char;
       }
     }
-    
+
     result.push(current);
     return result.map(value => value.replace(/^"|"$/g, ''));
   }
@@ -330,32 +376,38 @@ export class CustomerImportExportService {
    */
   private generateCsvData(data: any[], fields: string[]): string {
     if (data.length === 0) {
-      return fields.join(',') + '\n';
+      return `${fields.join(',')  }\n`;
     }
 
     const headers = fields.join(',');
     const rows = data.map(item => {
-      return fields.map(field => {
-        let value = item[field];
-        
-        // Handle different data types
-        if (value === null || value === undefined) {
-          value = '';
-        } else if (typeof value === 'object' && value instanceof Date) {
-          value = value.toISOString().split('T')[0]; // Format date as YYYY-MM-DD
-        } else if (typeof value === 'boolean') {
-          value = value.toString();
-        } else {
-          value = value.toString();
-        }
+      return fields
+        .map(field => {
+          let value = item[field];
 
-        // Escape quotes and wrap in quotes if contains comma or quotes
-        if (value.includes(',') || value.includes('"') || value.includes('\n')) {
-          value = '"' + value.replace(/"/g, '""') + '"';
-        }
+          // Handle different data types
+          if (value === null || value === undefined) {
+            value = '';
+          } else if (typeof value === 'object' && value instanceof Date) {
+            value = value.toISOString().split('T')[0]; // Format date as YYYY-MM-DD
+          } else if (typeof value === 'boolean') {
+            value = value.toString();
+          } else {
+            value = value.toString();
+          }
 
-        return value;
-      }).join(',');
+          // Escape quotes and wrap in quotes if contains comma or quotes
+          if (
+            value.includes(',') ||
+            value.includes('"') ||
+            value.includes('\n')
+          ) {
+            value = `"${  value.replace(/"/g, '""')  }"`;
+          }
+
+          return value;
+        })
+        .join(',');
     });
 
     return [headers, ...rows].join('\n');

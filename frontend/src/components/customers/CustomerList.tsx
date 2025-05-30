@@ -1,6 +1,5 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Search, 
   Plus, 
@@ -19,6 +18,8 @@ import {
   XCircle,
   Users
 } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+
 import { Customer, CustomerQuery, customerService } from '../../services/customer.service';
 
 interface CustomerListProps {

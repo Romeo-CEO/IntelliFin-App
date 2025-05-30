@@ -1,25 +1,30 @@
 import {
   Controller,
   Get,
+  HttpCode,
+  HttpStatus,
+  Logger,
   Query,
   UseGuards,
-  Logger,
-  HttpStatus,
-  HttpCode,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiQuery,
   ApiBearerAuth,
-  ApiParam,
+  ApiOperation,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { User } from '@prisma/client';
-import { AnalyticsService, AnalyticsQuery } from './analytics.service';
+import { AnalyticsQuery, AnalyticsService } from './analytics.service';
+
+type RevenueForecastQuery = AnalyticsQuery & {
+  periods?: number;
+  confidence?: number;
+  method?: 'linear' | 'exponential' | 'seasonal';
+};
 
 @ApiTags('Analytics')
 @ApiBearerAuth()
@@ -34,7 +39,8 @@ export class AnalyticsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Get cash flow analytics',
-    description: 'Retrieve cash flow data with inflow, outflow, and net flow analysis for the organization',
+    description:
+      'Retrieve cash flow data with inflow, outflow, and net flow analysis for the organization',
   })
   @ApiQuery({
     name: 'period',
@@ -95,20 +101,27 @@ export class AnalyticsController {
   @ApiResponse({ status: 403, description: 'Forbidden' })
   async getCashFlowAnalytics(
     @GetUser() user: User,
-    @Query() query: AnalyticsQuery,
+    @Query() query: AnalyticsQuery
   ) {
     try {
-      this.logger.log(`Getting cash flow analytics for organization: ${user.tenantId}`);
+      this.logger.log(
+        `Getting cash flow analytics for organization: ${user.tenantId}`
+      );
 
       const result = await this.analyticsService.getCashFlowAnalytics(
         user.tenantId,
-        query,
+        query
       );
 
-      this.logger.log(`Cash flow analytics retrieved successfully for organization: ${user.tenantId}`);
+      this.logger.log(
+        `Cash flow analytics retrieved successfully for organization: ${user.tenantId}`
+      );
       return result;
     } catch (error) {
-      this.logger.error(`Failed to get cash flow analytics: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get cash flow analytics: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -117,7 +130,8 @@ export class AnalyticsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Get revenue vs expenses analytics',
-    description: 'Retrieve revenue and expenses comparison data with profit analysis',
+    description:
+      'Retrieve revenue and expenses comparison data with profit analysis',
   })
   @ApiQuery({
     name: 'period',
@@ -178,20 +192,27 @@ export class AnalyticsController {
   @ApiResponse({ status: 403, description: 'Forbidden' })
   async getRevenueExpensesAnalytics(
     @GetUser() user: User,
-    @Query() query: AnalyticsQuery,
+    @Query() query: AnalyticsQuery
   ) {
     try {
-      this.logger.log(`Getting revenue vs expenses analytics for organization: ${user.tenantId}`);
+      this.logger.log(
+        `Getting revenue vs expenses analytics for organization: ${user.tenantId}`
+      );
 
       const result = await this.analyticsService.getRevenueExpensesAnalytics(
         user.tenantId,
-        query,
+        query
       );
 
-      this.logger.log(`Revenue vs expenses analytics retrieved successfully for organization: ${user.tenantId}`);
+      this.logger.log(
+        `Revenue vs expenses analytics retrieved successfully for organization: ${user.tenantId}`
+      );
       return result;
     } catch (error) {
-      this.logger.error(`Failed to get revenue vs expenses analytics: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get revenue vs expenses analytics: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -200,7 +221,8 @@ export class AnalyticsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Get KPI summary metrics',
-    description: 'Retrieve comprehensive key performance indicators with trend analysis',
+    description:
+      'Retrieve comprehensive key performance indicators with trend analysis',
   })
   @ApiQuery({
     name: 'period',
@@ -245,19 +267,18 @@ export class AnalyticsController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden' })
-  async getKpiSummary(
-    @GetUser() user: User,
-    @Query() query: AnalyticsQuery,
-  ) {
+  async getKpiSummary(@GetUser() user: User, @Query() query: AnalyticsQuery) {
     try {
       this.logger.log(`Getting KPI summary for organization: ${user.tenantId}`);
 
       const result = await this.analyticsService.getKpiSummary(
         user.tenantId,
-        query,
+        query
       );
 
-      this.logger.log(`KPI summary retrieved successfully for organization: ${user.tenantId}`);
+      this.logger.log(
+        `KPI summary retrieved successfully for organization: ${user.tenantId}`
+      );
       return result;
     } catch (error) {
       this.logger.error(`Failed to get KPI summary: ${error.message}`, error);
@@ -269,7 +290,8 @@ export class AnalyticsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Get accounts receivable aging analysis',
-    description: 'Retrieve accounts receivable aging data with risk analysis and recommendations',
+    description:
+      'Retrieve accounts receivable aging data with risk analysis and recommendations',
   })
   @ApiResponse({
     status: 200,
@@ -319,14 +341,23 @@ export class AnalyticsController {
   @ApiResponse({ status: 403, description: 'Forbidden' })
   async getReceivablesAging(@GetUser() user: User) {
     try {
-      this.logger.log(`Getting receivables aging for organization: ${user.tenantId}`);
+      this.logger.log(
+        `Getting receivables aging for organization: ${user.tenantId}`
+      );
 
-      const result = await this.analyticsService.getReceivablesAging(user.tenantId);
+      const result = await this.analyticsService.getReceivablesAging(
+        user.tenantId
+      );
 
-      this.logger.log(`Receivables aging retrieved successfully for organization: ${user.tenantId}`);
+      this.logger.log(
+        `Receivables aging retrieved successfully for organization: ${user.tenantId}`
+      );
       return result;
     } catch (error) {
-      this.logger.error(`Failed to get receivables aging: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get receivables aging: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -337,25 +368,51 @@ export class AnalyticsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Generate revenue forecast',
-    description: 'Generate revenue forecast using time series analysis and machine learning algorithms',
+    description:
+      'Generate revenue forecast using time series analysis and machine learning algorithms',
   })
-  @ApiQuery({ name: 'periods', required: false, type: Number, description: 'Number of periods to forecast (default: 6)' })
-  @ApiQuery({ name: 'confidence', required: false, type: Number, description: 'Confidence level (0.8, 0.9, 0.95)' })
-  @ApiQuery({ name: 'method', required: false, enum: ['linear', 'exponential', 'seasonal'], description: 'Forecasting method' })
-  @ApiResponse({ status: 200, description: 'Revenue forecast generated successfully' })
-  async getRevenueForecast(
-    @GetUser() user: User,
-    @Query() query: any,
-  ) {
+  @ApiQuery({
+    name: 'periods',
+    required: false,
+    type: Number,
+    description: 'Number of periods to forecast (default: 6)',
+  })
+  @ApiQuery({
+    name: 'confidence',
+    required: false,
+    type: Number,
+    description: 'Confidence level (0.8, 0.9, 0.95)',
+  })
+  @ApiQuery({
+    name: 'method',
+    required: false,
+    enum: ['linear', 'exponential', 'seasonal'],
+    description: 'Forecasting method',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Revenue forecast generated successfully',
+  })
+  async getRevenueForecast(@GetUser() user: User, @Query() query: RevenueForecastQuery) {
     try {
-      this.logger.log(`Getting revenue forecast for organization: ${user.tenantId}`);
+      this.logger.log(
+        `Getting revenue forecast for organization: ${user.tenantId}`
+      );
 
-      const result = await this.analyticsService.generateRevenueForecast(user.tenantId, query);
+      const result = await this.analyticsService.generateRevenueForecast(
+        user.tenantId,
+        query
+      );
 
-      this.logger.log(`Revenue forecast retrieved successfully for organization: ${user.tenantId}`);
+      this.logger.log(
+        `Revenue forecast retrieved successfully for organization: ${user.tenantId}`
+      );
       return result;
     } catch (error) {
-      this.logger.error(`Failed to get revenue forecast: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get revenue forecast: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -364,22 +421,33 @@ export class AnalyticsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Analyze expense trends',
-    description: 'Analyze expense trends with anomaly detection and category-wise analysis',
+    description:
+      'Analyze expense trends with anomaly detection and category-wise analysis',
   })
-  @ApiResponse({ status: 200, description: 'Expense trends analysis retrieved successfully' })
-  async getExpenseTrends(
-    @GetUser() user: User,
-    @Query() query: any,
-  ) {
+  @ApiResponse({
+    status: 200,
+    description: 'Expense trends analysis retrieved successfully',
+  })
+  async getExpenseTrends(@GetUser() user: User, @Query() query: AnalyticsQuery) {
     try {
-      this.logger.log(`Getting expense trends for organization: ${user.tenantId}`);
+      this.logger.log(
+        `Getting expense trends for organization: ${user.tenantId}`
+      );
 
-      const result = await this.analyticsService.analyzeExpenseTrends(user.tenantId, query);
+      const result = await this.analyticsService.analyzeExpenseTrends(
+        user.tenantId,
+        query
+      );
 
-      this.logger.log(`Expense trends retrieved successfully for organization: ${user.tenantId}`);
+      this.logger.log(
+        `Expense trends retrieved successfully for organization: ${user.tenantId}`
+      );
       return result;
     } catch (error) {
-      this.logger.error(`Failed to get expense trends: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get expense trends: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -388,22 +456,33 @@ export class AnalyticsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Detect expense anomalies',
-    description: 'Detect unusual expense patterns and anomalies with alerts and recommendations',
+    description:
+      'Detect unusual expense patterns and anomalies with alerts and recommendations',
   })
-  @ApiResponse({ status: 200, description: 'Expense anomalies detected successfully' })
-  async getExpenseAnomalies(
-    @GetUser() user: User,
-    @Query() query: any,
-  ) {
+  @ApiResponse({
+    status: 200,
+    description: 'Expense anomalies detected successfully',
+  })
+  async getExpenseAnomalies(@GetUser() user: User, @Query() query: AnalyticsQuery) {
     try {
-      this.logger.log(`Detecting expense anomalies for organization: ${user.tenantId}`);
+      this.logger.log(
+        `Detecting expense anomalies for organization: ${user.tenantId}`
+      );
 
-      const result = await this.analyticsService.detectExpenseAnomalies(user.tenantId, query);
+      const result = await this.analyticsService.detectExpenseAnomalies(
+        user.tenantId,
+        query
+      );
 
-      this.logger.log(`Expense anomalies detected successfully for organization: ${user.tenantId}`);
+      this.logger.log(
+        `Expense anomalies detected successfully for organization: ${user.tenantId}`
+      );
       return result;
     } catch (error) {
-      this.logger.error(`Failed to detect expense anomalies: ${error.message}`, error);
+      this.logger.error(
+        `Failed to detect expense anomalies: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -412,22 +491,33 @@ export class AnalyticsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Analyze profitability',
-    description: 'Comprehensive profitability analysis for customers and products with insights',
+    description:
+      'Comprehensive profitability analysis for customers and products with insights',
   })
-  @ApiResponse({ status: 200, description: 'Profitability analysis retrieved successfully' })
-  async getProfitabilityAnalysis(
-    @GetUser() user: User,
-    @Query() query: any,
-  ) {
+  @ApiResponse({
+    status: 200,
+    description: 'Profitability analysis retrieved successfully',
+  })
+  async getProfitabilityAnalysis(@GetUser() user: User, @Query() query: AnalyticsQuery) {
     try {
-      this.logger.log(`Getting profitability analysis for organization: ${user.tenantId}`);
+      this.logger.log(
+        `Getting profitability analysis for organization: ${user.tenantId}`
+      );
 
-      const result = await this.analyticsService.analyzeProfitability(user.tenantId, query);
+      const result = await this.analyticsService.analyzeProfitability(
+        user.tenantId,
+        query
+      );
 
-      this.logger.log(`Profitability analysis retrieved successfully for organization: ${user.tenantId}`);
+      this.logger.log(
+        `Profitability analysis retrieved successfully for organization: ${user.tenantId}`
+      );
       return result;
     } catch (error) {
-      this.logger.error(`Failed to get profitability analysis: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get profitability analysis: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -436,22 +526,33 @@ export class AnalyticsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Analyze profitability trends',
-    description: 'Analyze profitability trends over time for customers and products',
+    description:
+      'Analyze profitability trends over time for customers and products',
   })
-  @ApiResponse({ status: 200, description: 'Profitability trends retrieved successfully' })
-  async getProfitabilityTrends(
-    @GetUser() user: User,
-    @Query() query: any,
-  ) {
+  @ApiResponse({
+    status: 200,
+    description: 'Profitability trends retrieved successfully',
+  })
+  async getProfitabilityTrends(@GetUser() user: User, @Query() query: AnalyticsQuery) {
     try {
-      this.logger.log(`Getting profitability trends for organization: ${user.tenantId}`);
+      this.logger.log(
+        `Getting profitability trends for organization: ${user.tenantId}`
+      );
 
-      const result = await this.analyticsService.analyzeProfitabilityTrends(user.tenantId, query);
+      const result = await this.analyticsService.analyzeProfitabilityTrends(
+        user.tenantId,
+        query
+      );
 
-      this.logger.log(`Profitability trends retrieved successfully for organization: ${user.tenantId}`);
+      this.logger.log(
+        `Profitability trends retrieved successfully for organization: ${user.tenantId}`
+      );
       return result;
     } catch (error) {
-      this.logger.error(`Failed to get profitability trends: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get profitability trends: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -460,19 +561,27 @@ export class AnalyticsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Generate tax analytics',
-    description: 'Generate comprehensive tax analytics with VAT and income tax calculations for Zambian compliance',
+    description:
+      'Generate comprehensive tax analytics with VAT and income tax calculations for Zambian compliance',
   })
-  @ApiResponse({ status: 200, description: 'Tax analytics generated successfully' })
-  async getTaxAnalytics(
-    @GetUser() user: User,
-    @Query() query: any,
-  ) {
+  @ApiResponse({
+    status: 200,
+    description: 'Tax analytics generated successfully',
+  })
+  async getTaxAnalytics(@GetUser() user: User, @Query() query: AnalyticsQuery) {
     try {
-      this.logger.log(`Getting tax analytics for organization: ${user.tenantId}`);
+      this.logger.log(
+        `Getting tax analytics for organization: ${user.tenantId}`
+      );
 
-      const result = await this.analyticsService.generateTaxAnalytics(user.tenantId, query);
+      const result = await this.analyticsService.generateTaxAnalytics(
+        user.tenantId,
+        query
+      );
 
-      this.logger.log(`Tax analytics retrieved successfully for organization: ${user.tenantId}`);
+      this.logger.log(
+        `Tax analytics retrieved successfully for organization: ${user.tenantId}`
+      );
       return result;
     } catch (error) {
       this.logger.error(`Failed to get tax analytics: ${error.message}`, error);
@@ -484,22 +593,34 @@ export class AnalyticsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Generate tax optimization insights',
-    description: 'Generate tax optimization insights and recommendations for ZRA compliance',
+    description:
+      'Generate tax optimization insights and recommendations for ZRA compliance',
   })
-  @ApiResponse({ status: 200, description: 'Tax optimization insights generated successfully' })
-  async getTaxOptimization(
-    @GetUser() user: User,
-    @Query() query: any,
-  ) {
+  @ApiResponse({
+    status: 200,
+    description: 'Tax optimization insights generated successfully',
+  })
+  async getTaxOptimization(@GetUser() user: User, @Query() query: AnalyticsQuery) {
     try {
-      this.logger.log(`Getting tax optimization insights for organization: ${user.tenantId}`);
+      this.logger.log(
+        `Getting tax optimization insights for organization: ${user.tenantId}`
+      );
 
-      const result = await this.analyticsService.generateTaxOptimizationInsights(user.tenantId, query);
+      const result =
+        await this.analyticsService.generateTaxOptimizationInsights(
+          user.tenantId,
+          query
+        );
 
-      this.logger.log(`Tax optimization insights retrieved successfully for organization: ${user.tenantId}`);
+      this.logger.log(
+        `Tax optimization insights retrieved successfully for organization: ${user.tenantId}`
+      );
       return result;
     } catch (error) {
-      this.logger.error(`Failed to get tax optimization insights: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get tax optimization insights: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -508,19 +629,32 @@ export class AnalyticsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Analyze ZRA compliance',
-    description: 'Analyze ZRA compliance status with risk assessment and recommendations',
+    description:
+      'Analyze ZRA compliance status with risk assessment and recommendations',
   })
-  @ApiResponse({ status: 200, description: 'ZRA compliance analysis retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'ZRA compliance analysis retrieved successfully',
+  })
   async getZraCompliance(@GetUser() user: User) {
     try {
-      this.logger.log(`Getting ZRA compliance analysis for organization: ${user.tenantId}`);
+      this.logger.log(
+        `Getting ZRA compliance analysis for organization: ${user.tenantId}`
+      );
 
-      const result = await this.analyticsService.analyzeZraCompliance(user.tenantId);
+      const result = await this.analyticsService.analyzeZraCompliance(
+        user.tenantId
+      );
 
-      this.logger.log(`ZRA compliance analysis retrieved successfully for organization: ${user.tenantId}`);
+      this.logger.log(
+        `ZRA compliance analysis retrieved successfully for organization: ${user.tenantId}`
+      );
       return result;
     } catch (error) {
-      this.logger.error(`Failed to get ZRA compliance analysis: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get ZRA compliance analysis: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -529,22 +663,33 @@ export class AnalyticsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Calculate business health score',
-    description: 'Calculate comprehensive business health score with component analysis and benchmarks',
+    description:
+      'Calculate comprehensive business health score with component analysis and benchmarks',
   })
-  @ApiResponse({ status: 200, description: 'Business health score calculated successfully' })
-  async getBusinessHealthScore(
-    @GetUser() user: User,
-    @Query() query: any,
-  ) {
+  @ApiResponse({
+    status: 200,
+    description: 'Business health score calculated successfully',
+  })
+  async getBusinessHealthScore(@GetUser() user: User, @Query() query: AnalyticsQuery) {
     try {
-      this.logger.log(`Getting business health score for organization: ${user.tenantId}`);
+      this.logger.log(
+        `Getting business health score for organization: ${user.tenantId}`
+      );
 
-      const result = await this.analyticsService.calculateBusinessHealthScore(user.tenantId, query);
+      const result = await this.analyticsService.calculateBusinessHealthScore(
+        user.tenantId,
+        query
+      );
 
-      this.logger.log(`Business health score retrieved successfully for organization: ${user.tenantId}`);
+      this.logger.log(
+        `Business health score retrieved successfully for organization: ${user.tenantId}`
+      );
       return result;
     } catch (error) {
-      this.logger.error(`Failed to get business health score: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get business health score: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -553,22 +698,33 @@ export class AnalyticsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Calculate financial ratios',
-    description: 'Calculate comprehensive financial ratios including liquidity, profitability, efficiency, and leverage ratios',
+    description:
+      'Calculate comprehensive financial ratios including liquidity, profitability, efficiency, and leverage ratios',
   })
-  @ApiResponse({ status: 200, description: 'Financial ratios calculated successfully' })
-  async getFinancialRatios(
-    @GetUser() user: User,
-    @Query() query: any,
-  ) {
+  @ApiResponse({
+    status: 200,
+    description: 'Financial ratios calculated successfully',
+  })
+  async getFinancialRatios(@GetUser() user: User, @Query() query: AnalyticsQuery) {
     try {
-      this.logger.log(`Getting financial ratios for organization: ${user.tenantId}`);
+      this.logger.log(
+        `Getting financial ratios for organization: ${user.tenantId}`
+      );
 
-      const result = await this.analyticsService.calculateFinancialRatios(user.tenantId, query);
+      const result = await this.analyticsService.calculateFinancialRatios(
+        user.tenantId,
+        query
+      );
 
-      this.logger.log(`Financial ratios retrieved successfully for organization: ${user.tenantId}`);
+      this.logger.log(
+        `Financial ratios retrieved successfully for organization: ${user.tenantId}`
+      );
       return result;
     } catch (error) {
-      this.logger.error(`Failed to get financial ratios: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get financial ratios: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -577,22 +733,33 @@ export class AnalyticsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Get health score components',
-    description: 'Get detailed health score components with metrics and insights for each category',
+    description:
+      'Get detailed health score components with metrics and insights for each category',
   })
-  @ApiResponse({ status: 200, description: 'Health score components retrieved successfully' })
-  async getHealthScoreComponents(
-    @GetUser() user: User,
-    @Query() query: any,
-  ) {
+  @ApiResponse({
+    status: 200,
+    description: 'Health score components retrieved successfully',
+  })
+  async getHealthScoreComponents(@GetUser() user: User, @Query() query: AnalyticsQuery) {
     try {
-      this.logger.log(`Getting health score components for organization: ${user.tenantId}`);
+      this.logger.log(
+        `Getting health score components for organization: ${user.tenantId}`
+      );
 
-      const result = await this.analyticsService.getHealthScoreComponents(user.tenantId, query);
+      const result = await this.analyticsService.getHealthScoreComponents(
+        user.tenantId,
+        query
+      );
 
-      this.logger.log(`Health score components retrieved successfully for organization: ${user.tenantId}`);
+      this.logger.log(
+        `Health score components retrieved successfully for organization: ${user.tenantId}`
+      );
       return result;
     } catch (error) {
-      this.logger.error(`Failed to get health score components: ${error.message}`, error);
+      this.logger.error(
+        `Failed to get health score components: ${error.message}`,
+        error
+      );
       throw error;
     }
   }

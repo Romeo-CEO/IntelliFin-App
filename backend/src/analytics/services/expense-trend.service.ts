@@ -42,7 +42,11 @@ export interface ExpenseAnomalyDetection {
     dormantCategories: string[];
   };
   alerts: Array<{
-    type: 'budget_exceeded' | 'unusual_pattern' | 'new_category' | 'dormant_category';
+    type:
+      | 'budget_exceeded'
+      | 'unusual_pattern'
+      | 'new_category'
+      | 'dormant_category';
     message: string;
     severity: 'info' | 'warning' | 'critical';
     actionRequired: boolean;
@@ -61,35 +65,47 @@ export class ExpenseTrendService {
   async analyzeExpenseTrends(
     organizationId: string,
     startDate: Date,
-    endDate: Date,
+    endDate: Date
   ): Promise<ExpenseTrendAnalysis> {
     try {
-      this.logger.log(`Analyzing expense trends for organization: ${organizationId}`);
+      this.logger.log(
+        `Analyzing expense trends for organization: ${organizationId}`
+      );
 
       // Get overall expense data
-      const overallData = await this.getOverallExpenseData(organizationId, startDate, endDate);
+      const overallData = await this.getOverallExpenseData(
+        organizationId,
+        startDate,
+        endDate
+      );
       const overall = this.analyzeTrend(overallData);
 
       // Get expense data by category
-      const categoryData = await this.getExpenseDataByCategory(organizationId, startDate, endDate);
+      const categoryData = await this.getExpenseDataByCategory(
+        organizationId,
+        startDate,
+        endDate
+      );
       const byCategory = await Promise.all(
-        categoryData.map(async (category) => {
+        categoryData.map(async category => {
           const categoryTimeSeries = await this.getCategoryTimeSeries(
             organizationId,
             category.category,
             startDate,
-            endDate,
+            endDate
           );
           const trend = this.analyzeTrend(categoryTimeSeries);
-          
+
           return {
             category: category.category,
             trend,
             totalAmount: category.totalAmount,
             percentageOfTotal: category.percentageOfTotal,
-            monthlyAverage: category.totalAmount / this.getMonthsDifference(startDate, endDate),
+            monthlyAverage:
+              category.totalAmount /
+              this.getMonthsDifference(startDate, endDate),
           };
-        }),
+        })
       );
 
       // Generate insights
@@ -98,7 +114,9 @@ export class ExpenseTrendService {
       // Generate forecast
       const forecast = this.generateExpenseForecast(overallData, overall);
 
-      this.logger.log(`Expense trend analysis completed for organization: ${organizationId}`);
+      this.logger.log(
+        `Expense trend analysis completed for organization: ${organizationId}`
+      );
 
       return {
         overall,
@@ -107,7 +125,10 @@ export class ExpenseTrendService {
         forecast,
       };
     } catch (error) {
-      this.logger.error(`Failed to analyze expense trends: ${error.message}`, error);
+      this.logger.error(
+        `Failed to analyze expense trends: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -118,16 +139,22 @@ export class ExpenseTrendService {
   async detectExpenseAnomalies(
     organizationId: string,
     startDate: Date,
-    endDate: Date,
+    endDate: Date
   ): Promise<ExpenseAnomalyDetection> {
     try {
-      this.logger.log(`Detecting expense anomalies for organization: ${organizationId}`);
+      this.logger.log(
+        `Detecting expense anomalies for organization: ${organizationId}`
+      );
 
       const anomalies: ExpenseAnomalyDetection['anomalies'] = [];
       const alerts: ExpenseAnomalyDetection['alerts'] = [];
 
       // Get expense data by category and month
-      const monthlyExpenses = await this.getMonthlyExpensesByCategory(organizationId, startDate, endDate);
+      const monthlyExpenses = await this.getMonthlyExpensesByCategory(
+        organizationId,
+        startDate,
+        endDate
+      );
 
       // Detect anomalies for each category
       for (const [category, data] of monthlyExpenses.entries()) {
@@ -149,7 +176,10 @@ export class ExpenseTrendService {
         alerts,
       };
     } catch (error) {
-      this.logger.error(`Failed to detect expense anomalies: ${error.message}`, error);
+      this.logger.error(
+        `Failed to detect expense anomalies: ${error.message}`,
+        error
+      );
       throw error;
     }
   }
@@ -160,7 +190,7 @@ export class ExpenseTrendService {
   private async getOverallExpenseData(
     organizationId: string,
     startDate: Date,
-    endDate: Date,
+    endDate: Date
   ): Promise<TimeSeriesDataPoint[]> {
     const expenseData = await this.prisma.expense.groupBy({
       by: ['expenseDate'],
@@ -175,7 +205,7 @@ export class ExpenseTrendService {
 
     // Group by month
     const monthlyData = new Map<string, number>();
-    
+
     expenseData.forEach(item => {
       const monthKey = this.getMonthKey(item.expenseDate);
       const existing = monthlyData.get(monthKey) || 0;
@@ -185,7 +215,7 @@ export class ExpenseTrendService {
     return Array.from(monthlyData.entries()).map(([period, value]) => ({
       period,
       value,
-      date: new Date(period + '-01'),
+      date: new Date(`${period  }-01`),
     }));
   }
 
@@ -195,8 +225,10 @@ export class ExpenseTrendService {
   private async getExpenseDataByCategory(
     organizationId: string,
     startDate: Date,
-    endDate: Date,
-  ): Promise<Array<{ category: string; totalAmount: number; percentageOfTotal: number }>> {
+    endDate: Date
+  ): Promise<
+    Array<{ category: string; totalAmount: number; percentageOfTotal: number }>
+  > {
     const categoryData = await this.prisma.expense.groupBy({
       by: ['category'],
       where: {
@@ -208,12 +240,18 @@ export class ExpenseTrendService {
       _count: { id: true },
     });
 
-    const totalAmount = categoryData.reduce((sum, item) => sum + (item._sum.amount?.toNumber() || 0), 0);
+    const totalAmount = categoryData.reduce(
+      (sum, item) => sum + (item._sum.amount?.toNumber() || 0),
+      0
+    );
 
     return categoryData.map(item => ({
       category: item.category,
       totalAmount: item._sum.amount?.toNumber() || 0,
-      percentageOfTotal: totalAmount > 0 ? ((item._sum.amount?.toNumber() || 0) / totalAmount) * 100 : 0,
+      percentageOfTotal:
+        totalAmount > 0
+          ? ((item._sum.amount?.toNumber() || 0) / totalAmount) * 100
+          : 0,
     }));
   }
 
@@ -224,7 +262,7 @@ export class ExpenseTrendService {
     organizationId: string,
     category: string,
     startDate: Date,
-    endDate: Date,
+    endDate: Date
   ): Promise<TimeSeriesDataPoint[]> {
     const expenseData = await this.prisma.expense.groupBy({
       by: ['expenseDate'],
@@ -240,7 +278,7 @@ export class ExpenseTrendService {
 
     // Group by month
     const monthlyData = new Map<string, number>();
-    
+
     expenseData.forEach(item => {
       const monthKey = this.getMonthKey(item.expenseDate);
       const existing = monthlyData.get(monthKey) || 0;
@@ -250,7 +288,7 @@ export class ExpenseTrendService {
     return Array.from(monthlyData.entries()).map(([period, value]) => ({
       period,
       value,
-      date: new Date(period + '-01'),
+      date: new Date(`${period  }-01`),
     }));
   }
 
@@ -269,7 +307,7 @@ export class ExpenseTrendService {
 
     // Calculate linear trend
     const { slope, r2 } = this.calculateLinearRegression(data);
-    
+
     // Determine trend direction and strength
     let trend: 'increasing' | 'decreasing' | 'stable' = 'stable';
     if (Math.abs(slope) > 0.1) {
@@ -295,15 +333,18 @@ export class ExpenseTrendService {
    */
   private generateInsights(
     byCategory: ExpenseTrendAnalysis['byCategory'],
-    overall: TrendAnalysis,
+    overall: TrendAnalysis
   ): ExpenseTrendAnalysis['insights'] {
     // Find fastest growing category
-    const fastestGrowingCategory = byCategory.reduce((max, current) => 
-      current.trend.strength > max.trend.strength && current.trend.trend === 'increasing' ? current : max
+    const fastestGrowingCategory = byCategory.reduce((max, current) =>
+      current.trend.strength > max.trend.strength &&
+      current.trend.trend === 'increasing'
+        ? current
+        : max
     ).category;
 
     // Find largest category
-    const largestCategory = byCategory.reduce((max, current) => 
+    const largestCategory = byCategory.reduce((max, current) =>
       current.totalAmount > max.totalAmount ? current : max
     ).category;
 
@@ -319,25 +360,33 @@ export class ExpenseTrendService {
 
     // Generate recommendations
     const recommendations: string[] = [];
-    
+
     if (overall.trend === 'increasing' && overall.strength > 0.5) {
-      recommendations.push('Expense growth is accelerating - review budget allocations');
+      recommendations.push(
+        'Expense growth is accelerating - review budget allocations'
+      );
     }
-    
+
     if (volatileCategories.length > 0) {
-      recommendations.push(`Monitor volatile categories: ${volatileCategories.join(', ')}`);
+      recommendations.push(
+        `Monitor volatile categories: ${volatileCategories.join(', ')}`
+      );
     }
-    
+
     if (seasonalCategories.length > 0) {
       recommendations.push('Plan for seasonal expense variations in budget');
     }
-    
+
     if (overall.anomalies.length > 2) {
-      recommendations.push('Implement expense approval controls to reduce volatility');
+      recommendations.push(
+        'Implement expense approval controls to reduce volatility'
+      );
     }
 
     if (recommendations.length === 0) {
-      recommendations.push('Expense patterns are stable - maintain current controls');
+      recommendations.push(
+        'Expense patterns are stable - maintain current controls'
+      );
     }
 
     return {
@@ -354,7 +403,7 @@ export class ExpenseTrendService {
    */
   private generateExpenseForecast(
     data: TimeSeriesDataPoint[],
-    trend: TrendAnalysis,
+    trend: TrendAnalysis
   ): ExpenseTrendAnalysis['forecast'] {
     if (data.length === 0) {
       return { nextMonth: 0, nextQuarter: 0, confidence: 0 };
@@ -386,7 +435,7 @@ export class ExpenseTrendService {
   private async getMonthlyExpensesByCategory(
     organizationId: string,
     startDate: Date,
-    endDate: Date,
+    endDate: Date
   ): Promise<Map<string, TimeSeriesDataPoint[]>> {
     const expenses = await this.prisma.expense.findMany({
       where: {
@@ -419,13 +468,15 @@ export class ExpenseTrendService {
 
     // Convert to TimeSeriesDataPoint format
     const result = new Map<string, TimeSeriesDataPoint[]>();
-    
+
     categoryMap.forEach((monthlyData, category) => {
-      const timeSeries = Array.from(monthlyData.entries()).map(([period, value]) => ({
-        period,
-        value,
-        date: new Date(period + '-01'),
-      }));
+      const timeSeries = Array.from(monthlyData.entries()).map(
+        ([period, value]) => ({
+          period,
+          value,
+          date: new Date(`${period  }-01`),
+        })
+      );
       result.set(category, timeSeries);
     });
 
@@ -437,19 +488,21 @@ export class ExpenseTrendService {
    */
   private detectCategoryAnomalies(
     category: string,
-    data: TimeSeriesDataPoint[],
+    data: TimeSeriesDataPoint[]
   ): ExpenseAnomalyDetection['anomalies'] {
     if (data.length < 3) return [];
 
     const anomalies: ExpenseAnomalyDetection['anomalies'] = [];
-    const mean = data.reduce((sum, point) => sum + point.value, 0) / data.length;
+    const mean =
+      data.reduce((sum, point) => sum + point.value, 0) / data.length;
     const stdDev = Math.sqrt(
-      data.reduce((sum, point) => sum + Math.pow(point.value - mean, 2), 0) / data.length
+      data.reduce((sum, point) => sum + Math.pow(point.value - mean, 2), 0) /
+        data.length
     );
 
     data.forEach(point => {
       const zScore = Math.abs(point.value - mean) / stdDev;
-      
+
       if (zScore > 2) {
         const deviation = ((point.value - mean) / mean) * 100;
         anomalies.push({
@@ -471,7 +524,7 @@ export class ExpenseTrendService {
    * Detect expense patterns
    */
   private detectExpensePatterns(
-    monthlyExpenses: Map<string, TimeSeriesDataPoint[]>,
+    monthlyExpenses: Map<string, TimeSeriesDataPoint[]>
   ): ExpenseAnomalyDetection['patterns'] {
     let unusualSpikes = 0;
     let unusualDips = 0;
@@ -482,7 +535,8 @@ export class ExpenseTrendService {
       if (data.length === 0) return;
 
       // Check for spikes and dips
-      const mean = data.reduce((sum, point) => sum + point.value, 0) / data.length;
+      const mean =
+        data.reduce((sum, point) => sum + point.value, 0) / data.length;
       data.forEach(point => {
         const deviation = (point.value - mean) / mean;
         if (deviation > 0.5) unusualSpikes++;
@@ -491,10 +545,12 @@ export class ExpenseTrendService {
 
       // Check for new categories (only recent data)
       const recentData = data.filter(point => {
-        const monthsAgo = (new Date().getTime() - point.date.getTime()) / (1000 * 60 * 60 * 24 * 30);
+        const monthsAgo =
+          (new Date().getTime() - point.date.getTime()) /
+          (1000 * 60 * 60 * 24 * 30);
         return monthsAgo <= 3;
       });
-      
+
       if (recentData.length > 0 && data.length <= 3) {
         newCategories.push(category);
       }
@@ -518,7 +574,7 @@ export class ExpenseTrendService {
    */
   private generateAnomalyAlerts(
     anomalies: ExpenseAnomalyDetection['anomalies'],
-    patterns: ExpenseAnomalyDetection['patterns'],
+    patterns: ExpenseAnomalyDetection['patterns']
   ): ExpenseAnomalyDetection['alerts'] {
     const alerts: ExpenseAnomalyDetection['alerts'] = [];
 
@@ -574,12 +630,17 @@ export class ExpenseTrendService {
   }
 
   private getMonthsDifference(startDate: Date, endDate: Date): number {
-    const months = (endDate.getFullYear() - startDate.getFullYear()) * 12 + 
-                   (endDate.getMonth() - startDate.getMonth());
+    const months =
+      (endDate.getFullYear() - startDate.getFullYear()) * 12 +
+      (endDate.getMonth() - startDate.getMonth());
     return Math.max(1, months);
   }
 
-  private calculateLinearRegression(data: TimeSeriesDataPoint[]): { slope: number; intercept: number; r2: number } {
+  private calculateLinearRegression(data: TimeSeriesDataPoint[]): {
+    slope: number;
+    intercept: number;
+    r2: number;
+  } {
     const n = data.length;
     const sumX = data.reduce((sum, _, i) => sum + i, 0);
     const sumY = data.reduce((sum, point) => sum + point.value, 0);
@@ -591,17 +652,22 @@ export class ExpenseTrendService {
 
     // Calculate R-squared
     const meanY = sumY / n;
-    const ssTotal = data.reduce((sum, point) => sum + Math.pow(point.value - meanY, 2), 0);
+    const ssTotal = data.reduce(
+      (sum, point) => sum + Math.pow(point.value - meanY, 2),
+      0
+    );
     const ssResidual = data.reduce((sum, point, i) => {
       const predicted = intercept + slope * i;
       return sum + Math.pow(point.value - predicted, 2);
     }, 0);
-    const r2 = 1 - (ssResidual / ssTotal);
+    const r2 = 1 - ssResidual / ssTotal;
 
     return { slope, intercept, r2 };
   }
 
-  private detectSeasonality(data: TimeSeriesDataPoint[]): TrendAnalysis['seasonality'] {
+  private detectSeasonality(
+    data: TimeSeriesDataPoint[]
+  ): TrendAnalysis['seasonality'] {
     if (data.length < 12) {
       return { detected: false };
     }
@@ -623,7 +689,9 @@ export class ExpenseTrendService {
     }
 
     const mean = monthlyAverages.reduce((sum, val) => sum + val, 0) / 12;
-    const variance = monthlyAverages.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / 12;
+    const variance =
+      monthlyAverages.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) /
+      12;
     const coefficientOfVariation = Math.sqrt(variance) / mean;
 
     const detected = coefficientOfVariation > 0.2;
@@ -635,18 +703,22 @@ export class ExpenseTrendService {
     };
   }
 
-  private detectAnomalies(data: TimeSeriesDataPoint[]): TrendAnalysis['anomalies'] {
+  private detectAnomalies(
+    data: TimeSeriesDataPoint[]
+  ): TrendAnalysis['anomalies'] {
     if (data.length < 3) return [];
 
     const anomalies: TrendAnalysis['anomalies'] = [];
-    const mean = data.reduce((sum, point) => sum + point.value, 0) / data.length;
+    const mean =
+      data.reduce((sum, point) => sum + point.value, 0) / data.length;
     const stdDev = Math.sqrt(
-      data.reduce((sum, point) => sum + Math.pow(point.value - mean, 2), 0) / data.length
+      data.reduce((sum, point) => sum + Math.pow(point.value - mean, 2), 0) /
+        data.length
     );
 
     data.forEach(point => {
       const zScore = Math.abs(point.value - mean) / stdDev;
-      
+
       if (zScore > 2.5) {
         anomalies.push({
           period: point.period,

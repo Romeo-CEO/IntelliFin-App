@@ -132,7 +132,9 @@ describe('WidgetDataService', () => {
     it('should throw NotFoundException when widget not found', async () => {
       widgetRepository.findById.mockResolvedValue(null);
 
-      await expect(service.getWidgetData(mockWidgetId, mockOrganizationId)).rejects.toThrow(NotFoundException);
+      await expect(
+        service.getWidgetData(mockWidgetId, mockOrganizationId)
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should throw NotFoundException when organization mismatch', async () => {
@@ -143,7 +145,9 @@ describe('WidgetDataService', () => {
 
       widgetRepository.findById.mockResolvedValue(widgetWithDifferentOrg);
 
-      await expect(service.getWidgetData(mockWidgetId, mockOrganizationId)).rejects.toThrow(NotFoundException);
+      await expect(
+        service.getWidgetData(mockWidgetId, mockOrganizationId)
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should return cached data when available and not force refresh', async () => {
@@ -152,10 +156,16 @@ describe('WidgetDataService', () => {
       widgetRepository.findById.mockResolvedValue(mockWidget);
       cacheService.get.mockResolvedValue(cachedData);
 
-      const result = await service.getWidgetData(mockWidgetId, mockOrganizationId, false);
+      const result = await service.getWidgetData(
+        mockWidgetId,
+        mockOrganizationId,
+        false
+      );
 
       expect(result).toEqual(cachedData);
-      expect(cacheService.get).toHaveBeenCalledWith(`widget_data_${mockWidgetId}`);
+      expect(cacheService.get).toHaveBeenCalledWith(
+        `widget_data_${mockWidgetId}`
+      );
     });
 
     it('should generate new data when cache is empty', async () => {
@@ -168,12 +178,19 @@ describe('WidgetDataService', () => {
       cacheService.get.mockResolvedValue(null);
       baseAnalyticsService.getTotalRevenue.mockResolvedValue(mockRevenueData);
 
-      const result = await service.getWidgetData(mockWidgetId, mockOrganizationId);
+      const result = await service.getWidgetData(
+        mockWidgetId,
+        mockOrganizationId
+      );
 
       expect(result).toHaveProperty('value', 100000);
       expect(result).toHaveProperty('trend', 15);
       expect(result).toHaveProperty('currency', 'ZMW');
-      expect(cacheService.set).toHaveBeenCalledWith(`widget_data_${mockWidgetId}`, expect.any(Object), 300);
+      expect(cacheService.set).toHaveBeenCalledWith(
+        `widget_data_${mockWidgetId}`,
+        expect.any(Object),
+        300
+      );
     });
 
     it('should force refresh when requested', async () => {
@@ -184,7 +201,11 @@ describe('WidgetDataService', () => {
       cacheService.get.mockResolvedValue(cachedData);
       baseAnalyticsService.getTotalRevenue.mockResolvedValue(newData);
 
-      const result = await service.getWidgetData(mockWidgetId, mockOrganizationId, true);
+      const result = await service.getWidgetData(
+        mockWidgetId,
+        mockOrganizationId,
+        true
+      );
 
       expect(result).toHaveProperty('value', 100000);
       expect(result).toHaveProperty('trend', 15);
@@ -206,7 +227,10 @@ describe('WidgetDataService', () => {
         configuration: { metric: 'total_revenue', period: 'month' },
       };
 
-      const result = await service['generateWidgetData'](widget, mockOrganizationId);
+      const result = await service['generateWidgetData'](
+        widget,
+        mockOrganizationId
+      );
 
       expect(result).toEqual({
         value: 100000,
@@ -230,7 +254,10 @@ describe('WidgetDataService', () => {
         configuration: { metric: 'total_expenses', period: 'month' },
       };
 
-      const result = await service['generateWidgetData'](widget, mockOrganizationId);
+      const result = await service['generateWidgetData'](
+        widget,
+        mockOrganizationId
+      );
 
       expect(result).toEqual({
         value: 60000,
@@ -252,7 +279,10 @@ describe('WidgetDataService', () => {
         configuration: { metric: 'customer_count', period: 'month' },
       };
 
-      const result = await service['generateWidgetData'](widget, mockOrganizationId);
+      const result = await service['generateWidgetData'](
+        widget,
+        mockOrganizationId
+      );
 
       expect(result).toEqual({
         value: 150,
@@ -267,10 +297,12 @@ describe('WidgetDataService', () => {
     it('should generate revenue chart data', async () => {
       const mockChartData = {
         labels: ['Jan', 'Feb', 'Mar'],
-        datasets: [{
-          label: 'Revenue',
-          data: [80000, 90000, 100000],
-        }],
+        datasets: [
+          {
+            label: 'Revenue',
+            data: [80000, 90000, 100000],
+          },
+        ],
       };
 
       analyticsService.getRevenueChartData.mockResolvedValue(mockChartData);
@@ -278,10 +310,17 @@ describe('WidgetDataService', () => {
       const widget = {
         ...mockWidget,
         widgetType: WidgetType.CHART,
-        configuration: { chartType: 'line', dataType: 'revenue', period: 'last_6_months' },
+        configuration: {
+          chartType: 'line',
+          dataType: 'revenue',
+          period: 'last_6_months',
+        },
       };
 
-      const result = await service['generateWidgetData'](widget, mockOrganizationId);
+      const result = await service['generateWidgetData'](
+        widget,
+        mockOrganizationId
+      );
 
       expect(result).toEqual(mockChartData);
       expect(analyticsService.getRevenueChartData).toHaveBeenCalledWith(
@@ -294,10 +333,12 @@ describe('WidgetDataService', () => {
     it('should generate expense chart data', async () => {
       const mockChartData = {
         labels: ['Jan', 'Feb', 'Mar'],
-        datasets: [{
-          label: 'Expenses',
-          data: [50000, 55000, 60000],
-        }],
+        datasets: [
+          {
+            label: 'Expenses',
+            data: [50000, 55000, 60000],
+          },
+        ],
       };
 
       expenseTrendService.getExpenseChartData.mockResolvedValue(mockChartData);
@@ -305,10 +346,17 @@ describe('WidgetDataService', () => {
       const widget = {
         ...mockWidget,
         widgetType: WidgetType.CHART,
-        configuration: { chartType: 'bar', dataType: 'expenses', period: 'last_6_months' },
+        configuration: {
+          chartType: 'bar',
+          dataType: 'expenses',
+          period: 'last_6_months',
+        },
       };
 
-      const result = await service['generateWidgetData'](widget, mockOrganizationId);
+      const result = await service['generateWidgetData'](
+        widget,
+        mockOrganizationId
+      );
 
       expect(result).toEqual(mockChartData);
       expect(expenseTrendService.getExpenseChartData).toHaveBeenCalledWith(
@@ -339,7 +387,10 @@ describe('WidgetDataService', () => {
         configuration: { period: 'last_30_days' },
       };
 
-      const result = await service['generateWidgetData'](widget, mockOrganizationId);
+      const result = await service['generateWidgetData'](
+        widget,
+        mockOrganizationId
+      );
 
       expect(result).toEqual(mockCashFlowData);
       expect(analyticsService.getCashFlowAnalysis).toHaveBeenCalledWith(
@@ -364,10 +415,15 @@ describe('WidgetDataService', () => {
       const widget = {
         ...mockWidget,
         widgetType: WidgetType.KPI_SUMMARY,
-        configuration: { metrics: ['revenue', 'expenses', 'profit', 'customers'] },
+        configuration: {
+          metrics: ['revenue', 'expenses', 'profit', 'customers'],
+        },
       };
 
-      const result = await service['generateWidgetData'](widget, mockOrganizationId);
+      const result = await service['generateWidgetData'](
+        widget,
+        mockOrganizationId
+      );
 
       expect(result).toEqual(mockKpiData);
       expect(baseAnalyticsService.getKpiSummary).toHaveBeenCalledWith(
@@ -380,8 +436,18 @@ describe('WidgetDataService', () => {
   describe('generateWidgetData - TABLE', () => {
     it('should generate recent invoices table data', async () => {
       const mockInvoices = [
-        { id: 'inv-1', customerName: 'Customer A', amount: 5000, status: 'paid' },
-        { id: 'inv-2', customerName: 'Customer B', amount: 3000, status: 'pending' },
+        {
+          id: 'inv-1',
+          customerName: 'Customer A',
+          amount: 5000,
+          status: 'paid',
+        },
+        {
+          id: 'inv-2',
+          customerName: 'Customer B',
+          amount: 3000,
+          status: 'pending',
+        },
       ];
 
       const invoiceService = module.get(InvoiceService);
@@ -393,10 +459,16 @@ describe('WidgetDataService', () => {
         configuration: { tableType: 'recent_invoices', limit: 10 },
       };
 
-      const result = await service['generateWidgetData'](widget, mockOrganizationId);
+      const result = await service['generateWidgetData'](
+        widget,
+        mockOrganizationId
+      );
 
       expect(result).toEqual(mockInvoices);
-      expect(invoiceService.getRecentInvoices).toHaveBeenCalledWith(mockOrganizationId, 10);
+      expect(invoiceService.getRecentInvoices).toHaveBeenCalledWith(
+        mockOrganizationId,
+        10
+      );
     });
 
     it('should generate top customers table data', async () => {
@@ -414,10 +486,16 @@ describe('WidgetDataService', () => {
         configuration: { tableType: 'top_customers', limit: 5 },
       };
 
-      const result = await service['generateWidgetData'](widget, mockOrganizationId);
+      const result = await service['generateWidgetData'](
+        widget,
+        mockOrganizationId
+      );
 
       expect(result).toEqual(mockCustomers);
-      expect(customerService.getTopCustomers).toHaveBeenCalledWith(mockOrganizationId, 5);
+      expect(customerService.getTopCustomers).toHaveBeenCalledWith(
+        mockOrganizationId,
+        5
+      );
     });
   });
 
@@ -428,8 +506,9 @@ describe('WidgetDataService', () => {
         widgetType: 'UNSUPPORTED_TYPE' as WidgetType,
       };
 
-      await expect(service['generateWidgetData'](widget, mockOrganizationId))
-        .rejects.toThrow('Unsupported widget type: UNSUPPORTED_TYPE');
+      await expect(
+        service['generateWidgetData'](widget, mockOrganizationId)
+      ).rejects.toThrow('Unsupported widget type: UNSUPPORTED_TYPE');
     });
 
     it('should throw error for unsupported metric type', async () => {
@@ -438,17 +517,21 @@ describe('WidgetDataService', () => {
         configuration: { metric: 'unsupported_metric', period: 'month' },
       };
 
-      await expect(service['generateWidgetData'](widget, mockOrganizationId))
-        .rejects.toThrow('Unsupported metric: unsupported_metric');
+      await expect(
+        service['generateWidgetData'](widget, mockOrganizationId)
+      ).rejects.toThrow('Unsupported metric: unsupported_metric');
     });
 
     it('should handle analytics service errors', async () => {
       widgetRepository.findById.mockResolvedValue(mockWidget);
       cacheService.get.mockResolvedValue(null);
-      baseAnalyticsService.getTotalRevenue.mockRejectedValue(new Error('Analytics service error'));
+      baseAnalyticsService.getTotalRevenue.mockRejectedValue(
+        new Error('Analytics service error')
+      );
 
-      await expect(service.getWidgetData(mockWidgetId, mockOrganizationId))
-        .rejects.toThrow('Analytics service error');
+      await expect(
+        service.getWidgetData(mockWidgetId, mockOrganizationId)
+      ).rejects.toThrow('Analytics service error');
     });
   });
 });

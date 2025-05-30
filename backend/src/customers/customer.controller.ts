@@ -1,31 +1,31 @@
 import {
+  BadRequestException,
+  Body,
   Controller,
+  Delete,
   Get,
+  Header,
+  HttpStatus,
+  Param,
+  ParseUUIDPipe,
   Post,
   Put,
-  Delete,
-  Body,
-  Param,
   Query,
-  UseGuards,
-  ValidationPipe,
-  ParseUUIDPipe,
-  HttpStatus,
-  UploadedFile,
-  UseInterceptors,
   Res,
-  Header,
-  BadRequestException,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+  ValidationPipe,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiParam,
-  ApiQuery,
   ApiBearerAuth,
   ApiBody,
   ApiConsumes,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
 } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
@@ -37,11 +37,11 @@ import { CustomerService } from './customer.service';
 import { CustomerImportExportService } from './customer-import-export.service';
 import {
   CreateCustomerDto,
-  UpdateCustomerDto,
+  CustomerListResponseDto,
   CustomerQueryDto,
   CustomerResponseDto,
-  CustomerListResponseDto,
   CustomerStatsDto,
+  UpdateCustomerDto,
 } from './dto/customer.dto';
 
 @ApiTags('Customers')
@@ -51,7 +51,7 @@ import {
 export class CustomerController {
   constructor(
     private readonly customerService: CustomerService,
-    private readonly customerImportExportService: CustomerImportExportService,
+    private readonly customerImportExportService: CustomerImportExportService
   ) {}
 
   @Post()
@@ -76,9 +76,12 @@ export class CustomerController {
   })
   async createCustomer(
     @CurrentUser() user: AuthenticatedUser,
-    @Body(ValidationPipe) createCustomerDto: CreateCustomerDto,
+    @Body(ValidationPipe) createCustomerDto: CreateCustomerDto
   ) {
-    return await this.customerService.createCustomer(user.organizationId, createCustomerDto);
+    return await this.customerService.createCustomer(
+      user.organizationId,
+      createCustomerDto
+    );
   }
 
   @Get()
@@ -95,7 +98,7 @@ export class CustomerController {
   })
   async getCustomers(
     @CurrentUser() user: AuthenticatedUser,
-    @Query(ValidationPipe) query: CustomerQueryDto,
+    @Query(ValidationPipe) query: CustomerQueryDto
   ) {
     return await this.customerService.getCustomers(user.organizationId, query);
   }
@@ -119,7 +122,8 @@ export class CustomerController {
   @Throttle({ default: { limit: 50, ttl: 60000 } }) // 50 requests per minute
   @ApiOperation({
     summary: 'Search customers',
-    description: 'Search customers by name, email, or phone for quick selection',
+    description:
+      'Search customers by name, email, or phone for quick selection',
   })
   @ApiQuery({
     name: 'q',
@@ -142,12 +146,12 @@ export class CustomerController {
   async searchCustomers(
     @CurrentUser() user: AuthenticatedUser,
     @Query('q') searchTerm: string,
-    @Query('limit') limit?: number,
+    @Query('limit') limit?: number
   ) {
     return await this.customerService.searchCustomers(
       user.organizationId,
       searchTerm,
-      limit ? parseInt(limit.toString()) : 10,
+      limit ? parseInt(limit.toString()) : 10
     );
   }
 
@@ -162,7 +166,9 @@ export class CustomerController {
     description: 'Customer options retrieved successfully',
   })
   async getCustomersForSelect(@CurrentUser() user: AuthenticatedUser) {
-    return await this.customerService.getCustomersForSelect(user.organizationId);
+    return await this.customerService.getCustomersForSelect(
+      user.organizationId
+    );
   }
 
   @Get(':id')
@@ -179,7 +185,8 @@ export class CustomerController {
   })
   @ApiQuery({
     name: 'includeStats',
-    description: 'Include customer statistics (invoice count, payment count, etc.)',
+    description:
+      'Include customer statistics (invoice count, payment count, etc.)',
     required: false,
     type: Boolean,
     example: false,
@@ -196,10 +203,13 @@ export class CustomerController {
   async getCustomerById(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,
-    @Query('includeStats') includeStats?: boolean,
+    @Query('includeStats') includeStats?: boolean
   ) {
     if (includeStats) {
-      return await this.customerService.getCustomerByIdWithStats(id, user.organizationId);
+      return await this.customerService.getCustomerByIdWithStats(
+        id,
+        user.organizationId
+      );
     }
     return await this.customerService.getCustomerById(id, user.organizationId);
   }
@@ -237,9 +247,13 @@ export class CustomerController {
   async updateCustomer(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,
-    @Body(ValidationPipe) updateCustomerDto: UpdateCustomerDto,
+    @Body(ValidationPipe) updateCustomerDto: UpdateCustomerDto
   ) {
-    return await this.customerService.updateCustomer(id, user.organizationId, updateCustomerDto);
+    return await this.customerService.updateCustomer(
+      id,
+      user.organizationId,
+      updateCustomerDto
+    );
   }
 
   @Delete(':id')
@@ -268,7 +282,7 @@ export class CustomerController {
   })
   async deleteCustomer(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ParseUUIDPipe) id: string
   ) {
     await this.customerService.deleteCustomer(id, user.organizationId);
     return { message: 'Customer deleted successfully' };
@@ -316,7 +330,7 @@ export class CustomerController {
     @CurrentUser() user: AuthenticatedUser,
     @UploadedFile() file: Express.Multer.File,
     @Body('skipDuplicates') skipDuplicates?: boolean,
-    @Body('updateExisting') updateExisting?: boolean,
+    @Body('updateExisting') updateExisting?: boolean
   ) {
     if (!file) {
       throw new BadRequestException('CSV file is required');
@@ -330,7 +344,7 @@ export class CustomerController {
     return await this.customerImportExportService.importCustomersFromCsv(
       user.organizationId,
       csvData,
-      { skipDuplicates, updateExisting },
+      { skipDuplicates, updateExisting }
     );
   }
 
@@ -359,18 +373,21 @@ export class CustomerController {
       },
       'Content-Disposition': {
         description: 'Attachment filename',
-        schema: { type: 'string', example: 'attachment; filename="customers.csv"' },
+        schema: {
+          type: 'string',
+          example: 'attachment; filename="customers.csv"',
+        },
       },
     },
   })
   async exportCustomersCsv(
     @CurrentUser() user: AuthenticatedUser,
     @Query('includeInactive') includeInactive?: boolean,
-    @Res() res: Response,
+    @Res() res: Response
   ) {
     const csvData = await this.customerImportExportService.exportCustomersToCsv(
       user.organizationId,
-      { format: 'csv', includeInactive },
+      { format: 'csv', includeInactive }
     );
 
     const filename = `customers_${new Date().toISOString().split('T')[0]}.csv`;
@@ -397,18 +414,21 @@ export class CustomerController {
   })
   async exportCustomersJson(
     @CurrentUser() user: AuthenticatedUser,
-    @Query('includeInactive') includeInactive?: boolean,
+    @Query('includeInactive') includeInactive?: boolean
   ) {
     return await this.customerImportExportService.exportCustomersToJson(
       user.organizationId,
-      { format: 'json', includeInactive },
+      { format: 'json', includeInactive }
     );
   }
 
   @Get('import/template')
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 requests per minute
   @Header('Content-Type', 'text/csv')
-  @Header('Content-Disposition', 'attachment; filename="customer_import_template.csv"')
+  @Header(
+    'Content-Disposition',
+    'attachment; filename="customer_import_template.csv"'
+  )
   @ApiOperation({
     summary: 'Download CSV import template',
     description: 'Download a CSV template for importing customers',
@@ -423,13 +443,19 @@ export class CustomerController {
       },
       'Content-Disposition': {
         description: 'Attachment filename',
-        schema: { type: 'string', example: 'attachment; filename="customer_import_template.csv"' },
+        schema: {
+          type: 'string',
+          example: 'attachment; filename="customer_import_template.csv"',
+        },
       },
     },
   })
   async downloadImportTemplate(@Res() res: Response) {
     const template = this.customerImportExportService.generateImportTemplate();
-    res.setHeader('Content-Disposition', 'attachment; filename="customer_import_template.csv"');
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename="customer_import_template.csv"'
+    );
     res.send(template);
   }
 }

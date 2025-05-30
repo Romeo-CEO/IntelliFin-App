@@ -1,8 +1,9 @@
-import React from 'react';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import React from 'react';
+
 import '@testing-library/jest-dom';
-import { EnhancedAnalyticsWidget } from '../EnhancedAnalyticsWidget';
 import { analyticsService } from '../../../../services/analytics.service';
+import { EnhancedAnalyticsWidget } from '../EnhancedAnalyticsWidget';
 
 // Mock the analytics service
 jest.mock('../../../../services/analytics.service', () => ({

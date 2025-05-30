@@ -1,26 +1,32 @@
 import {
+  Body,
   Controller,
   Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseIntPipe,
+  ParseUUIDPipe,
   Post,
   Put,
-  Body,
-  Param,
   Query,
-  UseGuards,
   Request,
-  HttpStatus,
-  HttpCode,
-  ParseUUIDPipe,
-  ParseIntPipe,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { 
-  TaxAdjustmentService, 
+import {
+  AdjustmentWorkflowAction,
   CreateTaxAdjustmentDto,
-  AdjustmentWorkflowAction 
+  TaxAdjustmentService,
 } from '../services/tax-adjustment.service';
-import { TaxAdjustmentType, TaxAdjustmentStatus } from '@prisma/client';
+import { TaxAdjustmentStatus, TaxAdjustmentType } from '@prisma/client';
 
 @ApiTags('Tax Adjustments')
 @ApiBearerAuth()
@@ -32,12 +38,16 @@ export class TaxAdjustmentController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create tax adjustment request' })
-  @ApiResponse({ status: 201, description: 'Adjustment request created successfully' })
+  @ApiResponse({
+    status: 201,
+    description: 'Adjustment request created successfully',
+  })
   @ApiResponse({ status: 400, description: 'Invalid request data' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async createAdjustment(
     @Request() req: any,
-    @Body() createDto: Omit<CreateTaxAdjustmentDto, 'organizationId' | 'requestedBy'>,
+    @Body()
+    createDto: Omit<CreateTaxAdjustmentDto, 'organizationId' | 'requestedBy'>
   ) {
     try {
       const dto: CreateTaxAdjustmentDto = {
@@ -65,18 +75,25 @@ export class TaxAdjustmentController {
   @Get()
   @ApiOperation({ summary: 'Get tax adjustments' })
   @ApiQuery({ name: 'taxPeriodId', required: false, type: String })
-  @ApiQuery({ name: 'adjustmentType', required: false, enum: TaxAdjustmentType })
+  @ApiQuery({
+    name: 'adjustmentType',
+    required: false,
+    enum: TaxAdjustmentType,
+  })
   @ApiQuery({ name: 'status', required: false, enum: TaxAdjustmentStatus })
   @ApiQuery({ name: 'year', required: false, type: Number })
   @ApiQuery({ name: 'requestedBy', required: false, type: String })
-  @ApiResponse({ status: 200, description: 'Adjustments retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Adjustments retrieved successfully',
+  })
   async getAdjustments(
     @Request() req: any,
     @Query('taxPeriodId') taxPeriodId?: string,
     @Query('adjustmentType') adjustmentType?: TaxAdjustmentType,
     @Query('status') status?: TaxAdjustmentStatus,
     @Query('year', new ParseIntPipe({ optional: true })) year?: number,
-    @Query('requestedBy') requestedBy?: string,
+    @Query('requestedBy') requestedBy?: string
   ) {
     try {
       const filters = {
@@ -89,7 +106,7 @@ export class TaxAdjustmentController {
 
       const adjustments = await this.taxAdjustmentService.getAdjustments(
         req.user.organizationId,
-        filters,
+        filters
       );
 
       return {
@@ -113,7 +130,7 @@ export class TaxAdjustmentController {
   async approveAdjustment(
     @Request() req: any,
     @Param('id', ParseUUIDPipe) adjustmentId: string,
-    @Body() body: { comments?: string },
+    @Body() body: { comments?: string }
   ) {
     try {
       const action: AdjustmentWorkflowAction = {
@@ -125,7 +142,7 @@ export class TaxAdjustmentController {
 
       const adjustment = await this.taxAdjustmentService.processWorkflowAction(
         req.user.organizationId,
-        action,
+        action
       );
 
       return {
@@ -149,7 +166,7 @@ export class TaxAdjustmentController {
   async rejectAdjustment(
     @Request() req: any,
     @Param('id', ParseUUIDPipe) adjustmentId: string,
-    @Body() body: { comments: string },
+    @Body() body: { comments: string }
   ) {
     try {
       const action: AdjustmentWorkflowAction = {
@@ -161,7 +178,7 @@ export class TaxAdjustmentController {
 
       const adjustment = await this.taxAdjustmentService.processWorkflowAction(
         req.user.organizationId,
-        action,
+        action
       );
 
       return {
@@ -180,16 +197,19 @@ export class TaxAdjustmentController {
 
   @Put(':id/submit')
   @ApiOperation({ summary: 'Submit approved adjustment to ZRA' })
-  @ApiResponse({ status: 200, description: 'Adjustment submitted successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Adjustment submitted successfully',
+  })
   @ApiResponse({ status: 404, description: 'Adjustment not found' })
   async submitToZRA(
     @Request() req: any,
-    @Param('id', ParseUUIDPipe) adjustmentId: string,
+    @Param('id', ParseUUIDPipe) adjustmentId: string
   ) {
     try {
       const adjustment = await this.taxAdjustmentService.submitToZRA(
         req.user.organizationId,
-        adjustmentId,
+        adjustmentId
       );
 
       return {
@@ -208,12 +228,16 @@ export class TaxAdjustmentController {
 
   @Get('pending-approvals')
   @ApiOperation({ summary: 'Get pending adjustments requiring approval' })
-  @ApiResponse({ status: 200, description: 'Pending approvals retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Pending approvals retrieved successfully',
+  })
   async getPendingApprovals(@Request() req: any) {
     try {
-      const pendingAdjustments = await this.taxAdjustmentService.getPendingApprovals(
-        req.user.organizationId,
-      );
+      const pendingAdjustments =
+        await this.taxAdjustmentService.getPendingApprovals(
+          req.user.organizationId
+        );
 
       return {
         success: true,
@@ -234,14 +258,15 @@ export class TaxAdjustmentController {
   @ApiResponse({ status: 200, description: 'Auto-approval completed' })
   async autoApproveSmallAdjustments(
     @Request() req: any,
-    @Body() body: { threshold?: number },
+    @Body() body: { threshold?: number }
   ) {
     try {
-      const result = await this.taxAdjustmentService.autoApproveSmallAdjustments(
-        req.user.organizationId,
-        body.threshold || 1000,
-        req.user.id,
-      );
+      const result =
+        await this.taxAdjustmentService.autoApproveSmallAdjustments(
+          req.user.organizationId,
+          body.threshold || 1000,
+          req.user.id
+        );
 
       return {
         success: true,
@@ -263,12 +288,12 @@ export class TaxAdjustmentController {
   @ApiResponse({ status: 200, description: 'Summary retrieved successfully' })
   async getAdjustmentSummary(
     @Request() req: any,
-    @Query('year', new ParseIntPipe({ optional: true })) year?: number,
+    @Query('year', new ParseIntPipe({ optional: true })) year?: number
   ) {
     try {
       const summary = await this.taxAdjustmentService.getAdjustmentSummary(
         req.user.organizationId,
-        year,
+        year
       );
 
       return {
@@ -290,12 +315,12 @@ export class TaxAdjustmentController {
   @ApiResponse({ status: 200, description: 'Report generated successfully' })
   async generateAdjustmentReport(
     @Request() req: any,
-    @Param('year', ParseIntPipe) year: number,
+    @Param('year', ParseIntPipe) year: number
   ) {
     try {
       const report = await this.taxAdjustmentService.generateAdjustmentReport(
         req.user.organizationId,
-        year,
+        year
       );
 
       return {
@@ -314,7 +339,10 @@ export class TaxAdjustmentController {
 
   @Get('dashboard')
   @ApiOperation({ summary: 'Get tax adjustments dashboard data' })
-  @ApiResponse({ status: 200, description: 'Dashboard data retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Dashboard data retrieved successfully',
+  })
   async getDashboardData(@Request() req: any) {
     try {
       const currentYear = new Date().getFullYear();
@@ -322,18 +350,19 @@ export class TaxAdjustmentController {
       // Get summary for current year
       const summary = await this.taxAdjustmentService.getAdjustmentSummary(
         req.user.organizationId,
-        currentYear,
+        currentYear
       );
 
       // Get pending approvals
-      const pendingApprovals = await this.taxAdjustmentService.getPendingApprovals(
-        req.user.organizationId,
-      );
+      const pendingApprovals =
+        await this.taxAdjustmentService.getPendingApprovals(
+          req.user.organizationId
+        );
 
       // Get recent adjustments
       const recentAdjustments = await this.taxAdjustmentService.getAdjustments(
         req.user.organizationId,
-        { year: currentYear },
+        { year: currentYear }
       );
 
       const dashboardData = {
@@ -342,7 +371,8 @@ export class TaxAdjustmentController {
           count: pendingApprovals.length,
           items: pendingApprovals.slice(0, 5), // Top 5 pending
           totalAmount: pendingApprovals.reduce(
-            (sum, adj) => sum + Math.abs(adj.adjustmentAmount.toNumber()), 0
+            (sum, adj) => sum + Math.abs(adj.adjustmentAmount.toNumber()),
+            0
           ),
         },
         recentActivity: recentAdjustments.slice(0, 10), // Latest 10 adjustments
@@ -350,7 +380,8 @@ export class TaxAdjustmentController {
           pendingCount: pendingApprovals.length,
           overdueApprovals: pendingApprovals.filter(adj => {
             const daysSinceRequest = Math.ceil(
-              (new Date().getTime() - adj.requestedAt.getTime()) / (1000 * 60 * 60 * 24)
+              (new Date().getTime() - adj.requestedAt.getTime()) /
+                (1000 * 60 * 60 * 24)
             );
             return daysSinceRequest > 7; // Overdue if pending for more than 7 days
           }).length,
@@ -374,17 +405,48 @@ export class TaxAdjustmentController {
 
   @Get('types')
   @ApiOperation({ summary: 'Get available adjustment types' })
-  @ApiResponse({ status: 200, description: 'Adjustment types retrieved successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Adjustment types retrieved successfully',
+  })
   async getAdjustmentTypes() {
     try {
       const adjustmentTypes = [
-        { value: 'CORRECTION', label: 'Correction', description: 'Correction of calculation error' },
-        { value: 'AMENDMENT', label: 'Amendment', description: 'Amendment to filed return' },
-        { value: 'REFUND_CLAIM', label: 'Refund Claim', description: 'Claim for tax refund' },
-        { value: 'PENALTY_WAIVER', label: 'Penalty Waiver', description: 'Request for penalty waiver' },
-        { value: 'INTEREST_WAIVER', label: 'Interest Waiver', description: 'Request for interest waiver' },
-        { value: 'OVERPAYMENT', label: 'Overpayment', description: 'Overpayment adjustment' },
-        { value: 'UNDERPAYMENT', label: 'Underpayment', description: 'Underpayment adjustment' },
+        {
+          value: 'CORRECTION',
+          label: 'Correction',
+          description: 'Correction of calculation error',
+        },
+        {
+          value: 'AMENDMENT',
+          label: 'Amendment',
+          description: 'Amendment to filed return',
+        },
+        {
+          value: 'REFUND_CLAIM',
+          label: 'Refund Claim',
+          description: 'Claim for tax refund',
+        },
+        {
+          value: 'PENALTY_WAIVER',
+          label: 'Penalty Waiver',
+          description: 'Request for penalty waiver',
+        },
+        {
+          value: 'INTEREST_WAIVER',
+          label: 'Interest Waiver',
+          description: 'Request for interest waiver',
+        },
+        {
+          value: 'OVERPAYMENT',
+          label: 'Overpayment',
+          description: 'Overpayment adjustment',
+        },
+        {
+          value: 'UNDERPAYMENT',
+          label: 'Underpayment',
+          description: 'Underpayment adjustment',
+        },
       ];
 
       return {

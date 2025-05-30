@@ -1,6 +1,5 @@
 'use client';
 
-import React, { useState } from 'react';
 import {
   Tag,
   BarChart3,
@@ -8,14 +7,15 @@ import {
   Settings,
   PieChart
 } from 'lucide-react';
+import React, { useState } from 'react';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-
+import CategoryAnalytics from '@/components/categories/CategoryAnalytics';
 import CategoryManagement from '@/components/categories/CategoryManagement';
 import TransactionCategorization from '@/components/transactions/TransactionCategorization';
-import CategoryAnalytics from '@/components/categories/CategoryAnalytics';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 
 export default function CategoriesPage() {
   const [activeTab, setActiveTab] = useState('management');

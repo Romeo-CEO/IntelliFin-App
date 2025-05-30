@@ -1,8 +1,8 @@
 import {
+  CallHandler,
+  ExecutionContext,
   Injectable,
   NestInterceptor,
-  ExecutionContext,
-  CallHandler,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
@@ -22,18 +22,18 @@ export class TransformInterceptor<T>
 {
   public intercept(
     context: ExecutionContext,
-    next: CallHandler,
+    next: CallHandler
   ): Observable<Response<T>> {
     const request = context.switchToHttp().getRequest();
-    
+
     return next.handle().pipe(
-      map((data) => ({
+      map(data => ({
         success: true,
         data,
         timestamp: new Date().toISOString(),
         path: request.url,
         method: request.method,
-      })),
+      }))
     );
   }
 }

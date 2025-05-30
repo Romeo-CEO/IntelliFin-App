@@ -1,6 +1,6 @@
 /**
  * Analytics Data Interfaces
- * 
+ *
  * Defines data structures for analytics processing in IntelliFin.
  * Optimized for Zambian SME requirements with proper typing and validation.
  */
@@ -161,6 +161,101 @@ export interface ExpenseAnomaly {
   reason: string;
 }
 
+// New interfaces for Expense Trend Analysis
+
+export interface ExpenseCategoryBreakdown {
+  amount: number;
+  count: number;
+  taxDeductibleAmount: number;
+  percentage: number;
+  averageAmount: number;
+}
+
+export interface ExpenseTrendPeriod {
+  period: string; // YYYY-MM or other period format
+  startDate: Date;
+  endDate: Date;
+  totalAmount: number;
+  expenseCount: number;
+  averageExpenseAmount: number;
+  taxDeductibleAmount: number;
+  taxDeductiblePercentage: number;
+  categoryBreakdown: Record<string, ExpenseCategoryBreakdown>;
+  changeFromPrevious: number; // Percentage change from the previous period
+  zambianSeason?: string; // Optional, based on implementation
+}
+
+export interface ExpenseTrendSummary {
+  totalExpenses: number;
+  averageMonthlyExpenses: number;
+  overallGrowthRate: number; // Percentage change over the entire period
+  increasingCategories: number; // Count of increasing categories
+  volatileCategories: number; // Count of volatile categories
+  totalCategories: number;
+  averageTaxDeductiblePercentage: number;
+}
+
+export interface ExpenseTrendInsights extends AnalyticsInsight {}
+
+export interface ExpenseTrendAnalysisResult {
+  trends: ExpenseTrendPeriod[];
+  patterns: ExpensePattern[];
+  summary: ExpenseTrendSummary;
+  insights: ExpenseTrendInsights[];
+}
+
+// New interfaces for Expense Category Breakdown Analysis
+
+export interface ExpenseCategoryDetail {
+  categoryName: string;
+  totalAmount: number;
+  expenseCount: number;
+  taxDeductibleAmount: number;
+  averageAmount: number;
+  expenses: ExpenseAnalyticsData[]; // Assuming ExpenseAnalyticsData is the correct type
+  percentage: number;
+  taxDeductiblePercentage: number;
+}
+
+export interface ExpenseCategorySummary {
+  totalCategories: number;
+  totalExpenses: number;
+  largestCategory: string;
+  largestCategoryAmount: number;
+  totalTaxDeductible: number;
+}
+
+export interface ExpenseCategoryBreakdownResult {
+  categories: ExpenseCategoryDetail[];
+  summary: ExpenseCategorySummary;
+}
+
+// New interfaces for Cost Optimization Recommendations
+
+export interface CostOptimizationRecommendation {
+  type: 'COST_REDUCTION' | 'PROCESS_IMPROVEMENT'; // Example types, adjust if needed
+  category?: string; // Optional category
+  title: string;
+  description: string;
+  potentialSaving: number; // This seems to be a factor in the service, maybe needs refinement
+  priority: 'HIGH' | 'MEDIUM' | 'LOW';
+  actions: string[];
+}
+
+export interface CostOptimizationSummary {
+  totalStrategies: number;
+  highPriorityStrategies: number;
+  potentialSavings: number; // This is the calculated total potential saving
+  estimatedImplementationTime: number; // In weeks or similar unit
+  riskLevel: 'HIGH' | 'MEDIUM' | 'LOW';
+}
+
+export interface CostOptimizationRecommendationsResult {
+  recommendations: CostOptimizationRecommendation[];
+  potentialSavings: number;
+  summary: CostOptimizationSummary;
+}
+
 // ============================================================================
 // TAX ANALYTICS
 // ============================================================================
@@ -168,6 +263,77 @@ export interface ExpenseAnomaly {
 export interface TaxAnalyticsData {
   obligations: TaxObligationData[];
   periods: TaxPeriodData[];
+}
+
+// New interfaces for Financial Ratio Trends
+
+export interface FinancialRatioTrendPeriod {
+  period: string;
+  currentRatio: number;
+  netMargin: number;
+  returnOnAssets: number;
+  debtToEquity: number;
+  // Add other ratios as needed
+}
+
+export interface FinancialRatioTrendSummary {
+  periodsAnalyzed: number;
+  averageCurrentRatio: number;
+  averageNetMargin: number;
+  trendDirection: string; // e.g., 'IMPROVING', 'DECLINING', 'STABLE'
+}
+
+export interface FinancialRatioTrendsResult {
+  trends: FinancialRatioTrendPeriod[];
+  summary: FinancialRatioTrendSummary;
+}
+
+// New interfaces for Industry Benchmarking
+
+export interface RatioBenchmarkDetail {
+  min: number;
+  avg: number;
+  max: number;
+}
+
+export interface IndustryBenchmarkData {
+  retail: { // Define specific ratios here or use a Record<string, RatioBenchmarkDetail>
+    currentRatio: RatioBenchmarkDetail;
+    netMargin: RatioBenchmarkDetail;
+    inventoryTurnover: RatioBenchmarkDetail;
+    // Add other ratios as needed
+  };
+  manufacturing: { // Define specific ratios here or use a Record<string, RatioBenchmarkDetail>
+    currentRatio: RatioBenchmarkDetail;
+    netMargin: RatioBenchmarkDetail;
+    inventoryTurnover: RatioBenchmarkDetail;
+    // Add other ratios as needed
+  };
+  services: { // Define specific ratios here or use a Record<string, RatioBenchmarkDetail>
+    currentRatio: RatioBenchmarkDetail;
+    netMargin: RatioBenchmarkDetail;
+    inventoryTurnover: RatioBenchmarkDetail; // Inventory turnover might be 0 for services
+    // Add other ratios as needed
+  };
+  // Add other industries as needed
+}
+
+export interface RatioComparisonDetail {
+  value: number;
+  benchmark: number;
+  performance: 'ABOVE' | 'BELOW';
+}
+
+export interface IndustryComparisonResult {
+  currentRatio: RatioComparisonDetail;
+  netMargin: RatioComparisonDetail;
+  // Add other ratios as compared
+}
+
+export interface IndustryBenchmarksResult {
+  benchmarks: IndustryBenchmarkData;
+  comparison: IndustryComparisonResult; // Or allow undefined if benchmarking is optional
+  recommendations: string[];
 }
 
 export interface TaxObligationData {
@@ -314,7 +480,12 @@ export interface IndustryBenchmark {
 
 export interface AnalyticsInsight {
   id: string;
-  type: 'REVENUE_FORECAST' | 'EXPENSE_ANOMALY' | 'PROFITABILITY_ALERT' | 'TAX_OPTIMIZATION' | 'CASH_FLOW_WARNING';
+  type:
+    | 'REVENUE_FORECAST'
+    | 'EXPENSE_ANOMALY'
+    | 'PROFITABILITY_ALERT'
+    | 'TAX_OPTIMIZATION'
+    | 'CASH_FLOW_WARNING';
   title: string;
   description: string;
   priority: 'HIGH' | 'MEDIUM' | 'LOW';
@@ -381,4 +552,14 @@ export interface AnalyticsResponse<T = any> {
     expiresAt?: Date;
   };
   insights?: AnalyticsInsight[];
+}
+
+// New interfaces for Balance Sheet Data
+
+export interface BalanceSheetData {
+  totalAssets: number;
+  totalLiabilities: number;
+  totalEquity: number;
+  currentAssets: number;
+  currentLiabilities: number;
 }

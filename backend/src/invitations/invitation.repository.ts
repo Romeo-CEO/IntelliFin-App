@@ -1,12 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
-import { UserInvitation, Prisma, InvitationStatus } from '@prisma/client';
+import { InvitationStatus, Prisma, UserInvitation } from '@prisma/client';
 
 @Injectable()
 export class InvitationRepository {
   constructor(private prisma: PrismaService) {}
 
-  async create(data: Prisma.UserInvitationCreateInput): Promise<UserInvitation> {
+  async create(
+    data: Prisma.UserInvitationCreateInput
+  ): Promise<UserInvitation> {
     return this.prisma.userInvitation.create({
       data,
       include: {
@@ -86,7 +88,7 @@ export class InvitationRepository {
   async findByEmailAndTenant(
     email: string,
     tenantId: string,
-    status?: InvitationStatus,
+    status?: InvitationStatus
   ): Promise<UserInvitation | null> {
     return this.prisma.userInvitation.findFirst({
       where: {
@@ -109,7 +111,7 @@ export class InvitationRepository {
 
   async update(
     id: string,
-    data: Prisma.UserInvitationUpdateInput,
+    data: Prisma.UserInvitationUpdateInput
   ): Promise<UserInvitation> {
     return this.prisma.userInvitation.update({
       where: { id },
@@ -148,7 +150,7 @@ export class InvitationRepository {
       take?: number;
       orderBy?: Prisma.UserInvitationOrderByWithRelationInput;
       where?: Prisma.UserInvitationWhereInput;
-    },
+    }
   ): Promise<UserInvitation[]> {
     return this.prisma.userInvitation.findMany({
       where: {
@@ -181,7 +183,7 @@ export class InvitationRepository {
 
   async countByTenant(
     tenantId: string,
-    where?: Prisma.UserInvitationWhereInput,
+    where?: Prisma.UserInvitationWhereInput
   ): Promise<number> {
     return this.prisma.userInvitation.count({
       where: {
@@ -256,7 +258,7 @@ export class InvitationRepository {
   }
 
   async bulkCreate(
-    invitations: Prisma.UserInvitationCreateManyInput[],
+    invitations: Prisma.UserInvitationCreateManyInput[]
   ): Promise<number> {
     const result = await this.prisma.userInvitation.createMany({
       data: invitations,
@@ -271,7 +273,7 @@ export class InvitationRepository {
       skip?: number;
       take?: number;
       status?: InvitationStatus;
-    },
+    }
   ): Promise<UserInvitation[]> {
     return this.prisma.userInvitation.findMany({
       where: {

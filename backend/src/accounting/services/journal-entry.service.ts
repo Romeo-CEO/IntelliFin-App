@@ -1,6 +1,20 @@
-import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
-import { JournalEntryRepository, CreateJournalEntryDto, UpdateJournalEntryDto, JournalEntryQueryDto, JournalEntryWithLines } from '../repositories/journal-entry.repository';
-import { GeneralLedgerRepository, CreateGeneralLedgerEntryDto } from '../repositories/general-ledger.repository';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  CreateJournalEntryDto,
+  JournalEntryQueryDto,
+  JournalEntryRepository,
+  JournalEntryWithLines,
+  UpdateJournalEntryDto,
+} from '../repositories/journal-entry.repository';
+import {
+  CreateGeneralLedgerEntryDto,
+  GeneralLedgerRepository,
+} from '../repositories/general-ledger.repository';
 import { AccountRepository } from '../repositories/account.repository';
 import { JournalEntry, JournalEntryType, SourceType } from '@prisma/client';
 
@@ -41,21 +55,32 @@ export class JournalEntryService {
   constructor(
     private readonly journalEntryRepository: JournalEntryRepository,
     private readonly generalLedgerRepository: GeneralLedgerRepository,
-    private readonly accountRepository: AccountRepository,
+    private readonly accountRepository: AccountRepository
   ) {}
 
   /**
    * Create a new journal entry
    */
-  async createJournalEntry(organizationId: string, data: CreateJournalEntryServiceDto): Promise<JournalEntryWithLines> {
+  async createJournalEntry(
+    organizationId: string,
+    data: CreateJournalEntryServiceDto
+  ): Promise<JournalEntryWithLines> {
     try {
-      this.logger.log(`Creating journal entry for organization: ${organizationId}`);
+      this.logger.log(
+        `Creating journal entry for organization: ${organizationId}`
+      );
 
       // Validate and prepare lines
-      const preparedLines = await this.prepareJournalEntryLines(organizationId, data.lines);
+      const preparedLines = await this.prepareJournalEntryLines(
+        organizationId,
+        data.lines
+      );
 
       // Generate entry number
-      const entryNumber = await this.journalEntryRepository.generateEntryNumber(organizationId, data.entryType);
+      const entryNumber = await this.journalEntryRepository.generateEntryNumber(
+        organizationId,
+        data.entryType
+      );
 
       // Create journal entry
       const journalEntryData: CreateJournalEntryDto = {
@@ -70,12 +95,18 @@ export class JournalEntryService {
         createdBy: data.createdBy,
       };
 
-      const journalEntry = await this.journalEntryRepository.create(organizationId, journalEntryData);
+      const journalEntry = await this.journalEntryRepository.create(
+        organizationId,
+        journalEntryData
+      );
 
       this.logger.log(`Created journal entry: ${journalEntry.entryNumber}`);
       return journalEntry;
     } catch (error) {
-      this.logger.error(`Failed to create journal entry: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to create journal entry: ${error.message}`,
+        error.stack
+      );
       if (error instanceof BadRequestException) {
         throw error;
       }
@@ -86,15 +117,24 @@ export class JournalEntryService {
   /**
    * Get journal entry by ID
    */
-  async getJournalEntryById(organizationId: string, id: string): Promise<JournalEntryWithLines> {
+  async getJournalEntryById(
+    organizationId: string,
+    id: string
+  ): Promise<JournalEntryWithLines> {
     try {
-      const journalEntry = await this.journalEntryRepository.findById(organizationId, id);
+      const journalEntry = await this.journalEntryRepository.findById(
+        organizationId,
+        id
+      );
       if (!journalEntry) {
         throw new NotFoundException('Journal entry not found');
       }
       return journalEntry;
     } catch (error) {
-      this.logger.error(`Failed to get journal entry: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to get journal entry: ${error.message}`,
+        error.stack
+      );
       if (error instanceof NotFoundException) {
         throw error;
       }
@@ -109,7 +149,10 @@ export class JournalEntryService {
     try {
       return await this.journalEntryRepository.findMany(organizationId, query);
     } catch (error) {
-      this.logger.error(`Failed to get journal entries: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to get journal entries: ${error.message}`,
+        error.stack
+      );
       throw new BadRequestException('Failed to get journal entries');
     }
   }
@@ -117,25 +160,38 @@ export class JournalEntryService {
   /**
    * Update journal entry (only if not posted)
    */
-  async updateJournalEntry(organizationId: string, id: string, data: UpdateJournalEntryDto): Promise<JournalEntryWithLines> {
+  async updateJournalEntry(
+    organizationId: string,
+    id: string,
+    data: UpdateJournalEntryDto
+  ): Promise<JournalEntryWithLines> {
     try {
       // If updating lines, validate and prepare them
       if (data.lines) {
-        const preparedLines = await this.prepareJournalEntryLines(organizationId, data.lines.map(line => ({
-          accountId: line.debitAccountId || line.creditAccountId,
-          debitAmount: line.debitAccountId ? line.amount : undefined,
-          creditAmount: line.creditAccountId ? line.amount : undefined,
-          description: line.description,
-          reference: line.reference,
-        })));
+        const preparedLines = await this.prepareJournalEntryLines(
+          organizationId,
+          data.lines.map(line => ({
+            accountId: line.debitAccountId || line.creditAccountId,
+            debitAmount: line.debitAccountId ? line.amount : undefined,
+            creditAmount: line.creditAccountId ? line.amount : undefined,
+            description: line.description,
+            reference: line.reference,
+          }))
+        );
 
         data.lines = preparedLines;
       }
 
       return await this.journalEntryRepository.update(organizationId, id, data);
     } catch (error) {
-      this.logger.error(`Failed to update journal entry: ${error.message}`, error.stack);
-      if (error instanceof BadRequestException || error instanceof NotFoundException) {
+      this.logger.error(
+        `Failed to update journal entry: ${error.message}`,
+        error.stack
+      );
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException
+      ) {
         throw error;
       }
       throw new BadRequestException('Failed to update journal entry');
@@ -145,12 +201,18 @@ export class JournalEntryService {
   /**
    * Post journal entry (make it permanent and create general ledger entries)
    */
-  async postJournalEntry(organizationId: string, data: PostJournalEntryDto): Promise<JournalEntryWithLines> {
+  async postJournalEntry(
+    organizationId: string,
+    data: PostJournalEntryDto
+  ): Promise<JournalEntryWithLines> {
     try {
       this.logger.log(`Posting journal entry: ${data.journalEntryId}`);
 
       // Get the journal entry
-      const journalEntry = await this.journalEntryRepository.findById(organizationId, data.journalEntryId);
+      const journalEntry = await this.journalEntryRepository.findById(
+        organizationId,
+        data.journalEntryId
+      );
       if (!journalEntry) {
         throw new NotFoundException('Journal entry not found');
       }
@@ -200,13 +262,23 @@ export class JournalEntryService {
       );
 
       // Mark journal entry as posted
-      const postedEntry = await this.journalEntryRepository.post(organizationId, data.journalEntryId, data.postedBy);
+      const postedEntry = await this.journalEntryRepository.post(
+        organizationId,
+        data.journalEntryId,
+        data.postedBy
+      );
 
       this.logger.log(`Posted journal entry: ${postedEntry.entryNumber}`);
       return postedEntry;
     } catch (error) {
-      this.logger.error(`Failed to post journal entry: ${error.message}`, error.stack);
-      if (error instanceof BadRequestException || error instanceof NotFoundException) {
+      this.logger.error(
+        `Failed to post journal entry: ${error.message}`,
+        error.stack
+      );
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException
+      ) {
         throw error;
       }
       throw new BadRequestException('Failed to post journal entry');
@@ -216,18 +288,26 @@ export class JournalEntryService {
   /**
    * Reverse a posted journal entry
    */
-  async reverseJournalEntry(organizationId: string, data: ReverseJournalEntryDto): Promise<JournalEntryWithLines> {
+  async reverseJournalEntry(
+    organizationId: string,
+    data: ReverseJournalEntryDto
+  ): Promise<JournalEntryWithLines> {
     try {
       this.logger.log(`Reversing journal entry: ${data.originalEntryId}`);
 
       // Get the original journal entry
-      const originalEntry = await this.journalEntryRepository.findById(organizationId, data.originalEntryId);
+      const originalEntry = await this.journalEntryRepository.findById(
+        organizationId,
+        data.originalEntryId
+      );
       if (!originalEntry) {
         throw new NotFoundException('Original journal entry not found');
       }
 
       if (!originalEntry.isPosted) {
-        throw new BadRequestException('Can only reverse posted journal entries');
+        throw new BadRequestException(
+          'Can only reverse posted journal entries'
+        );
       }
 
       // Create reversing entry with opposite debits and credits
@@ -241,7 +321,10 @@ export class JournalEntryService {
       }));
 
       const reversingEntryData: CreateJournalEntryDto = {
-        entryNumber: await this.journalEntryRepository.generateEntryNumber(organizationId, 'REVERSING'),
+        entryNumber: await this.journalEntryRepository.generateEntryNumber(
+          organizationId,
+          'REVERSING'
+        ),
         entryDate: data.reversalDate,
         description: `Reversal: ${data.reversalReason}`,
         reference: originalEntry.reference,
@@ -255,7 +338,10 @@ export class JournalEntryService {
       };
 
       // Create the reversing entry
-      const reversingEntry = await this.journalEntryRepository.create(organizationId, reversingEntryData);
+      const reversingEntry = await this.journalEntryRepository.create(
+        organizationId,
+        reversingEntryData
+      );
 
       // Post the reversing entry immediately
       const postedReversingEntry = await this.postJournalEntry(organizationId, {
@@ -263,11 +349,19 @@ export class JournalEntryService {
         postedBy: data.createdBy,
       });
 
-      this.logger.log(`Created reversing journal entry: ${postedReversingEntry.entryNumber}`);
+      this.logger.log(
+        `Created reversing journal entry: ${postedReversingEntry.entryNumber}`
+      );
       return postedReversingEntry;
     } catch (error) {
-      this.logger.error(`Failed to reverse journal entry: ${error.message}`, error.stack);
-      if (error instanceof BadRequestException || error instanceof NotFoundException) {
+      this.logger.error(
+        `Failed to reverse journal entry: ${error.message}`,
+        error.stack
+      );
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException
+      ) {
         throw error;
       }
       throw new BadRequestException('Failed to reverse journal entry');
@@ -277,11 +371,17 @@ export class JournalEntryService {
   /**
    * Delete journal entry (only if not posted)
    */
-  async deleteJournalEntry(organizationId: string, id: string): Promise<JournalEntry> {
+  async deleteJournalEntry(
+    organizationId: string,
+    id: string
+  ): Promise<JournalEntry> {
     try {
       return await this.journalEntryRepository.delete(organizationId, id);
     } catch (error) {
-      this.logger.error(`Failed to delete journal entry: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to delete journal entry: ${error.message}`,
+        error.stack
+      );
       if (error instanceof NotFoundException) {
         throw error;
       }
@@ -292,13 +392,22 @@ export class JournalEntryService {
   /**
    * Create journal entry from invoice
    */
-  async createJournalEntryFromInvoice(organizationId: string, invoiceId: string, createdBy: string): Promise<JournalEntryWithLines> {
+  async createJournalEntryFromInvoice(
+    // organizationId: string,
+    // invoiceId: string,
+    // createdBy: string
+  ): Promise<JournalEntryWithLines> {
     try {
       // This would integrate with the invoice service to get invoice details
       // For now, this is a placeholder for the integration
       throw new BadRequestException('Invoice integration not yet implemented');
     } catch (error) {
-      this.logger.error(`Failed to create journal entry from invoice: ${error.message}`, error.stack);
+      this.logger.error(
+        // `Failed to create journal entry from invoice: ${error.message}`,
+        // error.stack
+        `Failed to create journal entry from invoice: ${(error as Error).message}`,
+        (error as Error).stack
+      );
       throw error;
     }
   }
@@ -306,13 +415,22 @@ export class JournalEntryService {
   /**
    * Create journal entry from payment
    */
-  async createJournalEntryFromPayment(organizationId: string, paymentId: string, createdBy: string): Promise<JournalEntryWithLines> {
+  async createJournalEntryFromPayment(
+    // organizationId: string,
+    // paymentId: string,
+    // createdBy: string
+  ): Promise<JournalEntryWithLines> {
     try {
       // This would integrate with the payment service to get payment details
       // For now, this is a placeholder for the integration
       throw new BadRequestException('Payment integration not yet implemented');
     } catch (error) {
-      this.logger.error(`Failed to create journal entry from payment: ${error.message}`, error.stack);
+      this.logger.error(
+        // `Failed to create journal entry from payment: ${error.message}`,
+        // error.stack
+        `Failed to create journal entry from payment: ${(error as Error).message}`,
+        (error as Error).stack
+      );
       throw error;
     }
   }
@@ -320,20 +438,32 @@ export class JournalEntryService {
   /**
    * Create journal entry from expense
    */
-  async createJournalEntryFromExpense(organizationId: string, expenseId: string, createdBy: string): Promise<JournalEntryWithLines> {
+  async createJournalEntryFromExpense(
+    // organizationId: string,
+    // expenseId: string,
+    // createdBy: string
+  ): Promise<JournalEntryWithLines> {
     try {
       // This would integrate with the expense service to get expense details
       // For now, this is a placeholder for the integration
       throw new BadRequestException('Expense integration not yet implemented');
     } catch (error) {
-      this.logger.error(`Failed to create journal entry from expense: ${error.message}`, error.stack);
+      this.logger.error(
+        // `Failed to create journal entry from expense: ${error.message}`,
+        // error.stack
+        `Failed to create journal entry from expense: ${(error as Error).message}`,
+        (error as Error).stack
+      );
       throw error;
     }
   }
 
   // Private helper methods
 
-  private async prepareJournalEntryLines(organizationId: string, lines: any[]) {
+  private async prepareJournalEntryLines(
+    organizationId: string,
+    lines: CreateJournalEntryServiceDto['lines']
+  ) {
     const preparedLines = [];
     let lineNumber = 1;
 
@@ -342,15 +472,22 @@ export class JournalEntryService {
 
       // If account code is provided instead of ID, look up the account
       if (line.accountCode && !accountId) {
-        const account = await this.accountRepository.findByCode(organizationId, line.accountCode);
+        const account = await this.accountRepository.findByCode(
+          organizationId,
+          line.accountCode
+        );
         if (!account) {
-          throw new BadRequestException(`Account not found: ${line.accountCode}`);
+          throw new BadRequestException(
+            `Account not found: ${line.accountCode}`
+          );
         }
         accountId = account.id;
       }
 
       if (!accountId) {
-        throw new BadRequestException('Account ID or account code is required for each line');
+        throw new BadRequestException(
+          'Account ID or account code is required for each line'
+        );
       }
 
       // Validate that either debit or credit is specified, but not both
@@ -358,11 +495,15 @@ export class JournalEntryService {
       const hasCredit = line.creditAmount && line.creditAmount > 0;
 
       if (hasDebit && hasCredit) {
-        throw new BadRequestException('A line cannot have both debit and credit amounts');
+        throw new BadRequestException(
+          'A line cannot have both debit and credit amounts'
+        );
       }
 
       if (!hasDebit && !hasCredit) {
-        throw new BadRequestException('Each line must have either a debit or credit amount');
+        throw new BadRequestException(
+          'Each line must have either a debit or credit amount'
+        );
       }
 
       preparedLines.push({

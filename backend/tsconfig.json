@@ -1,26 +1,32 @@
 {
+  "$schema": "https://json.schemastore.org/tsconfig",
   "compilerOptions": {
-    "module": "commonjs",
-    "declaration": true,
-    "removeComments": true,
-    "emitDecoratorMetadata": true,
-    "experimentalDecorators": true,
+    /* Base Options */
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "target": "ES2020",
-    "sourceMap": true,
-    "outDir": "./dist",
-    "baseUrl": "./",
-    "incremental": true,
-    "skipLibCheck": true,
-    "strictNullChecks": false,
-    "noImplicitAny": false,
-    "strictBindCallApply": false,
-    "forceConsistentCasingInFileNames": false,
-    "noFallthroughCasesInSwitch": false,
     "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    
+    /* Additional Type Checking */
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictBindCallApply": true,
+    "strictFunctionTypes": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
+    "useUnknownInCatchVariables": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    
+    /* Module Resolution */
+    "baseUrl": "./",
     "paths": {
       "@/*": ["src/*"],
       "@/common/*": ["src/common/*"],
@@ -30,17 +36,37 @@
       "@/integrations/*": ["src/integrations/*"],
       "@/shared/*": ["src/shared/*"]
     },
-    "lib": ["ES2020"],
-    "esModuleInterop": true,
-    "resolveJsonModule": true
+    "typeRoots": [
+      "./node_modules/@types",
+      "./src/types"
+    ],
+    
+    /* Emit */
+    "declaration": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "removeComments": true,
+    "incremental": true,
+    "resolveJsonModule": true,
+    
+    /* Decorators */
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    
+    /* Advanced */
+    "useDefineForClassFields": true,
+    "newLine": "lf",
+    "lib": ["ES2022"]
   },
   "include": [
     "src/**/*",
     "test/**/*",
-    "prisma/**/*"
+    "prisma/**/*",
+    "src/types/**/*"
   ],
   "exclude": [
     "node_modules",
-    "dist"
+    "dist",
+    "**/node_modules/**"
   ]
 }

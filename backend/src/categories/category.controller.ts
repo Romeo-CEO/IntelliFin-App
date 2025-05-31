@@ -3,6 +3,8 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseUUIDPipe,
   Post,
@@ -12,13 +14,20 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
   ApiBody,
+  ApiConflictResponse,
+  ApiCreatedResponse,
+  ApiForbiddenResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
   ApiOperation,
   ApiParam,
   ApiQuery,
   ApiResponse,
   ApiTags,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 
@@ -28,207 +37,128 @@ import { AuthenticatedUser } from '../auth/interfaces/auth.interface';
 
 import { CategoryService } from './category.service';
 import {
+  CategoryAnalytics,
   CategoryFiltersDto,
   CreateCategoryDto,
   UpdateCategoryDto,
 } from './dto/category.dto';
+import { Category } from '@prisma/client';
 
 @ApiTags('Categories')
 @Controller('categories')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
+@ApiUnauthorizedResponse({ description: 'Unauthorized' })
+@ApiForbiddenResponse({ description: 'Forbidden' })
 export class CategoryController {
   constructor(private readonly categoryService: CategoryService) {}
 
   @Post()
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 requests per minute
+  @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: 'Create a new category',
     description: 'Create a new transaction category for the organization',
   })
   @ApiBody({ type: CreateCategoryDto })
-  @ApiResponse({
-    status: 201,
-    description: 'Category created successfully',
+  @ApiCreatedResponse({
+    description: 'The category has been successfully created',
+    type: Category,
   })
-  @ApiResponse({
-    status: 400,
-    description: 'Invalid input or category already exists',
+  @ApiBadRequestResponse({
+    description: 'Invalid input or category with the same name already exists',
   })
-  @ApiResponse({
-    status: 401,
-    description: 'Unauthorized - Invalid or missing JWT token',
+  @ApiConflictResponse({
+    description: 'A category with this name already exists',
   })
-  async createCategory(
-    @CurrentUser() user: AuthenticatedUser,
-    @Body(ValidationPipe) createCategoryDto: CreateCategoryDto
-  ) {
-    return await this.categoryService.createCategory({
-      organizationId: user.organizationId,
+  async create(
+    @Body() createCategoryDto: CreateCategoryDto,
+    @CurrentUser() user: AuthenticatedUser
+  ): Promise<Category> {
+    return this.categoryService.createCategory({
       ...createCategoryDto,
+      organizationId: user.organizationId,
     });
   }
 
   @Get()
   @ApiOperation({
-    summary: 'Get categories',
-    description: 'Retrieve categories with optional filtering',
+    summary: 'Get all categories',
+    description: 'Retrieve all categories with optional filtering',
   })
-  @ApiQuery({ name: 'type', required: false, enum: ['INCOME', 'EXPENSE'] })
-  @ApiQuery({ name: 'parentId', required: false, type: 'string' })
-  @ApiQuery({ name: 'isActive', required: false, type: 'boolean' })
-  @ApiQuery({ name: 'search', required: false, type: 'string' })
-  @ApiResponse({
-    status: 200,
+  @ApiQuery({
+    name: 'type',
+    required: false,
+    enum: CategoryType,
+    description: 'Filter by category type',
+  })
+  @ApiQuery({
+    name: 'parentId',
+    required: false,
+    type: String,
+    description: 'Filter by parent category ID',
+  })
+  @ApiQuery({
+    name: 'isActive',
+    required: false,
+    type: Boolean,
+    description: 'Filter by active status',
+  })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    type: String,
+    description: 'Search by name or description',
+  })
+  @ApiOkResponse({
     description: 'Categories retrieved successfully',
+    type: [Category],
   })
-  async getCategories(
-    @CurrentUser() user: AuthenticatedUser,
-    @Query(ValidationPipe) filters: CategoryFiltersDto
-  ) {
-    return await this.categoryService.getCategories({
-      organizationId: user.organizationId,
+  async findAll(
+    @Query() filters: CategoryFiltersDto,
+    @CurrentUser() user: AuthenticatedUser
+  ): Promise<Category[]> {
+    return this.categoryService.getCategories({
       ...filters,
+      organizationId: user.organizationId,
     });
   }
 
   @Get('hierarchy')
   @ApiOperation({
     summary: 'Get category hierarchy',
-    description: 'Retrieve categories organized in a hierarchical structure',
+    description: 'Get categories organized in a hierarchical structure',
   })
-  @ApiQuery({ name: 'type', required: false, enum: ['INCOME', 'EXPENSE'] })
-  @ApiResponse({
-    status: 200,
+  @ApiQuery({
+    name: 'type',
+    required: false,
+    enum: CategoryType,
+    description: 'Filter by category type',
+  })
+  @ApiOkResponse({
     description: 'Category hierarchy retrieved successfully',
+    type: Object,
   })
-  async getCategoryHierarchy(
-    @CurrentUser() user: AuthenticatedUser,
-    @Query('type') type?: string
+  async getHierarchy(
+    @Query('type') type: CategoryType,
+    @CurrentUser() user: AuthenticatedUser
   ) {
-    return await this.categoryService.getCategoryHierarchy(
-      user.organizationId,
-      type as any
-    );
-  }
-
-  @Get('stats')
-  @ApiOperation({
-    summary: 'Get categories with statistics',
-    description:
-      'Retrieve categories with usage statistics and transaction counts',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Category statistics retrieved successfully',
-  })
-  async getCategoriesWithStats(@CurrentUser() user: AuthenticatedUser) {
-    return await this.categoryService.getCategoriesWithStats(
-      user.organizationId
-    );
+    return this.categoryService.getCategoryHierarchy(user.organizationId, type);
   }
 
   @Get('analytics')
   @ApiOperation({
     summary: 'Get category analytics',
-    description:
-      'Retrieve comprehensive analytics about category usage and performance',
+    description: 'Get statistics and analytics about category usage',
   })
-  @ApiQuery({
-    name: 'startDate',
-    required: false,
-    type: 'string',
-    format: 'date',
-  })
-  @ApiQuery({
-    name: 'endDate',
-    required: false,
-    type: 'string',
-    format: 'date',
-  })
-  @ApiResponse({
-    status: 200,
+  @ApiOkResponse({
     description: 'Category analytics retrieved successfully',
+    type: Object,
   })
-  async getCategoryAnalytics(
-    @CurrentUser() user: AuthenticatedUser,
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string
-  ) {
-    return await this.categoryService.getCategoryAnalytics(
-      user.organizationId,
-      startDate ? new Date(startDate) : undefined,
-      endDate ? new Date(endDate) : undefined
-    );
-  }
-
-  @Get('suggestions')
-  @ApiOperation({
-    summary: 'Get category suggestions',
-    description:
-      'Get AI-powered category suggestions for uncategorized transactions',
-  })
-  @ApiQuery({ name: 'limit', required: false, type: 'number' })
-  @ApiResponse({
-    status: 200,
-    description: 'Category suggestions retrieved successfully',
-  })
-  async getCategorySuggestions(
-    @CurrentUser() user: AuthenticatedUser,
-    @Query('limit') limit?: number
-  ) {
-    return await this.categoryService.suggestCategoriesForUncategorized(
-      user.organizationId,
-      limit ? parseInt(limit.toString()) : 50
-    );
-  }
-
-  @Post('auto-categorize')
-  @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 requests per minute
-  @ApiOperation({
-    summary: 'Auto-categorize transactions',
-    description: 'Automatically categorize uncategorized transactions using AI',
-  })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        transactionIds: {
-          type: 'array',
-          items: { type: 'string', format: 'uuid' },
-          description: 'Specific transaction IDs to categorize (optional)',
-        },
-      },
-    },
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Auto-categorization completed successfully',
-  })
-  async autoCategorizeTransactions(
-    @CurrentUser() user: AuthenticatedUser,
-    @Body() body: { transactionIds?: string[] }
-  ) {
-    return await this.categoryService.autoCategorizeTransactions(
-      user.organizationId,
-      body.transactionIds
-    );
-  }
-
-  @Post('initialize-defaults')
-  @Throttle({ default: { limit: 1, ttl: 60000 } }) // 1 request per minute
-  @ApiOperation({
-    summary: 'Initialize default categories',
-    description: 'Create default categories for the organization',
-  })
-  @ApiResponse({
-    status: 201,
-    description: 'Default categories initialized successfully',
-  })
-  async initializeDefaultCategories(@CurrentUser() user: AuthenticatedUser) {
-    return await this.categoryService.initializeDefaultCategories(
-      user.organizationId
-    );
+  async getAnalytics(
+    @CurrentUser() user: AuthenticatedUser
+  ): Promise<CategoryAnalytics> {
+    return this.categoryService.getCategoryAnalytics(user.organizationId);
   }
 
   @Get(':id')
@@ -236,58 +166,64 @@ export class CategoryController {
     summary: 'Get category by ID',
     description: 'Retrieve a specific category by its ID',
   })
-  @ApiParam({
-    name: 'id',
-    description: 'Category ID',
-    type: 'string',
-    format: 'uuid',
-  })
-  @ApiResponse({
-    status: 200,
+  @ApiParam({ name: 'id', description: 'Category ID' })
+  @ApiOkResponse({
     description: 'Category retrieved successfully',
+    type: Category,
   })
-  @ApiResponse({
-    status: 404,
-    description: 'Category not found',
+  @ApiNotFoundResponse({ description: 'Category not found' })
+  async findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser
+  ): Promise<Category> {
+    return this.categoryService.getCategoryById(id, user.organizationId);
+  }
+
+  @Get(':id/path')
+  @ApiOperation({
+    summary: 'Get category path',
+    description: 'Get the full path from the root to the specified category',
   })
-  async getCategoryById(
-    @CurrentUser() user: AuthenticatedUser,
-    @Param('id', ParseUUIDPipe) id: string
-  ) {
-    return await this.categoryService.getCategoryById(id, user.organizationId);
+  @ApiParam({ name: 'id', description: 'Category ID' })
+  @ApiOkResponse({
+    description: 'Category path retrieved successfully',
+    type: [Category],
+  })
+  @ApiNotFoundResponse({ description: 'Category not found' })
+  @ApiBadRequestResponse({
+    description: 'Invalid category hierarchy',
+  })
+  async getPath(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser
+  ): Promise<Category[]> {
+    return this.categoryService.getCategoryPath(id, user.organizationId);
   }
 
   @Put(':id')
-  @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 requests per minute
   @ApiOperation({
-    summary: 'Update category',
+    summary: 'Update a category',
     description: 'Update an existing category',
   })
-  @ApiParam({
-    name: 'id',
-    description: 'Category ID',
-    type: 'string',
-    format: 'uuid',
-  })
+  @ApiParam({ name: 'id', description: 'Category ID' })
   @ApiBody({ type: UpdateCategoryDto })
-  @ApiResponse({
-    status: 200,
+  @ApiOkResponse({
     description: 'Category updated successfully',
+    type: Category,
   })
-  @ApiResponse({
-    status: 400,
-    description: 'Invalid input or validation error',
+  @ApiNotFoundResponse({ description: 'Category not found' })
+  @ApiBadRequestResponse({
+    description: 'Invalid input or circular dependency detected',
   })
-  @ApiResponse({
-    status: 404,
-    description: 'Category not found',
+  @ApiConflictResponse({
+    description: 'A category with this name already exists',
   })
-  async updateCategory(
-    @CurrentUser() user: AuthenticatedUser,
+  async update(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body(ValidationPipe) updateCategoryDto: UpdateCategoryDto
-  ) {
-    return await this.categoryService.updateCategory(
+    @Body() updateCategoryDto: UpdateCategoryDto,
+    @CurrentUser() user: AuthenticatedUser
+  ): Promise<Category> {
+    return this.categoryService.updateCategory(
       id,
       user.organizationId,
       updateCategoryDto
@@ -295,34 +231,83 @@ export class CategoryController {
   }
 
   @Delete(':id')
-  @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 requests per minute
+  @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
-    summary: 'Delete category',
-    description: 'Delete a category (soft delete)',
+    summary: 'Delete a category',
+    description: 'Delete a category by ID',
   })
-  @ApiParam({
-    name: 'id',
-    description: 'Category ID',
-    type: 'string',
-    format: 'uuid',
-  })
+  @ApiParam({ name: 'id', description: 'Category ID' })
   @ApiResponse({
-    status: 200,
+    status: 204,
     description: 'Category deleted successfully',
   })
-  @ApiResponse({
-    status: 400,
-    description: 'Cannot delete category with children or transactions',
+  @ApiNotFoundResponse({ description: 'Category not found' })
+  @ApiBadRequestResponse({
+    description: 'Cannot delete category with children or in use by transactions',
   })
-  @ApiResponse({
-    status: 404,
-    description: 'Category not found',
-  })
-  async deleteCategory(
-    @CurrentUser() user: AuthenticatedUser,
-    @Param('id', ParseUUIDPipe) id: string
-  ) {
+  async remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser
+  ): Promise<void> {
     await this.categoryService.deleteCategory(id, user.organizationId);
-    return { success: true, message: 'Category deleted successfully' };
+  }
+
+  @Post(':id/recategorize')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Recategorize transactions',
+    description: 'Re-apply categorization rules to transactions in this category',
+  })
+  @ApiParam({ name: 'id', description: 'Category ID' })
+  @ApiOkResponse({
+    description: 'Recategorization completed',
+    schema: {
+      type: 'object',
+      properties: {
+        recategorized: { type: 'number', description: 'Number of transactions recategorized' },
+      },
+    },
+  })
+  @ApiNotFoundResponse({ description: 'Category not found' })
+  async recategorizeTransactions(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser
+  ): Promise<{ recategorized: number }> {
+    return this.categoryService.recategorizeTransactions(
+      id,
+      user.organizationId
+    );
+  }
+
+  @Get('name/available')
+  @ApiOperation({
+    summary: 'Check category name availability',
+    description: 'Check if a category name is available within an organization',
+  })
+  @ApiQuery({ name: 'name', required: true, type: String })
+  @ApiQuery({ name: 'parentId', required: false, type: String })
+  @ApiQuery({ name: 'excludeId', required: false, type: String })
+  @ApiOkResponse({
+    description: 'Name availability check result',
+    schema: {
+      type: 'object',
+      properties: {
+        available: { type: 'boolean' },
+      },
+    },
+  })
+  async checkNameAvailability(
+    @Query('name') name: string,
+    @Query('parentId') parentId: string | undefined,
+    @Query('excludeId') excludeId: string | undefined,
+    @CurrentUser() user: AuthenticatedUser
+  ): Promise<{ available: boolean }> {
+    const available = await this.categoryService.isCategoryNameAvailable(
+      user.organizationId,
+      name,
+      parentId || null,
+      excludeId
+    );
+    return { available };
   }
 }

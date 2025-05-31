@@ -114,7 +114,7 @@ export class PasswordService {
       score += 1;
     }
 
-    if (/[!@#$%^&*()_+\-=\\[\\]{};':\"\\\\|,.<>/?]/.test(password)) {
+    if (/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]+/.test(password)) {
       score += 1;
     }
 

@@ -1,9 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
-
-import * as fs from 'fs';
-import * as path from 'path';
-
+import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
 import { PrismaService } from './prisma.service';
+
+/**
+ * Service for handling database migrations and schema operations
+ * Provides methods for database initialization and tenant schema management
+ */
 
 @Injectable()
 export class MigrationService {
@@ -13,6 +16,7 @@ export class MigrationService {
 
   /**
    * Run initial database setup
+   * @throws {Error} If setup fails
    */
   public async runInitialSetup(): Promise<void> {
     try {
@@ -30,22 +34,30 @@ export class MigrationService {
       await this.runInitializationScript();
 
       this.logger.log('✅ Initial database setup completed');
-    } catch (error) {
-      this.logger.error('❌ Initial database setup failed:', error);
-      throw error;
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`❌ Initial database setup failed: ${errorMessage}`);
+      throw new Error(`Database setup failed: ${errorMessage}`);
     }
   }
 
   /**
    * Create tenant schema from template
    */
+  /**
+   * Create a tenant schema from a template
+   * @param tenantId - The tenant ID to create the schema for
+   * @throws {Error} If schema creation fails
+   */
   public async createTenantSchemaFromTemplate(tenantId: string): Promise<void> {
-    try {
-      this.logger.log(
-        `Creating tenant schema from template for tenant: ${tenantId}`
-      );
+    if (!tenantId || typeof tenantId !== 'string') {
+      throw new Error('Tenant ID must be a non-empty string');
+    }
 
-      const schemaName = `tenant_${tenantId.replace(/-/g, '_')}`;
+    const schemaName = `tenant_${tenantId.replace(/-/g, '_')}`;
+    
+    try {
+      this.logger.log(`Creating tenant schema from template for tenant: ${tenantId}`);
 
       // Read tenant schema template
       const templatePath = path.join(
@@ -53,7 +65,15 @@ export class MigrationService {
         'prisma',
         'tenant-schema-template.sql'
       );
-      const templateSql = fs.readFileSync(templatePath, 'utf8');
+
+      // Check if template file exists
+      try {
+        await fs.access(templatePath);
+      } catch (error) {
+        throw new Error(`Template file not found at ${templatePath}`);
+      }
+
+      const templateSql = await fs.readFile(templatePath, 'utf8');
 
       // Create schema
       await this.prismaService.$executeRawUnsafe(
@@ -65,52 +85,63 @@ export class MigrationService {
         `SET search_path TO "${schemaName}"`
       );
 
-      // Split and execute SQL statements
-      const statements = this.splitSqlStatements(templateSql);
-
-      for (const statement of statements) {
-        if (statement.trim()) {
-          await this.prismaService.$executeRawUnsafe(statement);
+      try {
+        // Split and execute SQL statements
+        const statements = this.splitSqlStatements(templateSql);
+        
+        for (const [index, statement] of statements.entries()) {
+          const trimmedStatement = statement.trim();
+          if (trimmedStatement) {
+            try {
+              await this.prismaService.$executeRawUnsafe(trimmedStatement);
+            } catch (statementError) {
+              const errorMessage = statementError instanceof Error ? statementError.message : 'Unknown error';
+              throw new Error(`Error executing statement #${index + 1}: ${errorMessage}\n${trimmedStatement}`);
+            }
+          }
         }
+      } finally {
+        // Always reset search path
+        await this.prismaService.$executeRawUnsafe('SET search_path TO public');
       }
 
-      // Reset search path
-      await this.prismaService.$executeRawUnsafe('SET search_path TO public');
-
       this.logger.log(`✅ Tenant schema created: ${schemaName}`);
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(
-        `❌ Failed to create tenant schema: ${errorMessage}`,
-        errorStack
-      );
-      throw error;
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`❌ Failed to create tenant schema ${schemaName}: ${errorMessage}`);
+      throw new Error(`Failed to create tenant schema: ${errorMessage}`);
     }
   }
 
   /**
    * Drop tenant schema
    */
-  public async dropTenantSchema(tenantId: string): Promise<void> {
-    try {
-      const schemaName = `tenant_${tenantId.replace(/-/g, '_')}`;
+  /**
+   * Drop a tenant schema
+   * @param tenantId - The tenant ID to drop the schema for
+   * @param force - If true, will not throw error if schema doesn't exist
+   * @throws {Error} If schema deletion fails
+   */
+  public async dropTenantSchema(tenantId: string, force = false): Promise<void> {
+    if (!tenantId || typeof tenantId !== 'string') {
+      throw new Error('Tenant ID must be a non-empty string');
+    }
 
+    const schemaName = `tenant_${tenantId.replace(/-/g, '_')}`;
+    
+    try {
       await this.prismaService.$executeRawUnsafe(
         `DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`
       );
-
-      this.logger.log(`✅ Tenant schema dropped: ${schemaName}`);
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(
-        `❌ Failed to drop tenant schema: ${errorMessage}`,
-        errorStack
-      );
-      throw error;
+      this.logger.log(`✅ Dropped tenant schema: ${schemaName}`);
+    } catch (error: unknown) {
+      if (force) {
+        this.logger.warn(`⚠️ Force continuing after error dropping schema ${schemaName}: ${error}`);
+        return;
+      }
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`❌ Failed to drop tenant schema ${schemaName}: ${errorMessage}`);
+      throw new Error(`Failed to drop tenant schema: ${errorMessage}`);
     }
   }
 
@@ -207,18 +238,24 @@ export class MigrationService {
   /**
    * Check if database is initialized
    */
+  /**
+   * Check if the database is already initialized
+   * @returns {Promise<boolean>} True if database is initialized
+   */
   private async isDatabaseInitialized(): Promise<boolean> {
     try {
-      // Check if the main tables exist
-      const result = await this.prismaService.$queryRaw<{ count: number }[]>`
-        SELECT COUNT(*) as count
-        FROM information_schema.tables
-        WHERE table_schema = 'public'
-        AND table_name IN ('tenants', 'users', 'user_sessions')
+      // Check for existence of a table that should exist after initialization
+      const result = await this.prismaService.$queryRaw<Array<{ exists: boolean }>>`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' 
+          AND table_name = 'migrations'
+        ) as "exists"
       `;
-
-      return result[0]?.count === 3;
+      
+      return result[0]?.exists ?? false;
     } catch (error) {
+      this.logger.warn('Failed to check if database is initialized', error);
       return false;
     }
   }
@@ -226,38 +263,66 @@ export class MigrationService {
   /**
    * Run database initialization script
    */
+  /**
+   * Run database initialization script
+   * @throws {Error} If initialization fails
+   */
   private async runInitializationScript(): Promise<void> {
-    const initScriptPath = path.join(
-      process.cwd(),
-      'database',
-      'init',
-      '01-init.sql'
-    );
-
-    if (fs.existsSync(initScriptPath)) {
-      const initSql = fs.readFileSync(initScriptPath, 'utf8');
-      const statements = this.splitSqlStatements(initSql);
-
-      for (const statement of statements) {
-        if (statement.trim()) {
-          await this.prismaService.$executeRawUnsafe(statement);
+    const scriptPath = path.join(process.cwd(), 'prisma', 'init.sql');
+    
+    try {
+      // Check if initialization script exists
+      await fs.access(scriptPath);
+      
+      const sql = await fs.readFile(scriptPath, 'utf8');
+      const statements = this.splitSqlStatements(sql);
+      
+      // Execute each statement in a transaction
+      await this.prismaService.$transaction(async (prisma) => {
+        for (const [index, statement] of statements.entries()) {
+          if (statement.trim()) {
+            try {
+              await prisma.$executeRawUnsafe(statement);
+            } catch (error) {
+              throw new Error(`Error executing initialization statement #${index + 1}: ${error}`);
+            }
+          }
         }
-      }
+      });
+      
+      this.logger.log('✅ Database initialization script executed successfully');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`❌ Database initialization failed: ${errorMessage}`);
+      throw new Error(`Database initialization failed: ${errorMessage}`);
     }
   }
 
   /**
    * Split SQL file into individual statements
    */
+  /**
+   * Split SQL script into individual statements
+   * @param sql - SQL script to split
+   * @returns Array of SQL statements
+   */
   private splitSqlStatements(sql: string): string[] {
-    // Remove comments and split by semicolon
-    const cleanSql = sql
-      .replace(/--.*$/gm, '') // Remove line comments
-      .replace(/\/\*[\s\S]*?\*\//g, ''); // Remove block comments
+    if (typeof sql !== 'string') {
+      throw new Error('SQL input must be a string');
+    }
 
-    return cleanSql
+    // Split SQL statements by semicolon, handle multi-line statements
+    return sql
       .split(';')
-      .map(statement => statement.trim())
+      .map(statement => {
+        // Remove comments and trim whitespace
+        const cleanStatement = statement
+          .replace(/--.*$/gm, '') // Remove single-line comments
+          .replace(/\/\*[\s\S]*?\*\//g, '') // Remove multi-line comments
+          .trim();
+        
+        return cleanStatement;
+      })
       .filter(statement => statement.length > 0);
   }
 

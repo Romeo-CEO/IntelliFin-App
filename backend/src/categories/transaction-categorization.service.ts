@@ -570,7 +570,7 @@ export class TransactionCategorizationService {
             reason: `Description matches pattern: ${pattern}`,
           };
         }
-      } catch (/* error */) {
+      } catch (error) {
         // Invalid regex pattern
         continue;
       }
